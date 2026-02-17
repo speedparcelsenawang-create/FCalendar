@@ -1,7 +1,11 @@
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Plus, Trash2, ChevronLeft, ChevronRight, Image as ImageIcon, Pencil, MoreVertical, ArrowUp, ArrowDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { useEditMode } from "@/contexts/EditModeContext"
+import "lightgallery/css/lightgallery.css"
+import "lightgallery/css/lg-thumbnail.css"
+import "lightgallery/css/lg-zoom.css"
 import {
   Dialog,
   DialogContent,
@@ -38,6 +42,9 @@ interface PlanoPage {
 }
 
 export function PlanoVM() {
+  const { isEditMode, setHasUnsavedChanges } = useEditMode()
+  const lightGalleryRefs = useRef<Map<string, any>>(new Map())
+  const [selectedImage, setSelectedImage] = useState<{ url: string; title: string; description: string } | null>(null)
   const [pages, setPages] = useState<PlanoPage[]>([
     {
       id: "page-1",
@@ -91,6 +98,8 @@ export function PlanoVM() {
 
   const [activePage, setActivePage] = useState<string>("page-1")
   const [addPageDialog, setAddPageDialog] = useState(false)
+  const [editPageDialog, setEditPageDialog] = useState<{ open: boolean; pageId?: string }>({ open: false })
+  const [deletePageDialog, setDeletePageDialog] = useState<{ open: boolean; pageId?: string }>({ open: false })
   const [addRowDialog, setAddRowDialog] = useState(false)
   const [editRowDialog, setEditRowDialog] = useState<{ open: boolean; rowId?: string }>({ open: false })
   const [deleteRowDialog, setDeleteRowDialog] = useState<{ open: boolean; rowId?: string }>({ open: false })
@@ -100,12 +109,93 @@ export function PlanoVM() {
   const [hoveredImage, setHoveredImage] = useState<string | null>(null)
   
   const [newPageName, setNewPageName] = useState("")
+  const [editPageName, setEditPageName] = useState("")
   const [newRowTitle, setNewRowTitle] = useState("")
   const [editRowTitle, setEditRowTitle] = useState("")
   const [newImage, setNewImage] = useState({ url: "", title: "", description: "" })
   const [editImage, setEditImage] = useState({ url: "", title: "", description: "" })
 
   const currentPage = pages.find(p => p.id === activePage)
+
+  // Initialize lightGallery for each row when not in edit mode
+  useEffect(() => {
+    const initLightGallery = async () => {
+      if (!isEditMode && currentPage && currentPage.rows.length > 0) {
+        console.log('=== Starting LightGallery initialization ===')
+        console.log('Current page rows:', currentPage.rows.length)
+        
+        try {
+          // Dynamic import - use proper destructuring for default exports
+          const { default: lightGallery } = await import('lightgallery')
+          const { default: lgThumbnail } = await import('lightgallery/plugins/thumbnail')
+          const { default: lgZoom } = await import('lightgallery/plugins/zoom')
+          
+          console.log('LightGallery modules loaded successfully')
+
+          // Wait for DOM
+          await new Promise(resolve => setTimeout(resolve, 300))
+
+          // Cleanup previous instances
+          lightGalleryRefs.current.forEach((instance) => {
+            if (instance && instance.destroy) {
+              instance.destroy()
+            }
+          })
+          lightGalleryRefs.current.clear()
+
+          // Initialize for each row
+          currentPage.rows.forEach((row) => {
+            if (row.images.length > 0) {
+              const element = document.getElementById(`lightgallery-${row.id}`)
+              console.log(`Looking for element: lightgallery-${row.id}`, element)
+              
+              if (element) {
+                const links = element.querySelectorAll('a')
+                console.log(`Found ${links.length} image links in row ${row.id}`)
+                
+                if (links.length > 0) {
+                  const instance = lightGallery(element, {
+                    plugins: [lgThumbnail, lgZoom],
+                    speed: 500,
+                    thumbnail: true,
+                    animateThumb: false,
+                    allowMediaOverlap: true,
+                    toggleThumb: true,
+                  })
+                  lightGalleryRefs.current.set(row.id, instance)
+                  console.log(`✅ LightGallery initialized successfully for row: ${row.id}`)
+                }
+              } else {
+                console.warn(`❌ Element not found: lightgallery-${row.id}`)
+              }
+            }
+          })
+        } catch (error) {
+          console.error('❌ LightGallery initialization error:', error)
+        }
+      } else {
+        console.log('Skipping LightGallery init:', { isEditMode, hasPage: !!currentPage })
+        // Cleanup when switching to edit mode
+        lightGalleryRefs.current.forEach((instance) => {
+          if (instance && instance.destroy) {
+            instance.destroy()
+          }
+        })
+        lightGalleryRefs.current.clear()
+      }
+    }
+
+    initLightGallery()
+
+    return () => {
+      lightGalleryRefs.current.forEach((instance) => {
+        if (instance && instance.destroy) {
+          instance.destroy()
+        }
+      })
+      lightGalleryRefs.current.clear()
+    }
+  }, [isEditMode, currentPage])
 
   const handleAddPage = () => {
     if (!newPageName) return
@@ -119,6 +209,37 @@ export function PlanoVM() {
     setActivePage(newPage.id)
     setNewPageName("")
     setAddPageDialog(false)
+    setHasUnsavedChanges(true)
+  }
+
+  const handleEditPage = () => {
+    if (!editPageName) return
+    if (!editPageDialog.pageId) return
+    
+    setPages(pages.map(page => 
+      page.id === editPageDialog.pageId
+        ? { ...page, name: editPageName }
+        : page
+    ))
+    
+    setEditPageName("")
+    setEditPageDialog({ open: false })
+    setHasUnsavedChanges(true)
+  }
+
+  const handleDeletePage = () => {
+    if (!deletePageDialog.pageId) return
+    
+    const updatedPages = pages.filter(page => page.id !== deletePageDialog.pageId)
+    setPages(updatedPages)
+    
+    // If deleting the active page, switch to first available page
+    if (activePage === deletePageDialog.pageId && updatedPages.length > 0) {
+      setActivePage(updatedPages[0].id)
+    }
+    
+    setDeletePageDialog({ open: false })
+    setHasUnsavedChanges(true)
   }
 
   const handleAddRow = () => {
@@ -137,6 +258,7 @@ export function PlanoVM() {
     ))
     setNewRowTitle("")
     setAddRowDialog(false)
+    setHasUnsavedChanges(true)
   }
 
   const handleEditRow = () => {
@@ -158,6 +280,7 @@ export function PlanoVM() {
     
     setEditRowTitle("")
     setEditRowDialog({ open: false })
+    setHasUnsavedChanges(true)
   }
 
   const handleMoveRowUp = (rowId: string) => {
@@ -174,6 +297,7 @@ export function PlanoVM() {
       
       return { ...page, rows: newRows }
     }))
+    setHasUnsavedChanges(true)
   }
 
   const handleMoveRowDown = (rowId: string) => {
@@ -190,6 +314,7 @@ export function PlanoVM() {
       
       return { ...page, rows: newRows }
     }))
+    setHasUnsavedChanges(true)
   }
 
   const handleDeleteRow = () => {
@@ -202,6 +327,7 @@ export function PlanoVM() {
     ))
     
     setDeleteRowDialog({ open: false })
+    setHasUnsavedChanges(true)
   }
 
   const handleAddImage = () => {
@@ -228,6 +354,7 @@ export function PlanoVM() {
     
     setNewImage({ url: "", title: "", description: "" })
     setAddImageDialog({ open: false })
+    setHasUnsavedChanges(true)
   }
 
   const handleEditImage = () => {
@@ -256,6 +383,7 @@ export function PlanoVM() {
     
     setEditImage({ url: "", title: "", description: "" })
     setEditImageDialog({ open: false })
+    setHasUnsavedChanges(true)
   }
 
   const handleDeleteImage = () => {
@@ -275,10 +403,12 @@ export function PlanoVM() {
     ))
     
     setDeleteImageDialog({ open: false })
+    setHasUnsavedChanges(true)
   }
 
   const scrollRow = (rowId: string, direction: 'left' | 'right') => {
-    const element = document.getElementById(`row-${rowId}`)
+    const elementId = isEditMode ? `row-${rowId}` : `lightgallery-${rowId}`
+    const element = document.getElementById(elementId)
     if (!element) return
     
     const scrollAmount = 400
@@ -299,50 +429,86 @@ export function PlanoVM() {
             <p className="text-muted-foreground mt-1">Visual Merchandising Planogram Manager</p>
           </div>
           
-          <Dialog open={addPageDialog} onOpenChange={setAddPageDialog}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="size-4 mr-2" />
-                Add Page
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create New Page</DialogTitle>
-                <DialogDescription>Add a new planogram page</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <Input
-                  placeholder="Page name (e.g., Store Layout 1)"
-                  value={newPageName}
-                  onChange={(e) => setNewPageName(e.target.value)}
-                />
-                <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setAddPageDialog(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleAddPage}>Create Page</Button>
+          {isEditMode && (
+            <Dialog open={addPageDialog} onOpenChange={setAddPageDialog}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="size-4 mr-2" />
+                  Add Page
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create New Page</DialogTitle>
+                  <DialogDescription>Add a new planogram page</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <Input
+                    placeholder="Page name (e.g., Store Layout 1)"
+                    value={newPageName}
+                    onChange={(e) => setNewPageName(e.target.value)}
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => setAddPageDialog(false)}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleAddPage}>Create Page</Button>
+                  </div>
                 </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
         {/* Page Tabs */}
         <div className="mb-8">
           <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-2">
             {pages.map((page) => (
-              <button
-                key={page.id}
-                onClick={() => setActivePage(page.id)}
-                className={`px-6 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
-                  activePage === page.id
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted hover:bg-accent"
-                }`}
-              >
-                {page.name}
-              </button>
+              <div key={page.id} className="flex items-center gap-1">
+                <button
+                  onClick={() => setActivePage(page.id)}
+                  className={`px-6 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
+                    activePage === page.id
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted hover:bg-accent"
+                  }`}
+                >
+                  {page.name}
+                </button>
+                {isEditMode && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-8 w-8 p-0"
+                      >
+                        <MoreVertical className="size-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem 
+                        onClick={() => {
+                          setEditPageName(page.name)
+                          setEditPageDialog({ open: true, pageId: page.id })
+                        }}
+                      >
+                        <Pencil className="size-4 mr-2" />
+                        Rename Page
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        onClick={() => setDeletePageDialog({ open: true, pageId: page.id })}
+                        className="text-destructive focus:text-destructive"
+                        disabled={pages.length === 1}
+                      >
+                        <Trash2 className="size-4 mr-2" />
+                        Delete Page
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+              </div>
             ))}
           </div>
         </div>
@@ -356,12 +522,17 @@ export function PlanoVM() {
                 <ImageIcon className="size-16 text-muted-foreground/50 mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No rows yet</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Create your first row to start organizing planogram
+                  {isEditMode 
+                    ? "Create your first row to start organizing planogram"
+                    : "Enable Edit Mode to add rows"
+                  }
                 </p>
-                <Button onClick={() => setAddRowDialog(true)}>
-                  <Plus className="size-4 mr-2" />
-                  Add First Row
-                </Button>
+                {isEditMode && (
+                  <Button onClick={() => setAddRowDialog(true)}>
+                    <Plus className="size-4 mr-2" />
+                    Add First Row
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="space-y-8">
@@ -390,119 +561,148 @@ export function PlanoVM() {
                           <ChevronRight className="size-5" />
                         </button>
                         
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <MoreVertical className="size-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem 
-                              onClick={() => {
-                                const currentRow = currentPage.rows.find(r => r.id === row.id)
-                                if (currentRow) {
-                                  setEditRowTitle(currentRow.title)
-                                  setEditRowDialog({ open: true, rowId: row.id })
-                                }
-                              }}
-                            >
-                              <Pencil className="size-4 mr-2" />
-                              Edit Row
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={() => handleMoveRowUp(row.id)}
-                              disabled={rowIndex === 0}
-                            >
-                              <ArrowUp className="size-4 mr-2" />
-                              Move Up
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => handleMoveRowDown(row.id)}
-                              disabled={rowIndex === currentPage.rows.length - 1}
-                            >
-                              <ArrowDown className="size-4 mr-2" />
-                              Move Down
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onClick={() => setDeleteRowDialog({ open: true, rowId: row.id })}
-                              className="text-destructive focus:text-destructive"
-                            >
-                              <Trash2 className="size-4 mr-2" />
-                              Delete Row
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        {isEditMode && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreVertical className="size-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem 
+                                onClick={() => {
+                                  const currentRow = currentPage.rows.find(r => r.id === row.id)
+                                  if (currentRow) {
+                                    setEditRowTitle(currentRow.title)
+                                    setEditRowDialog({ open: true, rowId: row.id })
+                                  }
+                                }}
+                              >
+                                <Pencil className="size-4 mr-2" />
+                                Edit Row
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => handleMoveRowUp(row.id)}
+                                disabled={rowIndex === 0}
+                              >
+                                <ArrowUp className="size-4 mr-2" />
+                                Move Up
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleMoveRowDown(row.id)}
+                                disabled={rowIndex === currentPage.rows.length - 1}
+                              >
+                                <ArrowDown className="size-4 mr-2" />
+                                Move Down
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => setDeleteRowDialog({ open: true, rowId: row.id })}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="size-4 mr-2" />
+                                Delete Row
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
                       </div>
                     </div>
 
                     {/* Horizontal Scroll */}
                     <div
-                      id={`row-${row.id}`}
+                      id={isEditMode ? `row-${row.id}` : `lightgallery-${row.id}`}
                       className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide scroll-smooth"
                     >
                       {row.images.map((image) => (
-                        <div 
-                          key={image.id} 
-                          className="flex-shrink-0 group"
-                          onMouseEnter={() => setHoveredImage(image.id)}
-                          onMouseLeave={() => setHoveredImage(null)}
-                        >
-                          <div className="relative w-48 h-48 rounded-lg overflow-hidden bg-muted">
-                            <img
-                              src={image.url}
-                              alt={image.title}
-                              className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement
-                                target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Crect width='400' height='400' fill='%23e5e7eb'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='24' fill='%239ca3af'%3ENo Image%3C/text%3E%3C/svg%3E"
-                              }}
-                            />
-                            {hoveredImage === image.id && (
-                              <div className="absolute inset-0 bg-black/80 flex items-center justify-center gap-3 transition-opacity duration-200">
-                                <Button
-                                  size="sm"
-                                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                                  onClick={() => {
-                                    const img = row.images.find(i => i.id === image.id)
-                                    if (img) {
-                                      setEditImage({ url: img.url, title: img.title, description: img.description })
-                                      setEditImageDialog({ open: true, rowId: row.id, imageId: image.id })
-                                    }
-                                  }}
-                                >
-                                  <Pencil className="size-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  className="bg-red-600 hover:bg-red-700 text-white"
-                                  onClick={() => setDeleteImageDialog({ open: true, rowId: row.id, imageId: image.id })}
-                                >
-                                  <Trash2 className="size-4" />
-                                </Button>
-                              </div>
-                            )}
+                        !isEditMode ? (
+                          <a 
+                            key={image.id}
+                            href={image.url}
+                            data-sub-html={`<h4>${image.title}</h4><p>${image.description}</p>`}
+                            className="flex-shrink-0 group"
+                          >
+                            <div className="relative w-48 h-48 rounded-lg overflow-hidden bg-muted cursor-pointer">
+                              <img
+                                src={image.url}
+                                alt={image.title}
+                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement
+                                  target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Crect width='400' height='400' fill='%23e5e7eb'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='24' fill='%239ca3af'%3ENo Image%3C/text%3E%3C/svg%3E"
+                                }}
+                              />
+                            </div>
+                            <div className="mt-3">
+                              <p className="font-medium text-sm truncate">{image.title}</p>
+                              <p className="text-xs text-muted-foreground truncate">{image.description}</p>
+                            </div>
+                          </a>
+                        ) : (
+                          <div 
+                            key={image.id}
+                            className="flex-shrink-0 group"
+                            onMouseEnter={() => setHoveredImage(image.id)}
+                            onMouseLeave={() => setHoveredImage(null)}
+                          >
+                            <div className="relative w-48 h-48 rounded-lg overflow-hidden bg-muted">
+                              <img
+                                src={image.url}
+                                alt={image.title}
+                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement
+                                  target.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Crect width='400' height='400' fill='%23e5e7eb'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='24' fill='%239ca3af'%3ENo Image%3C/text%3E%3C/svg%3E"
+                                }}
+                              />
+                              {hoveredImage === image.id && (
+                                <div className="absolute inset-0 bg-black/80 flex items-center justify-center gap-3 transition-opacity duration-200">
+                                  <Button
+                                    size="sm"
+                                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                                    onClick={() => {
+                                      const img = row.images.find(i => i.id === image.id)
+                                      if (img) {
+                                        setEditImage({ url: img.url, title: img.title, description: img.description })
+                                        setEditImageDialog({ open: true, rowId: row.id, imageId: image.id })
+                                      }
+                                    }}
+                                  >
+                                    <Pencil className="size-4" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    className="bg-red-600 hover:bg-red-700 text-white"
+                                    onClick={() => setDeleteImageDialog({ open: true, rowId: row.id, imageId: image.id })}
+                                  >
+                                    <Trash2 className="size-4" />
+                                  </Button>
+                                </div>
+                              )}
+                            </div>
+                            <div className="mt-3">
+                              <p className="font-medium text-sm truncate">{image.title}</p>
+                              <p className="text-xs text-muted-foreground truncate">{image.description}</p>
+                            </div>
                           </div>
-                          <div className="mt-3">
-                            <p className="font-medium text-sm truncate">{image.title}</p>
-                            <p className="text-xs text-muted-foreground truncate">{image.description}</p>
-                          </div>
-                        </div>
+                        )
                       ))}
                       
                       {/* Add Image Card */}
-                      <div className="flex-shrink-0">
-                        <button
-                          onClick={() => setAddImageDialog({ open: true, rowId: row.id })}
-                          className="w-48 h-48 rounded-lg border-2 border-dashed border-primary/30 hover:border-primary/60 hover:bg-primary/5 transition-all duration-200 flex items-center justify-center group cursor-pointer"
-                        >
-                          <div className="text-center">
-                            <Plus className="size-12 text-primary group-hover:scale-110 mx-auto mb-2 transition-transform" />
-                            <p className="text-sm text-muted-foreground group-hover:text-primary transition-colors">Add Image</p>
-                          </div>
-                        </button>
-                      </div>
+                      {isEditMode && (
+                        <div className="flex-shrink-0">
+                          <button
+                            onClick={() => setAddImageDialog({ open: true, rowId: row.id })}
+                            className="w-48 h-48 rounded-lg border-2 border-dashed border-primary/30 hover:border-primary/60 hover:bg-primary/5 transition-all duration-200 flex items-center justify-center group cursor-pointer"
+                          >
+                            <div className="text-center">
+                              <Plus className="size-12 text-primary group-hover:scale-110 mx-auto mb-2 transition-transform" />
+                              <p className="text-sm text-muted-foreground group-hover:text-primary transition-colors">Add Image</p>
+                            </div>
+                          </button>
+                        </div>
+                      )}
                       
                       {row.images.length === 0 && (
                         <div className="flex items-center justify-center w-full py-12 text-center">
@@ -519,7 +719,7 @@ export function PlanoVM() {
             )}
             
             {/* Add Row Button at Bottom */}
-            {currentPage.rows.length > 0 && (
+            {currentPage.rows.length > 0 && isEditMode && (
               <div className="mt-8 flex justify-center">
                 <Dialog open={addRowDialog} onOpenChange={setAddRowDialog}>
                   <DialogTrigger asChild>
@@ -710,6 +910,69 @@ export function PlanoVM() {
               <Trash2 className="size-4 mr-2" />
               Delete Row
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Page Dialog */}
+      <Dialog open={editPageDialog.open} onOpenChange={(open) => setEditPageDialog({ open })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename Page</DialogTitle>
+            <DialogDescription>Update page name</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Input
+              placeholder="Page name (e.g., Store Layout 1)"
+              value={editPageName}
+              onChange={(e) => setEditPageName(e.target.value)}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setEditPageDialog({ open: false })}>
+                Cancel
+              </Button>
+              <Button onClick={handleEditPage} disabled={!editPageName}>
+                Update Page
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Page Confirmation */}
+      <Dialog open={deletePageDialog.open} onOpenChange={(open) => setDeletePageDialog({ open })}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Delete Page</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this page and all its contents? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button variant="outline" onClick={() => setDeletePageDialog({ open: false })}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDeletePage}>
+              <Trash2 className="size-4 mr-2" />
+              Delete Page
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Image Lightbox */}
+      <Dialog open={!!selectedImage} onOpenChange={(open) => !open && setSelectedImage(null)}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>{selectedImage?.title}</DialogTitle>
+            <DialogDescription>{selectedImage?.description}</DialogDescription>
+          </DialogHeader>
+          <div className="relative w-full aspect-video">
+            <img 
+              src={selectedImage?.url} 
+              alt={selectedImage?.title}
+              className="w-full h-full object-contain rounded-lg"
+            />
           </div>
         </DialogContent>
       </Dialog>
