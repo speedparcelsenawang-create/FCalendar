@@ -5,6 +5,16 @@ import { Calendar } from "@/components/Calendar"
 import { Settings } from "@/components/Settings"
 import { PlanoVM } from "@/components/PlanoVM"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { EditModeProvider, useEditMode } from "@/contexts/EditModeContext"
+import { Edit3, Save, X } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -23,6 +33,27 @@ import {
 function AppContent() {
   const [currentPage, setCurrentPage] = useState("dashboard")
   const { open, openMobile, isMobile, toggleSidebar } = useSidebar()
+  const { isEditMode, hasUnsavedChanges, setIsEditMode, setHasUnsavedChanges, saveChanges } = useEditMode()
+  const [showExitDialog, setShowExitDialog] = useState(false)
+
+  const handleToggleEditMode = () => {
+    if (isEditMode && hasUnsavedChanges) {
+      setShowExitDialog(true)
+    } else {
+      setIsEditMode(!isEditMode)
+    }
+  }
+
+  const handleDiscardChanges = () => {
+    setHasUnsavedChanges(false)
+    setIsEditMode(false)
+    setShowExitDialog(false)
+  }
+
+  const handleSaveChanges = () => {
+    saveChanges()
+    // Keep edit mode on after saving
+  }
 
   const renderContent = () => {
     switch (currentPage) {
@@ -79,7 +110,7 @@ function AppContent() {
       
       <main className={`relative flex w-full flex-1 flex-col bg-background transition-all duration-500 ease-in-out ${(isMobile && openMobile) || (!isMobile && open) ? 'scale-95 opacity-90' : 'scale-100 opacity-100'}`}>
         <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b bg-background px-4 shadow-sm transition-all duration-500">
-          <SidebarTrigger className="-ml-1" />
+          <SidebarTrigger className="-ml-1" disabled={isEditMode} />
           <Separator orientation="vertical" className="mr-2 h-4" />
           <Breadcrumb>
             <BreadcrumbList>
@@ -94,12 +125,77 @@ function AppContent() {
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            {hasUnsavedChanges && isEditMode && (
+              <Button 
+                onClick={handleSaveChanges}
+                size="sm"
+                className="bg-green-600 hover:bg-green-700"
+              >
+                <Save className="size-4 mr-2" />
+                Save
+              </Button>
+            )}
+            <Button 
+              onClick={handleToggleEditMode}
+              variant={isEditMode ? "default" : "outline"}
+              size="sm"
+              className={isEditMode ? "bg-blue-600 hover:bg-blue-700" : ""}
+            >
+              {isEditMode ? (
+                <>
+                  <X className="size-4 mr-2" />
+                  Exit Edit Mode
+                </>
+              ) : (
+                <>
+                  <Edit3 className="size-4 mr-2" />
+                  Edit Mode
+                </>
+              )}
+            </Button>
             <ThemeToggle />
           </div>
         </header>
         {renderContent()}
       </main>
+
+      {/* Exit Edit Mode Confirmation Dialog */}
+      <Dialog open={showExitDialog} onOpenChange={setShowExitDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Unsaved Changes</DialogTitle>
+            <DialogDescription>
+              You have unsaved changes. Do you want to save them before exiting edit mode?
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowExitDialog(false)}
+            >
+              Continue Editing
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDiscardChanges}
+            >
+              Discard Changes
+            </Button>
+            <Button 
+              onClick={() => {
+                saveChanges()
+                setIsEditMode(false)
+                setShowExitDialog(false)
+              }}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <Save className="size-4 mr-2" />
+              Save & Exit
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
@@ -107,7 +203,9 @@ function AppContent() {
 export function App() {
   return (
     <SidebarProvider>
-      <AppContent />
+      <EditModeProvider>
+        <AppContent />
+      </EditModeProvider>
     </SidebarProvider>
   )
 }
