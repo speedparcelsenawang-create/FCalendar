@@ -1,294 +1,1469 @@
-import { useState, useEffect, useMemo } from "react"
-import { Filter } from "lucide-react"
+import { useState, useMemo } from "react"
+import { List, Maximize2, LocateFixed, Info, ExternalLink, Plus, Check, X, Edit2, Trash2, Search, Settings, Map, MapPin } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { DeliveryMap } from "./DeliveryMap"
 
-interface Company {
-  id: number
+interface DeliveryPoint {
+  code: string
   name: string
-  slogan: string
-  country: string
-  rating: number
-  color: string
-  logo: string
-  keywords: string[]
+  delivery: "Daily" | "Weekday" | "Alt 1" | "Alt 2"
+  latitude: number
+  longitude: number
+  description: string
 }
 
-interface Filters {
-  countries: Record<string, boolean>
-  categories: Record<string, boolean>
-  rating: number
+interface Route {
+  id: string
+  name: string
+  code: string
+  shift: string
+  deliveryPoints: DeliveryPoint[]
 }
 
 export function RouteList() {
-  const [companies, setCompanies] = useState<Company[]>([])
-  const [filters, setFilters] = useState<Filters>({
-    countries: {},
-    categories: {},
-    rating: 0,
-  })
-  const [menus, setMenus] = useState({
+  const [routes, setRoutes] = useState<Route[]>([
+    {
+      id: "route-1",
+      name: "Route KL 7",
+      code: "3PVK04",
+      shift: "PM",
+      deliveryPoints: [
+        {
+          code: "32",
+          name: "KPJ Klang",
+          delivery: "Daily",
+          latitude: 3.0333,
+          longitude: 101.4500,
+          description: "KPJ Klang Specialist Hospital - Main delivery point for medical supplies"
+        },
+        {
+          code: "45",
+          name: "Sunway Medical Centre",
+          delivery: "Weekday",
+          latitude: 3.0738,
+          longitude: 101.6057,
+          description: "Sunway Medical Centre - Weekday delivery schedule"
+        },
+        {
+          code: "78",
+          name: "Gleneagles KL",
+          delivery: "Alt 1",
+          latitude: 3.1493,
+          longitude: 101.7055,
+          description: "Gleneagles Kuala Lumpur - Alternative route 1"
+        },
+      ]
+    }
+  ])
+  const [currentRouteId, setCurrentRouteId] = useState<string>("route-1")
+  const [] = useState({
     countries: false,
     categories: false,
     rating: false,
   })
-  const [rating, setRating] = useState({ min: 10, max: 0 })
-
-  useEffect(() => {
-    fetch("https://s3-us-west-2.amazonaws.com/s.cdpn.io/450744/mock-data.json")
-      .then((response) => response.json())
-      .then((data: Company[]) => {
-        setCompanies(data)
-
-        const newFilters = { ...filters }
-        let minRating = 10
-        let maxRating = 0
-
-        data.forEach(({ country, keywords, rating }) => {
-          newFilters.countries[country] = false
-
-          if (maxRating < rating) maxRating = rating
-          if (minRating > rating) minRating = rating
-
-          keywords.forEach((category) => {
-            newFilters.categories[category] = false
-          })
-        })
-
-        setFilters({ ...newFilters, rating: minRating })
-        setRating({ min: minRating, max: maxRating })
-      })
-  }, [])
-
-  const activeFilters = useMemo(() => {
-    return {
-      countries: Object.keys(filters.countries).filter(
-        (c) => filters.countries[c]
-      ),
-      categories: Object.keys(filters.categories).filter(
-        (c) => filters.categories[c]
-      ),
-      rating: filters.rating > rating.min ? [filters.rating] : [],
-    }
-  }, [filters, rating.min])
-
-  const filteredList = useMemo(() => {
-    return companies.filter(({ country, keywords, rating: companyRating }) => {
-      if (companyRating < filters.rating) return false
-      if (
-        activeFilters.countries.length &&
-        !activeFilters.countries.includes(country)
-      )
-        return false
-      return (
-        !activeFilters.categories.length ||
-        activeFilters.categories.every((cat) => keywords.includes(cat))
-      )
-    })
-  }, [companies, filters.rating, activeFilters])
-
-  const setFilter = (filterType: keyof Filters, option: string) => {
-    if (filterType === "countries") {
-      setFilters({
-        ...filters,
-        [filterType]: {
-          ...filters[filterType],
-          [option]: !filters[filterType][option],
-        },
-      })
-    } else if (filterType === "categories") {
-      const newCategories = { ...filters.categories }
-      Object.keys(newCategories).forEach((key) => {
-        newCategories[key] = key === option && !newCategories[option]
-      })
-      setFilters({ ...filters, categories: newCategories })
-    }
+  const [] = useState({ min: 10, max: 0 })
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [infoModalOpen, setInfoModalOpen] = useState(false)
+  const [addRouteDialogOpen, setAddRouteDialogOpen] = useState(false)
+  const [editRouteDialogOpen, setEditRouteDialogOpen] = useState(false)
+  const [deleteRouteConfirmOpen, setDeleteRouteConfirmOpen] = useState(false)
+  const [editingRoute, setEditingRoute] = useState<Route | null>(null)
+  const [routeToDelete, setRouteToDelete] = useState<Route | null>(null)
+  const [selectedPoint, setSelectedPoint] = useState<DeliveryPoint | null>(null)
+  const [isEditingInfo, setIsEditingInfo] = useState(false)
+  const [editedInfoPoint, setEditedInfoPoint] = useState<DeliveryPoint | null>(null)
+  const [newRoute, setNewRoute] = useState({ name: "", code: "", shift: "AM" })
+  const [searchQuery, setSearchQuery] = useState("")
+  const [showMaps, setShowMaps] = useState(false)
+  const currentRoute = routes.find(r => r.id === currentRouteId)
+  const deliveryPoints = currentRoute?.deliveryPoints || []
+  const setDeliveryPoints = (updater: (prev: DeliveryPoint[]) => DeliveryPoint[]) => {
+    setRoutes(prev => prev.map(route => 
+      route.id === currentRouteId 
+        ? { ...route, deliveryPoints: updater(route.deliveryPoints) }
+        : route
+    ))
   }
+  const [sortConfig, setSortConfig] = useState<{ key: keyof DeliveryPoint; direction: 'asc' | 'desc' } | null>(null)
 
-  const clearFilter = (filterType: keyof Filters, except?: string) => {
-    if (filterType === "rating") {
-      setFilters({ ...filters, rating: rating.min })
-    } else {
-      const newFilter = { ...filters[filterType] }
-      Object.keys(newFilter).forEach((option) => {
-        if (except === undefined) {
-          newFilter[option] = false
-        } else {
-          newFilter[option] = except === option && !newFilter[option]
+  // Filter routes based on search query
+  const filteredRoutes = useMemo(() => {
+    if (!searchQuery.trim()) return routes
+    
+    const query = searchQuery.toLowerCase()
+    return routes.filter(route => 
+      route.name.toLowerCase().includes(query) ||
+      route.code.toLowerCase().includes(query) ||
+      route.shift.toLowerCase().includes(query)
+    )
+  }, [routes, searchQuery])
+  const [editingCell, setEditingCell] = useState<{ rowCode: string; field: string } | null>(null)
+  const [editValue, setEditValue] = useState<string>("")
+  const [popoverOpen, setPopoverOpen] = useState<{ [key: string]: boolean }>({})
+  const [selectedRows, setSelectedRows] = useState<string[]>([])
+  const [addPointDialogOpen, setAddPointDialogOpen] = useState(false)
+  const [newPoint, setNewPoint] = useState({
+    code: "",
+    name: "",
+    delivery: "Daily" as "Daily" | "Weekday" | "Alt 1" | "Alt 2",
+    latitude: 0,
+    longitude: 0,
+    description: ""
+  })
+  const [codeError, setCodeError] = useState<string>("")
+  const [actionModalOpen, setActionModalOpen] = useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [moveDialogOpen, setMoveDialogOpen] = useState(false)
+  const [selectedTargetRoute, setSelectedTargetRoute] = useState("")
+  const [pendingSelectedRows, setPendingSelectedRows] = useState<string[]>([])
+
+  const sortedDeliveryPoints = useMemo(() => {
+    const sorted = [...deliveryPoints]
+    if (sortConfig) {
+      sorted.sort((a, b) => {
+        if (a[sortConfig.key] < b[sortConfig.key]) {
+          return sortConfig.direction === 'asc' ? -1 : 1
         }
+        if (a[sortConfig.key] > b[sortConfig.key]) {
+          return sortConfig.direction === 'asc' ? 1 : -1
+        }
+        return 0
       })
-      setFilters({ ...filters, [filterType]: newFilter })
+    }
+    return sorted
+  }, [deliveryPoints, sortConfig])
+
+  const handleSort = (key: keyof DeliveryPoint) => {
+    let direction: 'asc' | 'desc' = 'asc'
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc'
+    }
+    setSortConfig({ key, direction })
+  }
+
+  const startEdit = (rowCode: string, field: string, currentValue: string | number) => {
+    const key = `${rowCode}-${field}`
+    setEditingCell({ rowCode, field })
+    setEditValue(String(currentValue))
+    setPopoverOpen({ [key]: true })
+  }
+
+  const saveEdit = () => {
+    if (!editingCell) return
+    
+    setDeliveryPoints(prev => prev.map(point => {
+      if (point.code === editingCell.rowCode) {
+        if (editingCell.field === 'latitude' || editingCell.field === 'longitude') {
+          const numValue = parseFloat(editValue)
+          if (!isNaN(numValue)) {
+            return { ...point, [editingCell.field]: numValue }
+          }
+        } else {
+          return { ...point, [editingCell.field]: editValue }
+        }
+      }
+      return point
+    }))
+    
+    cancelEdit()
+  }
+
+  const cancelEdit = () => {
+    setEditingCell(null)
+    setEditValue("")
+    setPopoverOpen({})
+  }
+
+  const toggleRowSelection = (code: string) => {
+    setSelectedRows(prev => 
+      prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]
+    )
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedRows.length === deliveryPoints.length) {
+      setSelectedRows([])
+    } else {
+      setSelectedRows(deliveryPoints.map(p => p.code))
     }
   }
 
-  const clearAllFilters = () => {
-    const newFilters = {
-      countries: { ...filters.countries },
-      categories: { ...filters.categories },
-      rating: rating.min,
+  const handleAddNewPoint = () => {
+    // Check for duplicate code
+    const isDuplicate = deliveryPoints.some(point => point.code === newPoint.code)
+    
+    if (isDuplicate) {
+      setCodeError("Code already exists")
+      return
     }
     
-    Object.keys(newFilters.countries).forEach((key) => {
-      newFilters.countries[key] = false
-    })
-    
-    Object.keys(newFilters.categories).forEach((key) => {
-      newFilters.categories[key] = false
-    })
-    
-    setFilters(newFilters)
+    if (newPoint.code) {
+      setDeliveryPoints(prev => [...prev, newPoint])
+      setNewPoint({
+        code: "",
+        name: "",
+        delivery: "Daily",
+        latitude: 0,
+        longitude: 0,
+        description: ""
+      })
+      setCodeError("")
+      setAddPointDialogOpen(false)
+    }
   }
 
-  const setMenu = (menu: keyof typeof menus, active: boolean) => {
-    const newMenus = { countries: false, categories: false, rating: false }
-    newMenus[menu] = !active
-    setMenus(newMenus)
+  const handleCodeChange = (value: string) => {
+    setNewPoint({ ...newPoint, code: value })
+    // Check for duplicate as user types
+    const isDuplicate = deliveryPoints.some(point => point.code === value)
+    if (isDuplicate && value) {
+      setCodeError("Code already exists")
+    } else {
+      setCodeError("")
+    }
   }
 
-  const hasActiveFilters =
-    activeFilters.countries.length > 0 ||
-    activeFilters.categories.length > 0 ||
-    activeFilters.rating.length > 0
+  const handleDoneClick = () => {
+    setPendingSelectedRows(selectedRows)
+    setDialogOpen(false)
+    setActionModalOpen(true)
+  }
+
+  const handleDeleteRows = () => {
+    setDeliveryPoints(prev => prev.filter(point => !pendingSelectedRows.includes(point.code)))
+    setDeleteConfirmOpen(false)
+    setActionModalOpen(false)
+    setPendingSelectedRows([])
+    setSelectedRows([])
+  }
+
+  const handleMoveRows = () => {
+    if (selectedTargetRoute) {
+      // Get the points to move
+      const pointsToMove = deliveryPoints.filter(point => pendingSelectedRows.includes(point.code))
+      
+      // Move points to target route
+      setRoutes(prev => prev.map(route => {
+        if (route.id === selectedTargetRoute) {
+          return { ...route, deliveryPoints: [...route.deliveryPoints, ...pointsToMove] }
+        }
+        if (route.id === currentRouteId) {
+          return { ...route, deliveryPoints: route.deliveryPoints.filter(point => !pendingSelectedRows.includes(point.code)) }
+        }
+        return route
+      }))
+      
+      setMoveDialogOpen(false)
+      setActionModalOpen(false)
+      setPendingSelectedRows([])
+      setSelectedRows([])
+      setSelectedTargetRoute("")
+    }
+  }
+
+  const openGoogleMaps = (lat: number, lng: number) => {
+    window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank')
+  }
+
+  const openWaze = (lat: number, lng: number) => {
+    window.open(`https://www.waze.com/ul?ll=${lat},${lng}&navigate=yes`, '_blank')
+  }
+
+  const handleEditInfo = () => {
+    setEditedInfoPoint(selectedPoint)
+    setIsEditingInfo(true)
+  }
+
+  const handleSaveInfo = () => {
+    if (!editedInfoPoint || !selectedPoint) return
+    
+    // Check for duplicate code if code was changed
+    if (editedInfoPoint.code !== selectedPoint.code) {
+      const isDuplicate = deliveryPoints.some(
+        (p) => p.code === editedInfoPoint.code && p.code !== selectedPoint.code
+      )
+      if (isDuplicate) {
+        alert("Code already exists!")
+        return
+      }
+    }
+
+    setDeliveryPoints((prev) =>
+      prev.map((p) =>
+        p.code === selectedPoint.code ? editedInfoPoint : p
+      )
+    )
+    setSelectedPoint(editedInfoPoint)
+    setIsEditingInfo(false)
+  }
+
+  const handleCancelInfo = () => {
+    setEditedInfoPoint(null)
+    setIsEditingInfo(false)
+  }
+
+  const handleDeleteInfo = () => {
+    if (!selectedPoint) return
+    
+    if (confirm(`Delete delivery point "${selectedPoint.name}"?\n\nThis action cannot be undone.`)) {
+      setDeliveryPoints((prev) => prev.filter((p) => p.code !== selectedPoint.code))
+      setInfoModalOpen(false)
+      setSelectedPoint(null)
+    }
+  }
+
+  const handleEditRoute = (route: Route) => {
+    setEditingRoute({ ...route })
+    setEditRouteDialogOpen(true)
+  }
+
+  const handleSaveRoute = () => {
+    if (!editingRoute) return
+    
+    if (!editingRoute.name || !editingRoute.code) {
+      alert("Name and Code are required!")
+      return
+    }
+
+    setRoutes(prev => prev.map(r => 
+      r.id === editingRoute.id ? editingRoute : r
+    ))
+    setEditRouteDialogOpen(false)
+    setEditingRoute(null)
+  }
+
+  const handleDeleteRoute = () => {
+    if (!routeToDelete) return
+    
+    if (routes.length <= 1) {
+      alert("Cannot delete the last route!")
+      return
+    }
+
+    setRoutes(prev => prev.filter(r => r.id !== routeToDelete.id))
+    setDeleteRouteConfirmOpen(false)
+    setRouteToDelete(null)
+    
+    // Switch to first available route if current route is deleted
+    if (currentRouteId === routeToDelete.id) {
+      const remainingRoutes = routes.filter(r => r.id !== routeToDelete.id)
+      if (remainingRoutes.length > 0) {
+        setCurrentRouteId(remainingRoutes[0].id)
+      }
+    }
+  }
 
   return (
-    <div className="relative font-light text-slate-700 dark:text-slate-300">
-      {/* Filter Section */}
-      <div className="flex items-center justify-center gap-4 px-4 py-6 max-w-3xl mx-auto">
-        <Filter className="w-4 h-4" />
-
-        {Object.keys(menus).map((menu) => (
-          <div
-            key={menu}
-            className={`capitalize cursor-pointer relative ${
-              menus[menu as keyof typeof menus] ? "after:content-['×'] after:text-red-400 after:ml-1" : ""
-            } ${
-              activeFilters[menu as keyof typeof activeFilters].length > 0
-                ? "after:content-['•'] after:text-teal-400 after:ml-1"
-                : ""
-            }`}
-            onClick={() =>
-              setMenu(menu as keyof typeof menus, menus[menu as keyof typeof menus])
-            }
-          >
-            {menu}
-          </div>
-        ))}
-
-        <div
-          className={`text-red-400 cursor-pointer transition-all ${
-            hasActiveFilters
-              ? "opacity-100 translate-x-0"
-              : "opacity-0 -translate-x-4 pointer-events-none"
-          }`}
-          onClick={clearAllFilters}
-        >
-          Clear all
-        </div>
-      </div>
-
-      {/* Dropdowns */}
-      <div
-        className="relative overflow-hidden transition-all duration-350 bg-slate-50 dark:bg-slate-800"
-        style={{
-          height:
-            menus.countries || menus.categories || menus.rating ? "auto" : "0",
-        }}
-      >
-        {menus.countries && (
-          <div className="flex flex-wrap gap-2 p-4 max-w-3xl mx-auto">
-            {Object.keys(filters.countries).map((country) => (
-              <div
-                key={country}
-                className={`px-2 py-1 text-sm border rounded-md cursor-pointer transition-all ${
-                  filters.countries[country]
-                    ? "bg-teal-600 text-white border-teal-600"
-                    : "border-slate-300 hover:border-teal-600 dark:border-slate-600 dark:hover:border-teal-500"
-                }`}
-                onClick={() => setFilter("countries", country)}
-              >
-                {country}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {menus.categories && (
-          <div className="flex flex-wrap gap-2 p-4 max-w-3xl mx-auto">
-            {Object.keys(filters.categories).map((category) => (
-              <div
-                key={category}
-                className={`px-2 py-1 text-sm border rounded-md cursor-pointer transition-all ${
-                  filters.categories[category]
-                    ? "bg-teal-600 text-white border-teal-600"
-                    : "border-slate-300 hover:border-teal-600 dark:border-slate-600 dark:hover:border-teal-500"
-                }`}
-                onClick={() => setFilter("categories", category)}
-              >
-                {category}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {menus.rating && (
-          <div className="flex flex-col items-center p-6 max-w-3xl mx-auto">
-            <output className="mb-4">
-              <label>Minimum rating: </label>
-              {filters.rating.toFixed(1)}
-            </output>
-            <input
-              type="range"
-              min={rating.min}
-              max={rating.max}
-              step="0.1"
-              value={filters.rating}
-              onChange={(e) =>
-                setFilters({ ...filters, rating: parseFloat(e.target.value) })
-              }
-              className="w-48"
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Company List */}
-      <ul className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4 pb-20 px-4 max-w-5xl mx-auto">
-        {filteredList.map((company) => (
-          <li
-            key={company.id}
-            className="flex flex-col justify-between bg-white rounded-lg border border-slate-300 shadow-sm hover:shadow-md transition-all"
-          >
-            <div className="p-3 text-center">
-              <div
-                className="w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center text-2xl font-bold text-white"
-                style={{ backgroundColor: company.color }}
-              >
-                {company.name.charAt(0)}
-              </div>
-              <h2 className="h-10 mb-3 text-lg font-extralight">
-                {company.name}
-              </h2>
-              <blockquote className="h-8 text-sm font-normal capitalize">
-                {company.slogan}
-              </blockquote>
-            </div>
-
-            <ul className="flex justify-between mt-6 p-2 bg-slate-50 border-t border-slate-300">
-              <li className="text-sm">
-                <label className="text-xs block">Country</label>
-                <p
-                  className="cursor-pointer hover:underline"
-                  onClick={() => clearFilter("countries", company.country)}
+    <div className="relative font-light">
+      {/* Route List */}
+      <div className="mt-4 pb-20 px-4 max-w-5xl mx-auto">
+        {/* Search Field */}
+        <div className="mb-6">
+          <div className="flex items-center gap-3 max-w-md mx-auto">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search routes by name, code, or shift..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-4"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  {company.country}
-                </p>
-              </li>
-              <li className="text-sm text-center">
-                <label className="text-xs block">Rating</label>
-                <p>{company.rating.toFixed(1)}</p>
-              </li>
-            </ul>
-          </li>
+                  <X className="size-4" />
+                </button>
+              )}
+            </div>
+            <Button
+              variant={showMaps ? "default" : "outline"}
+              size="icon"
+              onClick={() => setShowMaps(!showMaps)}
+              title={showMaps ? "Hide maps" : "Show maps"}
+            >
+              <Map className="size-4" />
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredRoutes.map((route) => (
+          <div key={route.id} className="w-full">
+            {/* Card */}
+            <div 
+              className="bg-card rounded-lg border border-border shadow-sm hover:shadow-xl hover:border-primary/60 transition-all duration-300 overflow-hidden h-[380px] relative group"
+            >
+              {/* Map Section */}
+              {showMaps ? (
+                <div className="absolute inset-0">
+                  <DeliveryMap deliveryPoints={route.deliveryPoints} />
+                </div>
+              ) : (
+                <div className="absolute inset-0 bg-gradient-to-br from-muted/40 via-muted/30 to-background/40 flex items-center justify-center">
+                  <MapPin className="size-16 text-muted-foreground/20" />
+                </div>
+              )}
+              
+              {/* Map Controls */}
+              <div className="absolute top-2 right-2 flex flex-col gap-2 z-[1000]">
+                <button className="p-2 bg-background/95 backdrop-blur-md border border-border rounded-lg hover:bg-primary/10 hover:border-primary/50 transition-all shadow-lg group-control">
+                  <Maximize2 className="size-4 text-foreground group-control-hover:text-primary" />
+                </button>
+                <button className="p-2 bg-background/95 backdrop-blur-md border border-border rounded-lg hover:bg-primary/10 hover:border-primary/50 transition-all shadow-lg group-control">
+                  <LocateFixed className="size-4 text-foreground group-control-hover:text-primary" />
+                </button>
+              </div>
+              
+              {/* Bottom Info - Overlay on Map */}
+              <div className="absolute bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-md border-t border-border flex items-center justify-between gap-4 z-[1000]">
+                <div className="text-left">
+                  <h3 className="text-base font-semibold leading-tight">{route.name}</h3>
+                  <p className="text-xs text-muted-foreground">{route.code} - {route.shift}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    className="p-2 bg-primary/10 border border-primary/20 text-primary rounded-lg hover:bg-primary hover:text-primary-foreground transition-all shadow-md"
+                    onClick={() => handleEditRoute(route)}
+                  >
+                    <Settings className="size-4" />
+                  </button>
+                  <Dialog open={dialogOpen && currentRouteId === route.id} onOpenChange={(open) => {
+                    setDialogOpen(open)
+                    if (open) setCurrentRouteId(route.id)
+                  }}>
+                    <DialogTrigger asChild>
+                      <button 
+                        className="p-2 bg-primary/10 border border-primary/20 text-primary rounded-lg hover:bg-primary hover:text-primary-foreground transition-all shadow-md"
+                        onClick={() => setCurrentRouteId(route.id)}
+                      >
+                        <List className="size-4" />
+                      </button>
+                    </DialogTrigger>
+                  <DialogContent className="max-w-6xl max-h-[80vh] overflow-hidden flex flex-col">
+                    <DialogHeader>
+                      <DialogTitle>Delivery Points - {route.name}</DialogTitle>
+                      <DialogDescription>
+                        Manage delivery locations and schedules
+                      </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="flex-1 overflow-auto">
+                      <table className="w-full border-collapse">
+                        <thead className="bg-muted/50 sticky top-0">
+                          <tr>
+                            <th className="p-3 text-center font-semibold text-sm w-12">
+                              <input
+                                type="checkbox"
+                                checked={selectedRows.length === deliveryPoints.length && deliveryPoints.length > 0}
+                                onChange={toggleSelectAll}
+                                className="w-4 h-4 rounded border-border cursor-pointer"
+                              />
+                            </th>
+                            <th className="p-3 text-center font-semibold text-sm">No</th>
+                            <th 
+                              className="p-3 text-center font-semibold text-sm cursor-pointer hover:bg-muted"
+                              onClick={() => handleSort('code')}
+                            >
+                              Code {sortConfig?.key === 'code' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                            </th>
+                            <th 
+                              className="p-3 text-center font-semibold text-sm cursor-pointer hover:bg-muted"
+                              onClick={() => handleSort('name')}
+                            >
+                              Name {sortConfig?.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                            </th>
+                            <th 
+                              className="p-3 text-center font-semibold text-sm cursor-pointer hover:bg-muted"
+                              onClick={() => handleSort('delivery')}
+                            >
+                              Delivery {sortConfig?.key === 'delivery' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                            </th>
+                            <th className="p-3 text-center font-semibold text-sm">Latitude</th>
+                            <th className="p-3 text-center font-semibold text-sm">Longitude</th>
+                            <th className="p-3 text-center font-semibold text-sm">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sortedDeliveryPoints.map((point, index) => {
+                            const deliveryTypes = ['Daily', 'Weekday', 'Alt 1', 'Alt 2']
+                            
+                            return (
+                              <tr key={point.code} className="hover:bg-muted/30 border-b border-border/50">
+                                <td className="p-3 text-center">
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedRows.includes(point.code)}
+                                    onChange={() => toggleRowSelection(point.code)}
+                                    className="w-4 h-4 rounded border-border cursor-pointer"
+                                  />
+                                </td>
+                                <td className="p-3 text-sm text-center">{index + 1}</td>
+                                
+                                {/* Code - Editable */}
+                                <td className="p-3 text-sm text-center">
+                                  <Popover 
+                                    open={popoverOpen[`${point.code}-code`]} 
+                                    onOpenChange={(open) => {
+                                      if (!open) cancelEdit()
+                                      setPopoverOpen({ [`${point.code}-code`]: open })
+                                    }}
+                                  >
+                                    <PopoverTrigger asChild>
+                                      <button 
+                                        className="hover:bg-accent px-3 py-1 rounded flex items-center justify-center gap-1.5 group mx-auto"
+                                        onClick={() => startEdit(point.code, 'code', point.code)}
+                                      >
+                                        <span>{point.code}</span>
+                                        <Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                                      </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-64">
+                                      <div className="space-y-3">
+                                        <div className="space-y-2">
+                                          <label className="text-sm font-medium">Code</label>
+                                          <Input
+                                            className="text-center"
+                                            value={editValue}
+                                            onChange={(e) => setEditValue(e.target.value)}
+                                            placeholder="Enter code"
+                                            autoFocus
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Enter') saveEdit()
+                                              if (e.key === 'Escape') cancelEdit()
+                                            }}
+                                          />
+                                        </div>
+                                        <div className="flex gap-2">
+                                          <Button size="sm" onClick={saveEdit} className="flex-1">
+                                            <Check className="size-4 mr-1" /> Save
+                                          </Button>
+                                          <Button size="sm" variant="outline" onClick={cancelEdit} className="flex-1">
+                                            <X className="size-4 mr-1" /> Cancel
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </PopoverContent>
+                                  </Popover>
+                                </td>
+                                
+                                {/* Name - Editable */}
+                                <td className="p-3 text-sm text-center">
+                                  <Popover 
+                                    open={popoverOpen[`${point.code}-name`]} 
+                                    onOpenChange={(open) => {
+                                      if (!open) cancelEdit()
+                                      setPopoverOpen({ [`${point.code}-name`]: open })
+                                    }}
+                                  >
+                                    <PopoverTrigger asChild>
+                                      <button 
+                                        className="hover:bg-accent px-3 py-1 rounded flex items-center justify-center gap-1.5 group mx-auto"
+                                        onClick={() => startEdit(point.code, 'name', point.name)}
+                                      >
+                                        <span>{point.name}</span>
+                                        <Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                                      </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-72">
+                                      <div className="space-y-3">
+                                        <div className="space-y-2">
+                                          <label className="text-sm font-medium">Name</label>
+                                          <Input
+                                            className="text-center"
+                                            value={editValue}
+                                            onChange={(e) => setEditValue(e.target.value)}
+                                            placeholder="Enter name"
+                                            autoFocus
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Enter') saveEdit()
+                                              if (e.key === 'Escape') cancelEdit()
+                                            }}
+                                          />
+                                        </div>
+                                        <div className="flex gap-2">
+                                          <Button size="sm" onClick={saveEdit} className="flex-1">
+                                            <Check className="size-4 mr-1" /> Save
+                                          </Button>
+                                          <Button size="sm" variant="outline" onClick={cancelEdit} className="flex-1">
+                                            <X className="size-4 mr-1" /> Cancel
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </PopoverContent>
+                                  </Popover>
+                                </td>
+                                
+                                {/* Delivery - Editable with Select */}
+                                <td className="p-3 text-center">
+                                  <Popover 
+                                    open={popoverOpen[`${point.code}-delivery`]} 
+                                    onOpenChange={(open) => {
+                                      if (!open) cancelEdit()
+                                      setPopoverOpen({ [`${point.code}-delivery`]: open })
+                                    }}
+                                  >
+                                    <PopoverTrigger asChild>
+                                      <button 
+                                        className="group flex items-center justify-center gap-1.5 hover:scale-105 transition-transform mx-auto"
+                                        onClick={() => startEdit(point.code, 'delivery', point.delivery)}
+                                      >
+                                        <span className={`inline-flex items-center px-3 py-1 rounded text-xs font-medium transition-all
+                                          ${point.delivery === 'Daily' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : ''}
+                                          ${point.delivery === 'Weekday' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : ''}
+                                          ${point.delivery === 'Alt 1' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : ''}
+                                          ${point.delivery === 'Alt 2' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' : ''}
+                                        `}>
+                                          {point.delivery}
+                                        </span>
+                                        <Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                                      </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-48">
+                                      <div className="space-y-1">
+                                        {deliveryTypes.map((type) => (
+                                          <button
+                                            key={type}
+                                            onClick={() => {
+                                              setDeliveryPoints(prev => prev.map(p => 
+                                                p.code === point.code ? { ...p, delivery: type as "Daily" | "Weekday" | "Alt 1" | "Alt 2" } : p
+                                              ))
+                                              cancelEdit()
+                                            }}
+                                            className="w-full p-2 text-left text-sm rounded hover:bg-accent transition-colors"
+                                          >
+                                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                                              ${type === 'Daily' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : ''}
+                                              ${type === 'Weekday' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : ''}
+                                              ${type === 'Alt 1' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : ''}
+                                              ${type === 'Alt 2' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' : ''}
+                                            `}>
+                                              {type}
+                                            </span>
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </PopoverContent>
+                                  </Popover>
+                                </td>
+                                
+                                {/* Latitude - Editable */}
+                                <td className="p-3 text-sm font-mono text-center">
+                                  <Popover 
+                                    open={popoverOpen[`${point.code}-latitude`]} 
+                                    onOpenChange={(open) => {
+                                      if (!open) cancelEdit()
+                                      setPopoverOpen({ [`${point.code}-latitude`]: open })
+                                    }}
+                                  >
+                                    <PopoverTrigger asChild>
+                                      <button 
+                                        className="hover:bg-accent px-3 py-1 rounded flex items-center justify-center gap-1.5 group font-mono mx-auto"
+                                        onClick={() => startEdit(point.code, 'latitude', point.latitude.toFixed(4))}
+                                      >
+                                        <span>{point.latitude.toFixed(4)}</span>
+                                        <Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                                      </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-64">
+                                      <div className="space-y-3">
+                                        <div className="space-y-2">
+                                          <label className="text-sm font-medium">Latitude</label>
+                                          <Input
+                                            className="text-center font-mono"
+                                            type="number"
+                                            step="0.0001"
+                                            value={editValue}
+                                            onChange={(e) => setEditValue(e.target.value)}
+                                            placeholder="Enter latitude"
+                                            autoFocus
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Enter') saveEdit()
+                                              if (e.key === 'Escape') cancelEdit()
+                                            }}
+                                          />
+                                        </div>
+                                        <div className="flex gap-2">
+                                          <Button size="sm" onClick={saveEdit} className="flex-1">
+                                            <Check className="size-4 mr-1" /> Save
+                                          </Button>
+                                          <Button size="sm" variant="outline" onClick={cancelEdit} className="flex-1">
+                                            <X className="size-4 mr-1" /> Cancel
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </PopoverContent>
+                                  </Popover>
+                                </td>
+                                
+                                {/* Longitude - Editable */}
+                                <td className="p-3 text-sm font-mono text-center">
+                                  <Popover 
+                                    open={popoverOpen[`${point.code}-longitude`]} 
+                                    onOpenChange={(open) => {
+                                      if (!open) cancelEdit()
+                                      setPopoverOpen({ [`${point.code}-longitude`]: open })
+                                    }}
+                                  >
+                                    <PopoverTrigger asChild>
+                                      <button 
+                                        className="hover:bg-accent px-3 py-1 rounded flex items-center justify-center gap-1.5 group font-mono mx-auto"
+                                        onClick={() => startEdit(point.code, 'longitude', point.longitude.toFixed(4))}
+                                      >
+                                        <span>{point.longitude.toFixed(4)}</span>
+                                        <Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                                      </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-64">
+                                      <div className="space-y-3">
+                                        <div className="space-y-2">
+                                          <label className="text-sm font-medium">Longitude</label>
+                                          <Input
+                                            className="text-center font-mono"
+                                            type="number"
+                                            step="0.0001"
+                                            value={editValue}
+                                            onChange={(e) => setEditValue(e.target.value)}
+                                            placeholder="Enter longitude"
+                                            autoFocus
+                                            onKeyDown={(e) => {
+                                              if (e.key === 'Enter') saveEdit()
+                                              if (e.key === 'Escape') cancelEdit()
+                                            }}
+                                          />
+                                        </div>
+                                        <div className="flex gap-2">
+                                          <Button size="sm" onClick={saveEdit} className="flex-1">
+                                            <Check className="size-4 mr-1" /> Save
+                                          </Button>
+                                          <Button size="sm" variant="outline" onClick={cancelEdit} className="flex-1">
+                                            <X className="size-4 mr-1" /> Cancel
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </PopoverContent>
+                                  </Popover>
+                                </td>
+                                
+                                {/* Action */}
+                                <td className="p-3 text-center">
+                                  {point.latitude !== 0 && point.longitude !== 0 && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => {
+                                        setSelectedPoint(point)
+                                        setInfoModalOpen(true)
+                                      }}
+                                    >
+                                      <Info className="size-4" />
+                                    </Button>
+                                  )}
+                                </td>
+                              </tr>
+                            )
+                          })}
+                          
+                          {/* Add New Row */}
+                          <tr 
+                            className="border-2 border-dashed border-border hover:border-primary hover:bg-accent/30 cursor-pointer transition-all group"
+                            onClick={() => {
+                              setAddPointDialogOpen(true)
+                              setCodeError("")
+                            }}
+                          >
+                            <td colSpan={8} className="p-4 text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 group-hover:bg-green-200 dark:group-hover:bg-green-900/50 flex items-center justify-center transition-colors">
+                                  <Plus className="size-4 text-green-600 dark:text-green-500" />
+                                </div>
+                                <span className="font-medium text-sm group-hover:text-primary transition-colors">
+                                  Add New Delivery Point
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                    
+                    {/* Action Buttons - Show when rows are selected */}
+                    {selectedRows.length > 0 && (
+                      <div className="border-t border-border p-4 flex justify-end gap-2 bg-muted/30">
+                        <Button
+                          variant="outline"
+                          onClick={() => setSelectedRows([])}
+                        >
+                          Deselect All
+                        </Button>
+                        <Button
+                          onClick={handleDoneClick}
+                        >
+                          Done
+                        </Button>
+                      </div>
+                    )}
+                  </DialogContent>
+                </Dialog>
+                
+                {/* Action Modal - After Done is clicked */}
+                <Dialog open={actionModalOpen} onOpenChange={setActionModalOpen}>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Manage Selected Rows</DialogTitle>
+                      <DialogDescription>
+                        {pendingSelectedRows.length} row(s) selected. Choose an action:
+                      </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="space-y-3 py-4">
+                      <Button
+                        className="w-full"
+                        variant="outline"
+                        onClick={() => {
+                          setActionModalOpen(false)
+                          setMoveDialogOpen(true)
+                        }}
+                        disabled={routes.length <= 1}
+                      >
+                        Move Rows to Another Route
+                      </Button>
+                      {routes.length <= 1 && (
+                        <p className="text-xs text-muted-foreground text-center">
+                          Create another route first to enable moving
+                        </p>
+                      )}
+                      
+                      <Button
+                        className="w-full"
+                        variant="destructive"
+                        onClick={() => {
+                          setActionModalOpen(false)
+                          setDeleteConfirmOpen(true)
+                        }}
+                      >
+                        Delete Rows
+                      </Button>
+                    </div>
+                    
+                    <div className="flex justify-end">
+                      <Button
+                        variant="ghost"
+                        onClick={() => {
+                          setActionModalOpen(false)
+                          setPendingSelectedRows([])
+                          setSelectedRows([])
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+                
+                {/* Move Dialog */}
+                <Dialog open={moveDialogOpen} onOpenChange={setMoveDialogOpen}>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Move to Route</DialogTitle>
+                      <DialogDescription>
+                        Select the destination route for {pendingSelectedRows.length} delivery point(s)
+                      </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Select Route</label>
+                        <select
+                          className="w-full p-2 rounded border border-border bg-background text-sm"
+                          value={selectedTargetRoute}
+                          onChange={(e) => setSelectedTargetRoute(e.target.value)}
+                        >
+                          <option value="">Choose a route...</option>
+                          {routes
+                            .filter(route => route.id !== currentRouteId)
+                            .map(route => (
+                              <option key={route.id} value={route.id}>
+                                {route.name} ({route.code} - {route.shift})
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setMoveDialogOpen(false)
+                          setActionModalOpen(true)
+                        }}
+                      >
+                        Back
+                      </Button>
+                      <Button
+                        onClick={handleMoveRows}
+                        disabled={!selectedTargetRoute}
+                      >
+                        Move
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+                
+                {/* Delete Confirmation Dialog */}
+                <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Confirm Deletion</DialogTitle>
+                      <DialogDescription>
+                        Are you sure you want to delete {pendingSelectedRows.length} delivery point(s)? This action cannot be undone.
+                      </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="flex justify-end gap-2 pt-4">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setDeleteConfirmOpen(false)
+                          setActionModalOpen(true)
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={handleDeleteRows}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+                
+                {/* Add New Delivery Point Modal */}
+                <Dialog open={addPointDialogOpen} onOpenChange={setAddPointDialogOpen}>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Add New Delivery Point</DialogTitle>
+                      <DialogDescription>
+                        Enter details for the new delivery location
+                      </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="space-y-4 py-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">
+                            Code <span className="text-red-500">*</span>
+                          </label>
+                          <Input
+                            placeholder="Enter code"
+                            value={newPoint.code}
+                            onChange={(e) => handleCodeChange(e.target.value)}
+                            className={codeError ? "border-red-500" : ""}
+                          />
+                          {codeError && (
+                            <p className="text-xs text-red-500">{codeError}</p>
+                          )}
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Delivery Type</label>
+                          <select
+                            className="w-full p-2 rounded border border-border bg-background text-sm"
+                            value={newPoint.delivery}
+                            onChange={(e) => setNewPoint({ ...newPoint, delivery: e.target.value as "Daily" | "Weekday" | "Alt 1" | "Alt 2" })}
+                          >
+                            <option value="Daily">Daily</option>
+                            <option value="Weekday">Weekday</option>
+                            <option value="Alt 1">Alt 1</option>
+                            <option value="Alt 2">Alt 2</option>
+                          </select>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Name</label>
+                        <Input
+                          placeholder="Enter location name"
+                          value={newPoint.name}
+                          onChange={(e) => setNewPoint({ ...newPoint, name: e.target.value })}
+                        />
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Latitude</label>
+                          <Input
+                            type="number"
+                            step="0.0001"
+                            placeholder="0.0000"
+                            value={newPoint.latitude || ""}
+                            onChange={(e) => setNewPoint({ ...newPoint, latitude: parseFloat(e.target.value) || 0 })}
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium">Longitude</label>
+                          <Input
+                            type="number"
+                            step="0.0001"
+                            placeholder="0.0000"
+                            value={newPoint.longitude || ""}
+                            onChange={(e) => setNewPoint({ ...newPoint, longitude: parseFloat(e.target.value) || 0 })}
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium">Description</label>
+                        <Input
+                          placeholder="Enter description"
+                          value={newPoint.description}
+                          onChange={(e) => setNewPoint({ ...newPoint, description: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          setAddPointDialogOpen(false)
+                          setCodeError("")
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={handleAddNewPoint}
+                        disabled={!newPoint.code || !!codeError}
+                      >
+                        Add Point
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+                
+                {/* Info Modal */}
+                <Dialog open={infoModalOpen} onOpenChange={(open) => {
+                  setInfoModalOpen(open)
+                  if (!open) {
+                    setIsEditingInfo(false)
+                    setEditedInfoPoint(null)
+                  }
+                }}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>
+                        {isEditingInfo ? "Edit Delivery Point" : selectedPoint?.name}
+                      </DialogTitle>
+                      <DialogDescription>
+                        {isEditingInfo ? "Update delivery point information" : "Delivery point details and navigation options"}
+                      </DialogDescription>
+                    </DialogHeader>
+                    
+                    {selectedPoint && (
+                      <div className="space-y-4">
+                        {isEditingInfo && editedInfoPoint ? (
+                          <>
+                            {/* Edit Mode */}
+                            <div className="space-y-3">
+                              <div>
+                                <label className="text-sm font-medium">Code *</label>
+                                <Input
+                                  value={editedInfoPoint.code}
+                                  onChange={(e) => setEditedInfoPoint({ ...editedInfoPoint, code: e.target.value })}
+                                  placeholder="Code"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium">Name</label>
+                                <Input
+                                  value={editedInfoPoint.name}
+                                  onChange={(e) => setEditedInfoPoint({ ...editedInfoPoint, name: e.target.value })}
+                                  placeholder="Name"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium">Delivery Type</label>
+                                <div className="flex flex-col gap-1 mt-1 border rounded-md">
+                                  {["Daily", "Weekday", "Alt 1", "Alt 2"].map((type) => (
+                                    <button
+                                      key={type}
+                                      onClick={() => setEditedInfoPoint({ ...editedInfoPoint, delivery: type as DeliveryPoint["delivery"] })}
+                                      className={`px-3 py-2 text-sm text-left hover:bg-accent ${
+                                        editedInfoPoint.delivery === type ? "bg-accent font-medium" : ""
+                                      }`}
+                                    >
+                                      {type}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                  <label className="text-sm font-medium">Latitude</label>
+                                  <Input
+                                    type="number"
+                                    step="0.000001"
+                                    value={editedInfoPoint.latitude}
+                                    onChange={(e) => setEditedInfoPoint({ ...editedInfoPoint, latitude: parseFloat(e.target.value) || 0 })}
+                                    placeholder="Latitude"
+                                  />
+                                </div>
+                                <div>
+                                  <label className="text-sm font-medium">Longitude</label>
+                                  <Input
+                                    type="number"
+                                    step="0.000001"
+                                    value={editedInfoPoint.longitude}
+                                    onChange={(e) => setEditedInfoPoint({ ...editedInfoPoint, longitude: parseFloat(e.target.value) || 0 })}
+                                    placeholder="Longitude"
+                                  />
+                                </div>
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium">Description</label>
+                                <Input
+                                  value={editedInfoPoint.description}
+                                  onChange={(e) => setEditedInfoPoint({ ...editedInfoPoint, description: e.target.value })}
+                                  placeholder="Description"
+                                />
+                              </div>
+                            </div>
+                            
+                            {/* Save/Cancel Buttons */}
+                            <div className="flex gap-2 pt-2">
+                              <Button onClick={handleSaveInfo} className="flex-1">
+                                <Check className="size-4 mr-2" />
+                                Save Changes
+                              </Button>
+                              <Button onClick={handleCancelInfo} variant="outline" className="flex-1">
+                                <X className="size-4 mr-2" />
+                                Cancel
+                              </Button>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            {/* View Mode */}
+                            <dl className="space-y-3">
+                              <div>
+                                <dt className="font-bold text-sm">Description</dt>
+                                <dd className="ml-0 mb-2 text-sm text-muted-foreground">{selectedPoint.description || "No description"}</dd>
+                              </div>
+                              
+                              <div>
+                                <dt className="font-bold text-sm">Code</dt>
+                                <dd className="ml-0 mb-2 text-sm">{selectedPoint.code}</dd>
+                              </div>
+                              
+                              <div>
+                                <dt className="font-bold text-sm">Delivery Type</dt>
+                                <dd className="ml-0 mb-2 text-sm">{selectedPoint.delivery}</dd>
+                              </div>
+                              
+                              <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                  <dt className="font-bold text-sm">Latitude</dt>
+                                  <dd className="ml-0 mb-2 text-sm">{selectedPoint.latitude.toFixed(4)}</dd>
+                                </div>
+                                <div>
+                                  <dt className="font-bold text-sm">Longitude</dt>
+                                  <dd className="ml-0 mb-2 text-sm">{selectedPoint.longitude.toFixed(4)}</dd>
+                                </div>
+                              </div>
+                            </dl>
+                            
+                            <div className="flex gap-2 pt-2">
+                              <Button onClick={handleEditInfo} variant="outline" className="flex-1">
+                                <Edit2 className="size-4 mr-2" />
+                                Edit
+                              </Button>
+                              <Button onClick={handleDeleteInfo} variant="destructive" className="flex-1">
+                                <Trash2 className="size-4 mr-2" />
+                                Delete
+                              </Button>
+                            </div>
+                            
+                            <div className="flex gap-2">
+                              <Button
+                                onClick={() => openGoogleMaps(selectedPoint.latitude, selectedPoint.longitude)}
+                                className="flex-1"
+                              >
+                                <ExternalLink className="size-4 mr-2" />
+                                Google Maps
+                              </Button>
+                              <Button
+                                onClick={() => openWaze(selectedPoint.latitude, selectedPoint.longitude)}
+                                variant="outline"
+                                className="flex-1"
+                              >
+                                <ExternalLink className="size-4 mr-2" />
+                                Waze
+                              </Button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </DialogContent>
+                </Dialog>
+                </div>
+              </div>
+            </div>
+          </div>
         ))}
-      </ul>
+        
+        {/* No Results Message */}
+        {filteredRoutes.length === 0 && searchQuery && (
+          <div className="col-span-full flex flex-col items-center justify-center py-12 text-center">
+            <Search className="size-12 text-muted-foreground/50 mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No routes found</h3>
+            <p className="text-sm text-muted-foreground">
+              No routes match &quot;{searchQuery}&quot;. Try a different search term.
+            </p>
+          </div>
+        )}
+        
+        {/* Add New Route Card */}
+        <div className="w-full">
+          <Dialog open={addRouteDialogOpen} onOpenChange={setAddRouteDialogOpen}>
+            <DialogTrigger asChild>
+              <button className="w-full h-[380px] rounded-lg border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 transition-all duration-300 flex flex-col items-center justify-center gap-4 group">
+                <div className="w-16 h-16 rounded-full bg-primary/10 border-2 border-primary/20 group-hover:bg-primary/20 group-hover:border-primary/40 flex items-center justify-center transition-all">
+                  <Plus className="size-8 text-primary transition-transform group-hover:scale-110" />
+                </div>
+                <div className="text-center">
+                  <h3 className="text-lg font-semibold mb-1 group-hover:text-primary transition-colors">Add New Route</h3>
+                  <p className="text-sm text-muted-foreground">Create a new delivery route</p>
+                </div>
+              </button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create New Route</DialogTitle>
+                <DialogDescription>
+                  Add a new delivery route with details
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Name Route</label>
+                  <Input
+                    placeholder="Enter route name"
+                    value={newRoute.name}
+                    onChange={(e) => setNewRoute({ ...newRoute, name: e.target.value })}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Code Route</label>
+                  <Input
+                    placeholder="Enter route code"
+                    value={newRoute.code}
+                    onChange={(e) => setNewRoute({ ...newRoute, code: e.target.value })}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Shift</label>
+                  <select
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+                    value={newRoute.shift}
+                    onChange={(e) => setNewRoute({ ...newRoute, shift: e.target.value })}
+                  >
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setAddRouteDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (newRoute.name && newRoute.code) {
+                      const newRouteData: Route = {
+                        id: `route-${Date.now()}`,
+                        name: newRoute.name,
+                        code: newRoute.code,
+                        shift: newRoute.shift,
+                        deliveryPoints: []
+                      }
+                      setRoutes(prev => [...prev, newRouteData])
+                      setNewRoute({ name: "", code: "", shift: "AM" })
+                      setAddRouteDialogOpen(false)
+                    }
+                  }}
+                >
+                  Create Route
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+        </div>
+
+        {/* Edit Route Dialog */}
+        <Dialog open={editRouteDialogOpen} onOpenChange={setEditRouteDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Route</DialogTitle>
+              <DialogDescription>
+                Update route information
+              </DialogDescription>
+            </DialogHeader>
+            
+            {editingRoute && (
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Route Name *</label>
+                  <Input
+                    placeholder="Enter route name"
+                    value={editingRoute.name}
+                    onChange={(e) => setEditingRoute({ ...editingRoute, name: e.target.value })}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Route Code *</label>
+                  <Input
+                    placeholder="Enter route code"
+                    value={editingRoute.code}
+                    onChange={(e) => setEditingRoute({ ...editingRoute, code: e.target.value })}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Shift</label>
+                  <select
+                    value={editingRoute.shift}
+                    onChange={(e) => setEditingRoute({ ...editingRoute, shift: e.target.value })}
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="AM">AM</option>
+                    <option value="PM">PM</option>
+                    <option value="Night">Night</option>
+                  </select>
+                </div>
+                
+                <div className="flex justify-between items-center pt-4">
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      setRouteToDelete(editingRoute)
+                      setEditRouteDialogOpen(false)
+                      setDeleteRouteConfirmOpen(true)
+                    }}
+                  >
+                    <Trash2 className="size-4 mr-2" />
+                    Delete Route
+                  </Button>
+                  
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setEditRouteDialogOpen(false)
+                        setEditingRoute(null)
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button onClick={handleSaveRoute}>
+                      <Check className="size-4 mr-2" />
+                      Save Changes
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Route Confirmation Dialog */}
+        <Dialog open={deleteRouteConfirmOpen} onOpenChange={setDeleteRouteConfirmOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="text-destructive">Delete Route</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete this route?
+              </DialogDescription>
+            </DialogHeader>
+            
+            {routeToDelete && (
+              <div className="space-y-4 py-4">
+                <div className="bg-destructive/10 border border-destructive/50 rounded-md p-4">
+                  <dl className="space-y-2">
+                    <div>
+                      <dt className="font-bold text-sm">Route Name</dt>
+                      <dd className="ml-0 mb-2 text-sm">{routeToDelete.name}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-bold text-sm">Code</dt>
+                      <dd className="ml-0 mb-2 text-sm">{routeToDelete.code}</dd>
+                    </div>
+                    <div>
+                      <dt className="font-bold text-sm">Delivery Points</dt>
+                      <dd className="ml-0 mb-2 text-sm">{routeToDelete.deliveryPoints.length} points</dd>
+                    </div>
+                  </dl>
+                </div>
+                
+                <div className="bg-muted/50 rounded-md p-4">
+                  <p className="text-sm text-muted-foreground">
+                    <strong>Warning:</strong> This will permanently delete the route and all its delivery points. This action cannot be undone.
+                  </p>
+                </div>
+                
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setDeleteRouteConfirmOpen(false)
+                      setRouteToDelete(null)
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    variant="destructive"
+                    onClick={handleDeleteRoute}
+                  >
+                    <Trash2 className="size-4 mr-2" />
+                    Delete Route
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   )
 }

@@ -1,6 +1,9 @@
 import { useState } from "react"
 import { AppSidebar } from "@/components/app-sidebar"
 import { RouteList } from "@/components/RouteList"
+import { Calendar } from "@/components/Calendar"
+import { Settings } from "@/components/Settings"
+import { PlanoVM } from "@/components/PlanoVM"
 import { ThemeToggle } from "@/components/theme-toggle"
 import {
   Breadcrumb,
@@ -25,6 +28,12 @@ function AppContent() {
     switch (currentPage) {
       case "route-list":
         return <RouteList />
+      case "calendar":
+        return <Calendar />
+      case "settings":
+        return <Settings />
+      case "plano-vm":
+        return <PlanoVM />
       case "dashboard":
       default:
         return (
@@ -44,6 +53,12 @@ function AppContent() {
     switch (currentPage) {
       case "route-list":
         return "Route List"
+      case "calendar":
+        return "Calendar"
+      case "settings":
+        return "Settings"
+      case "plano-vm":
+        return "Plano VM"
       case "dashboard":
       default:
         return "Dashboard"

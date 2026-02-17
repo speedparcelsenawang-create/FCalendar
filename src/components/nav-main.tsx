@@ -19,6 +19,7 @@ import {
 
 export function NavMain({
   items,
+  onItemClick,
 }: {
   items: {
     title: string
@@ -30,6 +31,7 @@ export function NavMain({
       url: string
     }[]
   }[]
+  onItemClick?: (title: string) => void
 }) {
   return (
     <SidebarGroup>
@@ -39,7 +41,13 @@ export function NavMain({
           <Collapsible key={item.title} asChild defaultOpen={item.isActive}>
             <SidebarMenuItem>
               <SidebarMenuButton asChild tooltip={item.title}>
-                <a href={item.url}>
+                <a 
+                  href={item.url}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    onItemClick?.(item.title)
+                  }}
+                >
                   <item.icon />
                   <span>{item.title}</span>
                 </a>

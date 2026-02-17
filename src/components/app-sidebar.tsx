@@ -131,7 +131,7 @@ const data = {
       icon: Route,
     },
     {
-      name: "Personal Events",
+      name: "Plano Vm",
       url: "#",
       icon: CalendarDays,
     },
@@ -149,10 +149,22 @@ export function AppSidebar({
 }: React.ComponentProps<typeof Sidebar> & { 
   onNavigate?: (page: string) => void 
 }) {
+  const handleNavClick = (itemTitle: string) => {
+    if (onNavigate) {
+      if (itemTitle === "Calendar") {
+        onNavigate("calendar")
+      } else if (itemTitle === "Settings") {
+        onNavigate("settings")
+      }
+    }
+  }
+
   const handleProjectClick = (projectName: string) => {
     if (onNavigate) {
       if (projectName === "Route List") {
         onNavigate("route-list")
+      } else if (projectName === "Plano Vm") {
+        onNavigate("plano-vm")
       }
     }
   }
@@ -181,7 +193,7 @@ export function AppSidebar({
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <NavMain items={data.navMain} onItemClick={handleNavClick} />
         <NavProjects projects={data.projects} onProjectClick={handleProjectClick} />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>
