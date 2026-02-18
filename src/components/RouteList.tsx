@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react"
-import { List, Maximize2, LocateFixed, Info, ExternalLink, Plus, Check, X, Edit2, Trash2, Search, Settings, Map, MapPin, Save } from "lucide-react"
+import { List, Maximize2, LocateFixed, Info, ExternalLink, Plus, Check, X, Edit2, Trash2, Search, Settings, Map, MapPin, Save, ArrowUp, ArrowDown, RotateCcw } from "lucide-react"
 import { useEditMode } from "@/contexts/EditModeContext"
 import {
   Dialog,
@@ -95,8 +95,6 @@ export function RouteList() {
         : route
     ))
   }
-  const [sortConfig, setSortConfig] = useState<{ key: keyof DeliveryPoint; direction: 'asc' | 'desc' } | null>(null)
-
   // Filter routes based on search query
   const filteredRoutes = useMemo(() => {
     if (!searchQuery.trim()) return routes
@@ -128,31 +126,137 @@ export function RouteList() {
   const [selectedTargetRoute, setSelectedTargetRoute] = useState("")
   const [pendingSelectedRows, setPendingSelectedRows] = useState<string[]>([])
 
+  // ── Settings Modal ────────────────────────────────────────────────
+  type ColumnKey = 'no' | 'code' | 'name' | 'delivery' | 'action'
+
+  interface ColumnDef {
+    key: ColumnKey
+    label: string
+    visible: boolean
+  }
+
+  const DEFAULT_COLUMNS: ColumnDef[] = [
+    { key: 'no',       label: 'No',       visible: true },
+    { key: 'code',     label: 'Code',     visible: true },
+    { key: 'name',     label: 'Name',     visible: true },
+    { key: 'delivery', label: 'Delivery', visible: true },
+    { key: 'action',   label: 'Action',   visible: true },
+  ]
+
+  interface SavedRowOrder {
+    id: string
+    label: string
+    order: string[]   // array of point.code in order
+  }
+
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [settingsMenu, setSettingsMenu] = useState<'column' | 'row' | 'sorting'>('column')
+
+  // Column Customize
+  const [columns, setColumns] = useState<ColumnDef[]>(DEFAULT_COLUMNS)
+  const [draftColumns, setDraftColumns] = useState<ColumnDef[]>(DEFAULT_COLUMNS)
+  const [savedColumns, setSavedColumns] = useState<ColumnDef[] | null>(null)
+  const columnsDirty = useMemo(() => JSON.stringify(draftColumns) !== JSON.stringify(columns), [draftColumns, columns])
+  const columnsHasSaved = savedColumns !== null
+
+  // Row Customize
+  type RowOrderEntry = { code: string; position: string; name: string; delivery: string }
+  const buildRowEntries = (pts: typeof deliveryPoints): RowOrderEntry[] =>
+    pts.map((p, i) => ({ code: p.code, position: String(i + 1), name: p.name, delivery: p.delivery }))
+  const [draftRowOrder, setDraftRowOrder] = useState<RowOrderEntry[]>([])
+  const [savedRowOrders, setSavedRowOrders] = useState<SavedRowOrder[]>([])
+  const [savedRowOrderOnce, setSavedRowOrderOnce] = useState(false)
+  const rowOrderDirty = useMemo(() => {
+    const orig = buildRowEntries(deliveryPoints)
+    return JSON.stringify(draftRowOrder.map(r => r.code)) !== JSON.stringify(orig.map(r => r.code))
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftRowOrder, deliveryPoints])
+  const [rowOrderError, setRowOrderError] = useState<string>("")
+
+  // Sorting
+  type SortType = { type: 'column'; key: ColumnKey; dir: 'asc' | 'desc' } | { type: 'saved'; id: string } | null
+  const [activeSortConfig, setActiveSortConfig] = useState<SortType>(null)
+  const [draftSort, setDraftSort] = useState<SortType>(null)
+
+  const openSettings = (routeId: string) => {
+    setCurrentRouteId(routeId)
+    setDraftColumns([...columns])
+    setDraftRowOrder(buildRowEntries(routes.find(r => r.id === routeId)?.deliveryPoints || []))
+    setDraftSort(activeSortConfig)
+    setSettingsMenu('column')
+    setSettingsOpen(true)
+  }
+
+  // Column helpers
+  const moveDraftCol = (idx: number, dir: -1 | 1) => {
+    const next = [...draftColumns]
+    const swap = idx + dir
+    if (swap < 0 || swap >= next.length) return
+    ;[next[idx], next[swap]] = [next[swap], next[idx]]
+    setDraftColumns(next)
+  }
+
+  // Row helpers
+  const handleRowPositionChange = (code: string, val: string) => {
+    if (val !== '' && !/^\d+$/.test(val)) return
+    setDraftRowOrder(prev => prev.map(r => r.code === code ? { ...r, position: val } : r))
+    setRowOrderError('')
+  }
+
+  const applyRowPositions = () => {
+    const positions = draftRowOrder.map(r => parseInt(r.position))
+    const hasDup = positions.length !== new Set(positions).size
+    const hasEmpty = draftRowOrder.some(r => r.position === '')
+    if (hasDup) { setRowOrderError('Duplicate position numbers'); return }
+    if (hasEmpty) { setRowOrderError('All rows must have a position'); return }
+    const sorted = [...draftRowOrder].sort((a, b) => parseInt(a.position) - parseInt(b.position))
+    const reindexed = sorted.map((r, i) => ({ ...r, position: String(i + 1) }))
+    setDraftRowOrder(reindexed)
+    setRowOrderError('')
+  }
+
+  const saveRowOrder = () => {
+    const positions = draftRowOrder.map(r => parseInt(r.position))
+    const hasDup = positions.length !== new Set(positions).size
+    if (hasDup) { setRowOrderError('Duplicate position numbers'); return }
+    const sorted = [...draftRowOrder].sort((a, b) => parseInt(a.position) - parseInt(b.position))
+    const id = `roworder-${Date.now()}`
+    const label = `Order ${savedRowOrders.length + 1} (${new Date().toLocaleTimeString()})`
+    setSavedRowOrders(prev => [...prev, { id, label, order: sorted.map(r => r.code) }])
+    setSavedRowOrderOnce(true)
+    setRowOrderError('')
+  }
+
+  // Apply sort to deliveryPoints
   const sortedDeliveryPoints = useMemo(() => {
-    const sorted = [...deliveryPoints]
-    if (sortConfig) {
-      sorted.sort((a, b) => {
-        if (a[sortConfig.key] < b[sortConfig.key]) {
-          return sortConfig.direction === 'asc' ? -1 : 1
-        }
-        if (a[sortConfig.key] > b[sortConfig.key]) {
-          return sortConfig.direction === 'asc' ? 1 : -1
-        }
+    if (!activeSortConfig) return deliveryPoints
+    if (activeSortConfig.type === 'column') {
+      const { key, dir } = activeSortConfig
+      const fieldMap: Partial<Record<ColumnKey, keyof DeliveryPoint>> = {
+        code: 'code', name: 'name', delivery: 'delivery'
+      }
+      const field = fieldMap[key]
+      if (!field) return deliveryPoints
+      return [...deliveryPoints].sort((a, b) => {
+        if (a[field] < b[field]) return dir === 'asc' ? -1 : 1
+        if (a[field] > b[field]) return dir === 'asc' ? 1 : -1
         return 0
       })
     }
-    return sorted
-  }, [deliveryPoints, sortConfig])
-
-  const handleSort = (key: keyof DeliveryPoint) => {
-    let direction: 'asc' | 'desc' = 'asc'
-    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
-      direction = 'desc'
+    if (activeSortConfig.type === 'saved') {
+      const saved = savedRowOrders.find(s => s.id === activeSortConfig.id)
+      if (!saved) return deliveryPoints
+      return [...deliveryPoints].sort((a, b) => {
+        const ai = saved.order.indexOf(a.code)
+        const bi = saved.order.indexOf(b.code)
+        return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
+      })
     }
-    setSortConfig({ key, direction })
-  }
+    return deliveryPoints
+  }, [deliveryPoints, activeSortConfig, savedRowOrders])
 
   const startEdit = (rowCode: string, field: string, currentValue: string | number) => {
+    if (!isEditMode) return
     const key = `${rowCode}-${field}`
     setEditingCell({ rowCode, field })
     setEditValue(String(currentValue))
@@ -448,10 +552,26 @@ export function RouteList() {
                       </DialogTrigger>
                       <DialogContent className="max-w-6xl max-h-[80vh] overflow-hidden flex flex-col">
                         <DialogHeader>
-                          <DialogTitle>Delivery Points - {route.name}</DialogTitle>
-                          <DialogDescription>
-                            Manage delivery locations and schedules
-                          </DialogDescription>
+                          <div className="flex items-center justify-between pr-6">
+                            <div>
+                              <DialogTitle>Delivery Points - {route.name}</DialogTitle>
+                              <DialogDescription>
+                                Manage delivery locations and schedules
+                              </DialogDescription>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setDialogOpen(false)
+                                openSettings(route.id)
+                              }}
+                              className="flex items-center gap-2"
+                            >
+                              <Settings className="size-4" />
+                              Settings
+                            </Button>
+                          </div>
                         </DialogHeader>
                         
                         <div className="flex-1 overflow-auto">
@@ -468,28 +588,11 @@ export function RouteList() {
                                     />
                                   </th>
                                 )}
-                                <th className="p-3 text-center font-semibold text-sm">No</th>
-                            <th 
-                              className="p-3 text-center font-semibold text-sm cursor-pointer hover:bg-muted"
-                              onClick={() => handleSort('code')}
-                            >
-                              Code {sortConfig?.key === 'code' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                            </th>
-                            <th 
-                              className="p-3 text-center font-semibold text-sm cursor-pointer hover:bg-muted"
-                              onClick={() => handleSort('name')}
-                            >
-                              Name {sortConfig?.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                            </th>
-                            <th 
-                              className="p-3 text-center font-semibold text-sm cursor-pointer hover:bg-muted"
-                              onClick={() => handleSort('delivery')}
-                            >
-                              Delivery {sortConfig?.key === 'delivery' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                            </th>
-                            {isEditMode && <th className="p-3 text-center font-semibold text-sm">Latitude</th>}
-                            {isEditMode && <th className="p-3 text-center font-semibold text-sm">Longitude</th>}
-                            <th className="p-3 text-center font-semibold text-sm">Action</th>
+                                {columns.filter(c => c.visible).map(col => (
+                                  <th key={col.key} className="p-3 text-center font-semibold text-sm">{col.label}</th>
+                                ))}
+                                {isEditMode && <th className="p-3 text-center font-semibold text-sm">Latitude</th>}
+                                {isEditMode && <th className="p-3 text-center font-semibold text-sm">Longitude</th>}
                           </tr>
                         </thead>
                         <tbody>
@@ -508,272 +611,143 @@ export function RouteList() {
                                     />
                                   </td>
                                 )}
-                                <td className="p-3 text-sm text-center">{index + 1}</td>
-                                
-                                {/* Code - Editable */}
-                                <td className="p-3 text-sm text-center">
-                                  <Popover 
-                                    open={popoverOpen[`${point.code}-code`]} 
-                                    onOpenChange={(open) => {
-                                      if (!open) cancelEdit()
-                                      setPopoverOpen({ [`${point.code}-code`]: open })
-                                    }}
-                                  >
-                                    <PopoverTrigger asChild>
-                                      <button 
-                                        className="hover:bg-accent px-3 py-1 rounded flex items-center justify-center gap-1.5 group mx-auto"
-                                        onClick={() => startEdit(point.code, 'code', point.code)}
+                                {columns.filter(c => c.visible).map(col => {
+                                  if (col.key === 'no') return (
+                                    <td key="no" className="p-3 text-sm text-center">{index + 1}</td>
+                                  )
+                                  if (col.key === 'code') return (
+                                    <td key="code" className="p-3 text-sm text-center">
+                                      {isEditMode ? (
+                                      <Popover
+                                        open={isEditMode && !!popoverOpen[`${point.code}-code`]}
+                                        onOpenChange={(open) => {
+                                          if (!isEditMode) return
+                                          if (!open) cancelEdit()
+                                          setPopoverOpen({ [`${point.code}-code`]: open })
+                                        }}
                                       >
-                                        <span>{point.code}</span>
-                                        <Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-                                      </button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-64">
-                                      <div className="space-y-3">
-                                        <div className="space-y-2">
-                                          <label className="text-sm font-medium">Code</label>
-                                          <Input
-                                            className="text-center"
-                                            value={editValue}
-                                            onChange={(e) => setEditValue(e.target.value)}
-                                            placeholder="Enter code"
-                                            autoFocus
-                                            onKeyDown={(e) => {
-                                              if (e.key === 'Enter') saveEdit()
-                                              if (e.key === 'Escape') cancelEdit()
-                                            }}
-                                          />
-                                        </div>
-                                        <div className="flex gap-2">
-                                          <Button size="sm" onClick={saveEdit} className="flex-1">
-                                            <Check className="size-4 mr-1" /> Save
-                                          </Button>
-                                          <Button size="sm" variant="outline" onClick={cancelEdit} className="flex-1">
-                                            <X className="size-4 mr-1" /> Cancel
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    </PopoverContent>
-                                  </Popover>
-                                </td>
-                                
-                                {/* Name - Editable */}
-                                <td className="p-3 text-sm text-center">
-                                  <Popover 
-                                    open={popoverOpen[`${point.code}-name`]} 
-                                    onOpenChange={(open) => {
-                                      if (!open) cancelEdit()
-                                      setPopoverOpen({ [`${point.code}-name`]: open })
-                                    }}
-                                  >
-                                    <PopoverTrigger asChild>
-                                      <button 
-                                        className="hover:bg-accent px-3 py-1 rounded flex items-center justify-center gap-1.5 group mx-auto"
-                                        onClick={() => startEdit(point.code, 'name', point.name)}
-                                      >
-                                        <span>{point.name}</span>
-                                        <Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-                                      </button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-72">
-                                      <div className="space-y-3">
-                                        <div className="space-y-2">
-                                          <label className="text-sm font-medium">Name</label>
-                                          <Input
-                                            className="text-center"
-                                            value={editValue}
-                                            onChange={(e) => setEditValue(e.target.value)}
-                                            placeholder="Enter name"
-                                            autoFocus
-                                            onKeyDown={(e) => {
-                                              if (e.key === 'Enter') saveEdit()
-                                              if (e.key === 'Escape') cancelEdit()
-                                            }}
-                                          />
-                                        </div>
-                                        <div className="flex gap-2">
-                                          <Button size="sm" onClick={saveEdit} className="flex-1">
-                                            <Check className="size-4 mr-1" /> Save
-                                          </Button>
-                                          <Button size="sm" variant="outline" onClick={cancelEdit} className="flex-1">
-                                            <X className="size-4 mr-1" /> Cancel
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    </PopoverContent>
-                                  </Popover>
-                                </td>
-                                
-                                {/* Delivery - Editable with Select */}
-                                <td className="p-3 text-center">
-                                  <Popover 
-                                    open={popoverOpen[`${point.code}-delivery`]} 
-                                    onOpenChange={(open) => {
-                                      if (!open) cancelEdit()
-                                      setPopoverOpen({ [`${point.code}-delivery`]: open })
-                                    }}
-                                  >
-                                    <PopoverTrigger asChild>
-                                      <button 
-                                        className="group flex items-center justify-center gap-1.5 hover:scale-105 transition-transform mx-auto"
-                                        onClick={() => startEdit(point.code, 'delivery', point.delivery)}
-                                      >
-                                        <span className={`inline-flex items-center px-3 py-1 rounded text-xs font-medium transition-all
-                                          ${point.delivery === 'Daily' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : ''}
-                                          ${point.delivery === 'Weekday' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : ''}
-                                          ${point.delivery === 'Alt 1' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : ''}
-                                          ${point.delivery === 'Alt 2' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' : ''}
-                                        `}>
-                                          {point.delivery}
-                                        </span>
-                                        <Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-                                      </button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-48">
-                                      <div className="space-y-1">
-                                        {deliveryTypes.map((type) => (
-                                          <button
-                                            key={type}
-                                            onClick={() => {
-                                              setDeliveryPoints(prev => prev.map(p => 
-                                                p.code === point.code ? { ...p, delivery: type as "Daily" | "Weekday" | "Alt 1" | "Alt 2" } : p
-                                              ))
-                                              cancelEdit()
-                                            }}
-                                            className="w-full p-2 text-left text-sm rounded hover:bg-accent transition-colors"
-                                          >
-                                            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
-                                              ${type === 'Daily' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : ''}
-                                              ${type === 'Weekday' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : ''}
-                                              ${type === 'Alt 1' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : ''}
-                                              ${type === 'Alt 2' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' : ''}
-                                            `}>
-                                              {type}
-                                            </span>
+                                        <PopoverTrigger asChild>
+                                          <button className="hover:bg-accent px-3 py-1 rounded flex items-center justify-center gap-1.5 group mx-auto" onClick={() => startEdit(point.code, 'code', point.code)}>
+                                            <span>{point.code}</span>
+                                            <Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
                                           </button>
-                                        ))}
-                                      </div>
-                                    </PopoverContent>
-                                  </Popover>
-                                </td>
-                                
-                                {/* Latitude - Editable (Edit Mode Only) */}
-                                {isEditMode && (
-                                <td className="p-3 text-sm font-mono text-center">
-                                  <Popover 
-                                    open={popoverOpen[`${point.code}-latitude`]} 
-                                    onOpenChange={(open) => {
-                                      if (!open) cancelEdit()
-                                      setPopoverOpen({ [`${point.code}-latitude`]: open })
-                                    }}
-                                  >
-                                    <PopoverTrigger asChild>
-                                      <button 
-                                        className="hover:bg-accent px-3 py-1 rounded flex items-center justify-center gap-1.5 group font-mono mx-auto"
-                                        onClick={() => startEdit(point.code, 'latitude', point.latitude.toFixed(4))}
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-64">
+                                          <div className="space-y-3">
+                                            <div className="space-y-2">
+                                              <label className="text-sm font-medium">Code</label>
+                                              <Input className="text-center" value={editValue} onChange={(e) => setEditValue(e.target.value)} placeholder="Enter code" autoFocus onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit() }} />
+                                            </div>
+                                            <div className="flex gap-2">
+                                              <Button size="sm" onClick={saveEdit} className="flex-1"><Check className="size-4 mr-1" /> Save</Button>
+                                              <Button size="sm" variant="outline" onClick={cancelEdit} className="flex-1"><X className="size-4 mr-1" /> Cancel</Button>
+                                            </div>
+                                          </div>
+                                        </PopoverContent>
+                                      </Popover>
+                                      ) : (<span className="px-3 py-1">{point.code}</span>)}
+                                    </td>
+                                  )
+                                  if (col.key === 'name') return (
+                                    <td key="name" className="p-3 text-sm text-center">
+                                      {isEditMode ? (
+                                      <Popover
+                                        open={isEditMode && !!popoverOpen[`${point.code}-name`]}
+                                        onOpenChange={(open) => {
+                                          if (!isEditMode) return
+                                          if (!open) cancelEdit()
+                                          setPopoverOpen({ [`${point.code}-name`]: open })
+                                        }}
                                       >
-                                        <span>{point.latitude.toFixed(4)}</span>
-                                        <Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-                                      </button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-64">
-                                      <div className="space-y-3">
-                                        <div className="space-y-2">
-                                          <label className="text-sm font-medium">Latitude</label>
-                                          <Input
-                                            className="text-center font-mono"
-                                            type="number"
-                                            step="0.0001"
-                                            value={editValue}
-                                            onChange={(e) => setEditValue(e.target.value)}
-                                            placeholder="Enter latitude"
-                                            autoFocus
-                                            onKeyDown={(e) => {
-                                              if (e.key === 'Enter') saveEdit()
-                                              if (e.key === 'Escape') cancelEdit()
-                                            }}
-                                          />
-                                        </div>
-                                        <div className="flex gap-2">
-                                          <Button size="sm" onClick={saveEdit} className="flex-1">
-                                            <Check className="size-4 mr-1" /> Save
-                                          </Button>
-                                          <Button size="sm" variant="outline" onClick={cancelEdit} className="flex-1">
-                                            <X className="size-4 mr-1" /> Cancel
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    </PopoverContent>
-                                  </Popover>
-                                </td>
-                                )}
-                                
-                                {/* Longitude - Editable (Edit Mode Only) */}
-                                {isEditMode && (
-                                <td className="p-3 text-sm font-mono text-center">
-                                  <Popover 
-                                    open={popoverOpen[`${point.code}-longitude`]} 
-                                    onOpenChange={(open) => {
-                                      if (!open) cancelEdit()
-                                      setPopoverOpen({ [`${point.code}-longitude`]: open })
-                                    }}
-                                  >
-                                    <PopoverTrigger asChild>
-                                      <button 
-                                        className="hover:bg-accent px-3 py-1 rounded flex items-center justify-center gap-1.5 group font-mono mx-auto"
-                                        onClick={() => startEdit(point.code, 'longitude', point.longitude.toFixed(4))}
+                                        <PopoverTrigger asChild>
+                                          <button className="hover:bg-accent px-3 py-1 rounded flex items-center justify-center gap-1.5 group mx-auto" onClick={() => startEdit(point.code, 'name', point.name)}>
+                                            <span>{point.name}</span>
+                                            <Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                                          </button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-72">
+                                          <div className="space-y-3">
+                                            <div className="space-y-2">
+                                              <label className="text-sm font-medium">Name</label>
+                                              <Input className="text-center" value={editValue} onChange={(e) => setEditValue(e.target.value)} placeholder="Enter name" autoFocus onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit() }} />
+                                            </div>
+                                            <div className="flex gap-2">
+                                              <Button size="sm" onClick={saveEdit} className="flex-1"><Check className="size-4 mr-1" /> Save</Button>
+                                              <Button size="sm" variant="outline" onClick={cancelEdit} className="flex-1"><X className="size-4 mr-1" /> Cancel</Button>
+                                            </div>
+                                          </div>
+                                        </PopoverContent>
+                                      </Popover>
+                                      ) : (<span className="px-3 py-1">{point.name}</span>)}
+                                    </td>
+                                  )
+                                  if (col.key === 'delivery') return (
+                                    <td key="delivery" className="p-3 text-center">
+                                      {isEditMode ? (
+                                      <Popover
+                                        open={isEditMode && !!popoverOpen[`${point.code}-delivery`]}
+                                        onOpenChange={(open) => {
+                                          if (!isEditMode) return
+                                          if (!open) cancelEdit()
+                                          setPopoverOpen({ [`${point.code}-delivery`]: open })
+                                        }}
                                       >
-                                        <span>{point.longitude.toFixed(4)}</span>
-                                        <Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-                                      </button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-64">
-                                      <div className="space-y-3">
-                                        <div className="space-y-2">
-                                          <label className="text-sm font-medium">Longitude</label>
-                                          <Input
-                                            className="text-center font-mono"
-                                            type="number"
-                                            step="0.0001"
-                                            value={editValue}
-                                            onChange={(e) => setEditValue(e.target.value)}
-                                            placeholder="Enter longitude"
-                                            autoFocus
-                                            onKeyDown={(e) => {
-                                              if (e.key === 'Enter') saveEdit()
-                                              if (e.key === 'Escape') cancelEdit()
-                                            }}
-                                          />
-                                        </div>
-                                        <div className="flex gap-2">
-                                          <Button size="sm" onClick={saveEdit} className="flex-1">
-                                            <Check className="size-4 mr-1" /> Save
-                                          </Button>
-                                          <Button size="sm" variant="outline" onClick={cancelEdit} className="flex-1">
-                                            <X className="size-4 mr-1" /> Cancel
-                                          </Button>
-                                        </div>
-                                      </div>
-                                    </PopoverContent>
-                                  </Popover>
-                                </td>
+                                        <PopoverTrigger asChild>
+                                          <button className="group flex items-center justify-center gap-1.5 hover:scale-105 transition-transform mx-auto" onClick={() => startEdit(point.code, 'delivery', point.delivery)}>
+                                            <span className={`inline-flex items-center px-3 py-1 rounded text-xs font-medium ${ point.delivery === 'Daily' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : point.delivery === 'Weekday' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : point.delivery === 'Alt 1' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' }`}>{point.delivery}</span>
+                                            <Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                                          </button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-48">
+                                          <div className="space-y-1">
+                                            {deliveryTypes.map((type) => (
+                                              <button key={type} onClick={() => { setDeliveryPoints(prev => prev.map(p => p.code === point.code ? { ...p, delivery: type as DeliveryPoint['delivery'] } : p)); cancelEdit() }} className="w-full p-2 text-left text-sm rounded hover:bg-accent transition-colors">
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${ type === 'Daily' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : type === 'Weekday' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : type === 'Alt 1' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' }`}>{type}</span>
+                                              </button>
+                                            ))}
+                                          </div>
+                                        </PopoverContent>
+                                      </Popover>
+                                      ) : (
+                                        <span className={`inline-flex items-center px-3 py-1 rounded text-xs font-medium ${ point.delivery === 'Daily' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : point.delivery === 'Weekday' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : point.delivery === 'Alt 1' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' }`}>{point.delivery}</span>
+                                      )}
+                                    </td>
+                                  )
+                                  if (col.key === 'action') return (
+                                    <td key="action" className="p-3 text-center">
+                                      {point.latitude !== 0 && point.longitude !== 0 && (
+                                        <Button variant="ghost" size="sm" onClick={() => { setSelectedPoint(point); setInfoModalOpen(true) }}>
+                                          <Info className="size-4" />
+                                        </Button>
+                                      )}
+                                    </td>
+                                  )
+                                  return null
+                                })}
+                                {isEditMode && (
+                                  <td className="p-3 text-sm font-mono text-center">
+                                    <Popover open={isEditMode && !!popoverOpen[`${point.code}-latitude`]} onOpenChange={(open) => { if (!isEditMode) return; if (!open) cancelEdit(); setPopoverOpen({ [`${point.code}-latitude`]: open }) }}>
+                                      <PopoverTrigger asChild>
+                                        <button className="hover:bg-accent px-3 py-1 rounded flex items-center justify-center gap-1.5 group font-mono mx-auto" onClick={() => startEdit(point.code, 'latitude', point.latitude.toFixed(4))}>
+                                          <span>{point.latitude.toFixed(4)}</span><Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                                        </button>
+                                      </PopoverTrigger>
+                                      <PopoverContent className="w-64"><div className="space-y-3"><div className="space-y-2"><label className="text-sm font-medium">Latitude</label><Input className="text-center font-mono" type="number" step="0.0001" value={editValue} onChange={(e) => setEditValue(e.target.value)} placeholder="Enter latitude" autoFocus onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit() }} /></div><div className="flex gap-2"><Button size="sm" onClick={saveEdit} className="flex-1"><Check className="size-4 mr-1" /> Save</Button><Button size="sm" variant="outline" onClick={cancelEdit} className="flex-1"><X className="size-4 mr-1" /> Cancel</Button></div></div></PopoverContent>
+                                    </Popover>
+                                  </td>
                                 )}
-                                
-                                {/* Action */}
-                                <td className="p-3 text-center">
-                                  {point.latitude !== 0 && point.longitude !== 0 && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => {
-                                        setSelectedPoint(point)
-                                        setInfoModalOpen(true)
-                                      }}
-                                    >
-                                      <Info className="size-4" />
-                                    </Button>
-                                  )}
-                                </td>
+                                {isEditMode && (
+                                  <td className="p-3 text-sm font-mono text-center">
+                                    <Popover open={isEditMode && !!popoverOpen[`${point.code}-longitude`]} onOpenChange={(open) => { if (!isEditMode) return; if (!open) cancelEdit(); setPopoverOpen({ [`${point.code}-longitude`]: open }) }}>
+                                      <PopoverTrigger asChild>
+                                        <button className="hover:bg-accent px-3 py-1 rounded flex items-center justify-center gap-1.5 group font-mono mx-auto" onClick={() => startEdit(point.code, 'longitude', point.longitude.toFixed(4))}>
+                                          <span>{point.longitude.toFixed(4)}</span><Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                                        </button>
+                                      </PopoverTrigger>
+                                      <PopoverContent className="w-64"><div className="space-y-3"><div className="space-y-2"><label className="text-sm font-medium">Longitude</label><Input className="text-center font-mono" type="number" step="0.0001" value={editValue} onChange={(e) => setEditValue(e.target.value)} placeholder="Enter longitude" autoFocus onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit() }} /></div><div className="flex gap-2"><Button size="sm" onClick={saveEdit} className="flex-1"><Check className="size-4 mr-1" /> Save</Button><Button size="sm" variant="outline" onClick={cancelEdit} className="flex-1"><X className="size-4 mr-1" /> Cancel</Button></div></div></PopoverContent>
+                                    </Popover>
+                                  </td>
+                                )}
                               </tr>
                             )
                           })}
@@ -1523,6 +1497,255 @@ export function RouteList() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* ── Settings Modal ──────────────────────────────────────────── */}
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader>
+            <DialogTitle>Table Settings</DialogTitle>
+            <DialogDescription>Customize how the table looks and behaves</DialogDescription>
+          </DialogHeader>
+
+          {/* Tab Menu */}
+          <div className="flex border-b border-border">
+            {(['column', 'row', 'sorting'] as const).map((m) => (
+              <button
+                key={m}
+                onClick={() => setSettingsMenu(m)}
+                className={`px-5 py-2 text-sm font-medium capitalize border-b-2 transition-colors ${
+                  settingsMenu === m
+                    ? 'border-primary text-primary'
+                    : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {m === 'column' ? 'Column Customize' : m === 'row' ? 'Row Customize' : 'Sorting'}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex-1 overflow-auto">
+
+            {/* ── COLUMN CUSTOMIZE ── */}
+            {settingsMenu === 'column' && (
+              <div className="p-4 space-y-3">
+                <p className="text-sm text-muted-foreground">Toggle visibility and reorder columns.</p>
+                <div className="space-y-2">
+                  {draftColumns.map((col, idx) => (
+                    <div key={col.key} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/20">
+                      <input
+                        type="checkbox"
+                        checked={col.visible}
+                        onChange={() =>
+                          setDraftColumns(prev =>
+                            prev.map((c, i) => i === idx ? { ...c, visible: !c.visible } : c)
+                          )
+                        }
+                        className="w-4 h-4 cursor-pointer"
+                      />
+                      <span className="flex-1 text-sm font-medium">{col.label}</span>
+                      <div className="flex gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-7"
+                          disabled={idx === 0}
+                          onClick={() => moveDraftCol(idx, -1)}
+                        >
+                          <ArrowUp className="size-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-7"
+                          disabled={idx === draftColumns.length - 1}
+                          onClick={() => moveDraftCol(idx, 1)}
+                        >
+                          <ArrowDown className="size-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── ROW CUSTOMIZE ── */}
+            {settingsMenu === 'row' && (
+              <div className="p-4 space-y-3">
+                <p className="text-sm text-muted-foreground">Input a position number to reorder rows. No duplicates allowed.</p>
+                {rowOrderError && (
+                  <p className="text-sm text-destructive font-medium">{rowOrderError}</p>
+                )}
+                <div className="space-y-2">
+                  {draftRowOrder.map((row) => (
+                    <div key={row.code} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/20">
+                      <Input
+                        value={row.position}
+                        onChange={(e) => handleRowPositionChange(row.code, e.target.value)}
+                        className="w-16 text-center text-sm"
+                        inputMode="numeric"
+                      />
+                      <span className="w-16 text-sm font-mono font-medium">{row.code}</span>
+                      <span className="flex-1 text-sm">{row.name}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded font-medium
+                        ${row.delivery === 'Daily' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : ''}
+                        ${row.delivery === 'Weekday' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : ''}
+                        ${row.delivery === 'Alt 1' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : ''}
+                        ${row.delivery === 'Alt 2' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' : ''}
+                      `}>{row.delivery}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── SORTING ── */}
+            {settingsMenu === 'sorting' && (
+              <div className="p-4 space-y-4">
+                <div>
+                  <p className="text-sm font-medium mb-2">Sort by Column</p>
+                  <div className="space-y-1">
+                    {(['code', 'name', 'delivery'] as ColumnKey[]).map((key) => (
+                      <div key={key} className="flex items-center gap-2">
+                        {(['asc', 'desc'] as const).map((dir) => (
+                          <button
+                            key={dir}
+                            onClick={() => setDraftSort({ type: 'column', key, dir })}
+                            className={`flex-1 py-2 px-3 text-sm rounded border transition-colors text-left capitalize
+                              ${draftSort?.type === 'column' && draftSort.key === key && draftSort.dir === dir
+                                ? 'border-primary bg-primary/10 text-primary font-medium'
+                                : 'border-border hover:bg-muted'
+                              }`}
+                          >
+                            {key} {dir === 'asc' ? '↑ A→Z' : '↓ Z→A'}
+                          </button>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {savedRowOrders.length > 0 && (
+                  <div>
+                    <p className="text-sm font-medium mb-2">Sort by Saved Row Order</p>
+                    <div className="space-y-1">
+                      {savedRowOrders.map((s) => (
+                        <button
+                          key={s.id}
+                          onClick={() => setDraftSort({ type: 'saved', id: s.id })}
+                          className={`w-full py-2 px-3 text-sm rounded border transition-colors text-left
+                            ${draftSort?.type === 'saved' && draftSort.id === s.id
+                              ? 'border-primary bg-primary/10 text-primary font-medium'
+                              : 'border-border hover:bg-muted'
+                            }`}
+                        >
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {draftSort && (
+                  <button
+                    onClick={() => setDraftSort(null)}
+                    className="text-sm text-muted-foreground hover:text-destructive flex items-center gap-1"
+                  >
+                    <X className="size-3.5" /> Clear sorting
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ── Footer Buttons ── */}
+          <div className="border-t border-border pt-4 px-4 pb-2">
+            {settingsMenu === 'column' && (
+              <div className="flex items-center gap-2">
+                {columnsHasSaved && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setDraftColumns(savedColumns!)
+                    }}
+                    className="gap-1.5 text-muted-foreground"
+                  >
+                    <RotateCcw className="size-3.5" /> Reset
+                  </Button>
+                )}
+                <div className="flex-1" />
+                <Button variant="outline" size="sm" onClick={() => setDraftColumns([...columns])}>
+                  Cancel
+                </Button>
+                {columnsDirty && (
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setColumns([...draftColumns])
+                      setSavedColumns([...draftColumns])
+                    }}
+                  >
+                    <Save className="size-3.5 mr-1.5" /> Save
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {settingsMenu === 'row' && (
+              <div className="flex items-center gap-2">
+                {savedRowOrderOnce && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setDraftRowOrder(buildRowEntries(deliveryPoints))
+                      setRowOrderError('')
+                    }}
+                    className="gap-1.5 text-muted-foreground"
+                  >
+                    <RotateCcw className="size-3.5" /> Reset
+                  </Button>
+                )}
+                <div className="flex-1" />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDraftRowOrder(buildRowEntries(deliveryPoints))}
+                >
+                  Cancel
+                </Button>
+                {rowOrderDirty && (
+                  <Button variant="secondary" size="sm" onClick={applyRowPositions}>
+                    <Check className="size-3.5 mr-1.5" /> Apply
+                  </Button>
+                )}
+                <Button size="sm" onClick={saveRowOrder}>
+                  <Save className="size-3.5 mr-1.5" /> Save Order
+                </Button>
+              </div>
+            )}
+
+            {settingsMenu === 'sorting' && (
+              <div className="flex items-center gap-2">
+                <div className="flex-1" />
+                <Button variant="outline" size="sm" onClick={() => setDraftSort(activeSortConfig)}>
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setActiveSortConfig(draftSort)
+                    setSettingsOpen(false)
+                  }}
+                >
+                  <Check className="size-3.5 mr-1.5" /> Apply
+                </Button>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Floating Save Button */}
       {hasUnsavedChanges && isEditMode && (
