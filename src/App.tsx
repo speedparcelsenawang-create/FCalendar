@@ -133,10 +133,10 @@ function AppContent() {
       )}
       
       <main className={`relative flex w-full flex-1 flex-col bg-background transition-all duration-500 ease-in-out ${(isMobile && openMobile) || (!isMobile && open) ? 'scale-95 opacity-90' : 'scale-100 opacity-100'}`}>
-        <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b bg-background px-4 shadow-sm transition-all duration-500">
-          <SidebarTrigger className="-ml-1" disabled={isEditMode} />
-          <Separator orientation="vertical" className="mr-2 h-4" />
-          <Breadcrumb>
+        <header className="sticky top-0 z-30 flex h-14 md:h-16 shrink-0 items-center gap-2 border-b border-border/60 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 px-3 md:px-4 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-all duration-500">
+          <SidebarTrigger className="-ml-1 shrink-0" disabled={isEditMode} />
+          <Separator orientation="vertical" className="mr-1 md:mr-2 h-4 shrink-0" />
+          <Breadcrumb className="min-w-0 flex-1">
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
                 <BreadcrumbLink href="#" onClick={() => handlePageChange("dashboard")}>
@@ -144,38 +144,38 @@ function AppContent() {
                 </BreadcrumbLink>
               </BreadcrumbItem>
               <BreadcrumbSeparator className="hidden md:block" />
-              <BreadcrumbItem>
-                <BreadcrumbPage>{getPageTitle()}</BreadcrumbPage>
+              <BreadcrumbItem className="min-w-0">
+                <BreadcrumbPage className="truncate max-w-[160px] md:max-w-none">{getPageTitle()}</BreadcrumbPage>
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex items-center gap-1.5 md:gap-2 shrink-0">
             {hasUnsavedChanges && isEditMode && (
               <Button 
                 onClick={handleSaveChanges}
                 size="sm"
                 disabled={isSaving}
-                className="bg-green-600 hover:bg-green-700"
+                className="bg-green-600 hover:bg-green-700 h-8 px-2.5 md:px-3"
               >
-                <Save className="size-4 mr-2" />
-                {isSaving ? 'Saving...' : 'Save'}
+                <Save className="size-4" />
+                <span className="hidden sm:inline ml-1.5">{isSaving ? 'Saving...' : 'Save'}</span>
               </Button>
             )}
             <Button 
               onClick={handleToggleEditMode}
               variant={isEditMode ? "default" : "outline"}
               size="sm"
-              className={isEditMode ? "bg-blue-600 hover:bg-blue-700" : ""}
+              className={`h-8 px-2.5 md:px-3 ${isEditMode ? "bg-blue-600 hover:bg-blue-700" : ""}`}
             >
               {isEditMode ? (
                 <>
-                  <X className="size-4 mr-2" />
-                  Exit Edit Mode
+                  <X className="size-4" />
+                  <span className="hidden sm:inline ml-1.5">Exit</span>
                 </>
               ) : (
                 <>
-                  <Edit3 className="size-4 mr-2" />
-                  Edit Mode
+                  <Edit3 className="size-4" />
+                  <span className="hidden sm:inline ml-1.5">Edit</span>
                 </>
               )}
             </Button>
