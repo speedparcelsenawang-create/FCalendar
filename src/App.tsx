@@ -71,8 +71,14 @@ function AppContent() {
     switch (currentPage) {
       case "route-list":
         return <RouteList />
+      case "calendar-month":
+        return <Calendar view="month" />
+      case "calendar-week":
+        return <Calendar view="week" />
+      case "calendar-day":
+        return <Calendar view="day" />
       case "calendar":
-        return <Calendar />
+        return <Calendar view="month" />
       case "settings":
         return <Settings />
       case "plano-vm":
@@ -96,6 +102,12 @@ function AppContent() {
     switch (currentPage) {
       case "route-list":
         return "Route List"
+      case "calendar-month":
+        return "Calendar — Month View"
+      case "calendar-week":
+        return "Calendar — Week View"
+      case "calendar-day":
+        return "Calendar — Day View"
       case "calendar":
         return "Calendar"
       case "settings":

@@ -38,19 +38,22 @@ const data = {
       title: "Calendar",
       url: "#",
       icon: Calendar,
-      isActive: true,
+      isActive: false,
       items: [
         {
           title: "Month View",
           url: "#",
+          page: "calendar-month",
         },
         {
           title: "Week View",
           url: "#",
+          page: "calendar-week",
         },
         {
           title: "Day View",
           url: "#",
+          page: "calendar-day",
         },
       ],
     },
@@ -151,12 +154,14 @@ export function AppSidebar({
 }) {
   const handleNavClick = (itemTitle: string) => {
     if (onNavigate) {
-      if (itemTitle === "Calendar") {
-        onNavigate("calendar")
-      } else if (itemTitle === "Settings") {
+      if (itemTitle === "Settings") {
         onNavigate("settings")
       }
     }
+  }
+
+  const handleSubItemClick = (page: string) => {
+    onNavigate?.(page)
   }
 
   const handleProjectClick = (projectName: string) => {
@@ -193,7 +198,7 @@ export function AppSidebar({
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} onItemClick={handleNavClick} />
+        <NavMain items={data.navMain} onItemClick={handleNavClick} onSubItemClick={handleSubItemClick} />
         <NavProjects projects={data.projects} onProjectClick={handleProjectClick} />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>

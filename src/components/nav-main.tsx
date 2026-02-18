@@ -20,6 +20,7 @@ import {
 export function NavMain({
   items,
   onItemClick,
+  onSubItemClick,
 }: {
   items: {
     title: string
@@ -29,9 +30,11 @@ export function NavMain({
     items?: {
       title: string
       url: string
+      page?: string
     }[]
   }[]
   onItemClick?: (title: string) => void
+  onSubItemClick?: (page: string) => void
 }) {
   return (
     <SidebarGroup>
@@ -65,7 +68,13 @@ export function NavMain({
                       {item.items?.map((subItem) => (
                         <SidebarMenuSubItem key={subItem.title}>
                           <SidebarMenuSubButton asChild>
-                            <a href={subItem.url}>
+                            <a
+                              href={subItem.url}
+                              onClick={(e) => {
+                                e.preventDefault()
+                                if (subItem.page) onSubItemClick?.(subItem.page)
+                              }}
+                            >
                               <span>{subItem.title}</span>
                             </a>
                           </SidebarMenuSubButton>
