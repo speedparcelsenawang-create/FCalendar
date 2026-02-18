@@ -25,7 +25,7 @@ interface DeliveryPoint {
   delivery: "Daily" | "Weekday" | "Alt 1" | "Alt 2"
   latitude: number
   longitude: number
-  description: string
+  descriptions: { key: string; value: string }[]
 }
 
 interface Route {
@@ -49,7 +49,10 @@ const DEFAULT_ROUTES: Route[] = [
         delivery: "Daily",
         latitude: 3.0333,
         longitude: 101.4500,
-        description: "KPJ Klang Specialist Hospital - Main delivery point for medical supplies"
+        descriptions: [
+          { key: "Bank", value: "CIMB" },
+          { key: "Fuel", value: "Petrol" }
+        ]
       },
       {
         code: "45",
@@ -57,7 +60,7 @@ const DEFAULT_ROUTES: Route[] = [
         delivery: "Weekday",
         latitude: 3.0738,
         longitude: 101.6057,
-        description: "Sunway Medical Centre - Weekday delivery schedule"
+        descriptions: []
       },
       {
         code: "78",
@@ -65,7 +68,9 @@ const DEFAULT_ROUTES: Route[] = [
         delivery: "Alt 1",
         latitude: 3.1493,
         longitude: 101.7055,
-        description: "Gleneagles Kuala Lumpur - Alternative route 1"
+        descriptions: [
+          { key: "Contact", value: "03-42571300" }
+        ]
       },
     ]
   }
@@ -77,6 +82,8 @@ export function RouteList() {
   const [isLoading, setIsLoading] = useState(true)
   const [currentRouteId, setCurrentRouteId] = useState<string>("route-1")
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [infoModalOpen, setInfoModalOpen] = useState(false)
+  const [selectedPoint, setSelectedPoint] = useState<DeliveryPoint | null>(null)
   const [addRouteDialogOpen, setAddRouteDialogOpen] = useState(false)
   const [editRouteDialogOpen, setEditRouteDialogOpen] = useState(false)
   const [deleteRouteConfirmOpen, setDeleteRouteConfirmOpen] = useState(false)
@@ -141,7 +148,7 @@ export function RouteList() {
     delivery: "Daily" as "Daily" | "Weekday" | "Alt 1" | "Alt 2",
     latitude: 0,
     longitude: 0,
-    description: ""
+    descriptions: [] as { key: string; value: string }[]
   })
   const [codeError, setCodeError] = useState<string>("")
   const [actionModalOpen, setActionModalOpen] = useState(false)
@@ -344,7 +351,7 @@ export function RouteList() {
         delivery: "Daily",
         latitude: 0,
         longitude: 0,
-        description: ""
+        descriptions: []
       })
       setCodeError("")
       setAddPointDialogOpen(false)
@@ -714,23 +721,12 @@ export function RouteList() {
                                   )
                                   if (col.key === 'action') return (
                                     <td key="action" className="p-3 text-center">
-                                      <RowInfoModal
-                                        point={point}
-                                        rowIndex={index + 1}
-                                        isEditMode={isEditMode}
-                                        trigger={
-                                          <button className="p-1.5 rounded-md hover:bg-accent transition-colors">
-                                            <Info className="size-4" />
-                                          </button>
-                                        }
-                                        onSave={(updated) => {
-                                          setDeliveryPoints(prev => prev.map(p => p.code === point.code ? updated : p))
-                                          setHasUnsavedChanges(true)
-                                        }}
-                                        onDelete={(p) => {
-                                          setDeliveryPoints(prev => prev.filter(dp => dp.code !== p.code))
-                                        }}
-                                      />
+                                      <button
+                                        className="p-1.5 rounded-md hover:bg-accent transition-colors"
+                                        onClick={() => { setSelectedPoint(point); setInfoModalOpen(true) }}
+                                      >
+                                        <Info className="size-4" />
+                                      </button>
                                     </td>
                                   )
                                   return null
@@ -1017,15 +1013,6 @@ export function RouteList() {
                           />
                         </div>
                       </div>
-                      
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Description</label>
-                        <Input
-                          placeholder="Enter description"
-                          value={newPoint.description}
-                          onChange={(e) => setNewPoint({ ...newPoint, description: e.target.value })}
-                        />
-                      </div>
                     </div>
                     
                     <div className="flex justify-end gap-2">
@@ -1048,7 +1035,20 @@ export function RouteList() {
                   </DialogContent>
                 </Dialog>
                 
-                {/* Info Modal handled per-row via RowInfoModal */}
+                {/* Info Modal */}
+                {selectedPoint && (
+                  <RowInfoModal
+                    open={infoModalOpen}
+                    onOpenChange={setInfoModalOpen}
+                    point={selectedPoint}
+                    isEditMode={isEditMode}
+                    onSave={(updated) => {
+                      setDeliveryPoints(prev => prev.map(p => p.code === updated.code ? updated : p))
+                      setSelectedPoint(updated)
+                      setHasUnsavedChanges(true)
+                    }}
+                  />
+                )}
                 </div>
               </div>
               
