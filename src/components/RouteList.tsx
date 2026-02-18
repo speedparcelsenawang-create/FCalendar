@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { List, Maximize2, LocateFixed, Info, ExternalLink, Plus, Check, X, Edit2, Trash2, Search, Settings, Map, MapPin, Save, ArrowUp, ArrowDown, RotateCcw } from "lucide-react"
 import { useEditMode } from "@/contexts/EditModeContext"
 import {
@@ -35,42 +35,45 @@ interface Route {
   deliveryPoints: DeliveryPoint[]
 }
 
+const DEFAULT_ROUTES: Route[] = [
+  {
+    id: "route-1",
+    name: "Route KL 7",
+    code: "3PVK04",
+    shift: "PM",
+    deliveryPoints: [
+      {
+        code: "32",
+        name: "KPJ Klang",
+        delivery: "Daily",
+        latitude: 3.0333,
+        longitude: 101.4500,
+        description: "KPJ Klang Specialist Hospital - Main delivery point for medical supplies"
+      },
+      {
+        code: "45",
+        name: "Sunway Medical Centre",
+        delivery: "Weekday",
+        latitude: 3.0738,
+        longitude: 101.6057,
+        description: "Sunway Medical Centre - Weekday delivery schedule"
+      },
+      {
+        code: "78",
+        name: "Gleneagles KL",
+        delivery: "Alt 1",
+        latitude: 3.1493,
+        longitude: 101.7055,
+        description: "Gleneagles Kuala Lumpur - Alternative route 1"
+      },
+    ]
+  }
+]
+
 export function RouteList() {
   const { isEditMode, hasUnsavedChanges, setHasUnsavedChanges } = useEditMode()
-  const [routes, setRoutes] = useState<Route[]>([
-    {
-      id: "route-1",
-      name: "Route KL 7",
-      code: "3PVK04",
-      shift: "PM",
-      deliveryPoints: [
-        {
-          code: "32",
-          name: "KPJ Klang",
-          delivery: "Daily",
-          latitude: 3.0333,
-          longitude: 101.4500,
-          description: "KPJ Klang Specialist Hospital - Main delivery point for medical supplies"
-        },
-        {
-          code: "45",
-          name: "Sunway Medical Centre",
-          delivery: "Weekday",
-          latitude: 3.0738,
-          longitude: 101.6057,
-          description: "Sunway Medical Centre - Weekday delivery schedule"
-        },
-        {
-          code: "78",
-          name: "Gleneagles KL",
-          delivery: "Alt 1",
-          latitude: 3.1493,
-          longitude: 101.7055,
-          description: "Gleneagles Kuala Lumpur - Alternative route 1"
-        },
-      ]
-    }
-  ])
+  const [routes, setRoutes] = useState<Route[]>(DEFAULT_ROUTES)
+  const [isLoading, setIsLoading] = useState(true)
   const [currentRouteId, setCurrentRouteId] = useState<string>("route-1")
   const [dialogOpen, setDialogOpen] = useState(false)
   const [infoModalOpen, setInfoModalOpen] = useState(false)
@@ -85,6 +88,21 @@ export function RouteList() {
   const [newRoute, setNewRoute] = useState({ name: "", code: "", shift: "AM" })
   const [searchQuery, setSearchQuery] = useState("")
   const [showMaps, setShowMaps] = useState(false)
+
+  // Fetch routes from database on mount
+  useEffect(() => {
+    fetch('/api/routes')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.data.length > 0) {
+          setRoutes(data.data)
+          setCurrentRouteId(data.data[0].id)
+        }
+      })
+      .catch(() => { /* fallback to default routes */ })
+      .finally(() => setIsLoading(false))
+  }, [])
+
   const currentRoute = routes.find(r => r.id === currentRouteId)
   const deliveryPoints = currentRoute?.deliveryPoints || []
   const setDeliveryPoints = (updater: (prev: DeliveryPoint[]) => DeliveryPoint[]) => {
@@ -450,10 +468,20 @@ export function RouteList() {
   }
 
   const handleSaveChanges = () => {
-    // Save changes to persistent storage (e.g., localStorage, API)
-    console.log('Saving changes...', routes)
-    // For now, just clear the unsaved flag
-    setHasUnsavedChanges(false)
+    fetch('/api/routes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ routes }),
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setHasUnsavedChanges(false)
+        } else {
+          alert('Gagal simpan: ' + data.error)
+        }
+      })
+      .catch(() => alert('Gagal sambung ke server'))
   }
 
   const handleDeleteRoute = () => {
@@ -476,6 +504,14 @@ export function RouteList() {
         setCurrentRouteId(remainingRoutes[0].id)
       }
     }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center mt-20 text-muted-foreground text-sm">
+        Memuatkan routes...
+      </div>
+    )
   }
 
   return (
