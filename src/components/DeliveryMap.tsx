@@ -17,7 +17,7 @@ interface DeliveryPoint {
   delivery: "Daily" | "Weekday" | "Alt 1" | "Alt 2"
   latitude: number
   longitude: number
-  description: string
+  descriptions: { key: string; value: string }[]
 }
 
 interface DeliveryMapProps {
