@@ -1582,11 +1582,12 @@ export function RouteList() {
                       <Input
                         value={row.position}
                         onChange={(e) => handleRowPositionChange(row.code, e.target.value)}
+                        onFocus={(e) => e.target.select()}
                         className="w-16 text-center text-sm"
                         inputMode="numeric"
                       />
-                      <span className="w-16 text-sm font-mono font-medium">{row.code}</span>
-                      <span className="flex-1 text-sm">{row.name}</span>
+                      <span className="w-16 text-sm font-mono font-medium text-center">{row.code}</span>
+                      <span className="flex-1 text-sm text-center">{row.name}</span>
                       <span className={`text-xs px-2 py-0.5 rounded font-medium
                         ${row.delivery === 'Daily' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : ''}
                         ${row.delivery === 'Weekday' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : ''}
