@@ -1,4 +1,4 @@
-const CACHE_NAME = 'fcalendar-v1';
+const CACHE_NAME = 'fcalendar-v2';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -39,8 +39,17 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch event - serve from cache, fallback to network
+// Fetch event
 self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+
+  // API calls: NEVER cache, always go straight to network
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  // Static assets: cache first, fallback to network
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
@@ -53,14 +62,12 @@ self.addEventListener('fetch', (event) => {
         const fetchRequest = event.request.clone();
 
         return fetch(fetchRequest).then((response) => {
-          // Check if valid response
+          // Only cache valid same-origin responses
           if (!response || response.status !== 200 || response.type !== 'basic') {
             return response;
           }
 
-          // Clone the response
           const responseToCache = response.clone();
-
           caches.open(CACHE_NAME)
             .then((cache) => {
               cache.put(event.request, responseToCache);
@@ -68,7 +75,6 @@ self.addEventListener('fetch', (event) => {
 
           return response;
         }).catch(() => {
-          // Return offline page if available
           return caches.match('/index.html');
         });
       })
