@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react"
-import { List, Maximize2, LocateFixed, Info, ExternalLink, Plus, Check, X, Edit2, Trash2, Search, Settings, Map, MapPin, Save, ArrowUp, ArrowDown, RotateCcw } from "lucide-react"
+import { List, Maximize2, LocateFixed, Info, Plus, Check, X, Edit2, Trash2, Search, Settings, Map, MapPin, Save, ArrowUp, ArrowDown, RotateCcw } from "lucide-react"
 import { RowInfoModal } from "./RowInfoModal"
 import { useEditMode } from "@/contexts/EditModeContext"
 import {
@@ -77,15 +77,11 @@ export function RouteList() {
   const [isLoading, setIsLoading] = useState(true)
   const [currentRouteId, setCurrentRouteId] = useState<string>("route-1")
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [infoModalOpen, setInfoModalOpen] = useState(false)
   const [addRouteDialogOpen, setAddRouteDialogOpen] = useState(false)
   const [editRouteDialogOpen, setEditRouteDialogOpen] = useState(false)
   const [deleteRouteConfirmOpen, setDeleteRouteConfirmOpen] = useState(false)
   const [editingRoute, setEditingRoute] = useState<Route | null>(null)
   const [routeToDelete, setRouteToDelete] = useState<Route | null>(null)
-  const [selectedPoint, setSelectedPoint] = useState<DeliveryPoint | null>(null)
-  const [isEditingInfo, setIsEditingInfo] = useState(false)
-  const [editedInfoPoint, setEditedInfoPoint] = useState<DeliveryPoint | null>(null)
   const [newRoute, setNewRoute] = useState({ name: "", code: "", shift: "AM" })
   const [searchQuery, setSearchQuery] = useState("")
   const [showMaps, setShowMaps] = useState(false)
@@ -402,57 +398,6 @@ export function RouteList() {
       setPendingSelectedRows([])
       setSelectedRows([])
       setSelectedTargetRoute("")
-    }
-  }
-
-  const openGoogleMaps = (lat: number, lng: number) => {
-    window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank')
-  }
-
-  const openWaze = (lat: number, lng: number) => {
-    window.open(`https://www.waze.com/ul?ll=${lat},${lng}&navigate=yes`, '_blank')
-  }
-
-  const handleEditInfo = () => {
-    setEditedInfoPoint(selectedPoint)
-    setIsEditingInfo(true)
-  }
-
-  const handleSaveInfo = () => {
-    if (!editedInfoPoint || !selectedPoint) return
-    
-    // Check for duplicate code if code was changed
-    if (editedInfoPoint.code !== selectedPoint.code) {
-      const isDuplicate = deliveryPoints.some(
-        (p) => p.code === editedInfoPoint.code && p.code !== selectedPoint.code
-      )
-      if (isDuplicate) {
-        alert("Code already exists!")
-        return
-      }
-    }
-
-    setDeliveryPoints((prev) =>
-      prev.map((p) =>
-        p.code === selectedPoint.code ? editedInfoPoint : p
-      )
-    )
-    setSelectedPoint(editedInfoPoint)
-    setIsEditingInfo(false)
-  }
-
-  const handleCancelInfo = () => {
-    setEditedInfoPoint(null)
-    setIsEditingInfo(false)
-  }
-
-  const handleDeleteInfo = () => {
-    if (!selectedPoint) return
-    
-    if (confirm(`Delete delivery point "${selectedPoint.name}"?\n\nThis action cannot be undone.`)) {
-      setDeliveryPoints((prev) => prev.filter((p) => p.code !== selectedPoint.code))
-      setInfoModalOpen(false)
-      setSelectedPoint(null)
     }
   }
 
