@@ -12,9 +12,27 @@ export default defineConfig({
     },
   },
   build: {
+    chunkSizeWarningLimit: 600,
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html'),
+      },
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-radix': [
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-dropdown-menu',
+            '@radix-ui/react-popover',
+            '@radix-ui/react-separator',
+            '@radix-ui/react-slot',
+            '@radix-ui/react-tooltip',
+            '@radix-ui/react-collapsible',
+          ],
+          'vendor-map': ['leaflet', 'react-leaflet'],
+          'vendor-gallery': ['lightgallery'],
+          'vendor-icons': ['lucide-react'],
+        },
       },
     },
   },

@@ -1,10 +1,11 @@
-import { useState } from "react"
+import { useState, lazy, Suspense } from "react"
 import { AppSidebar } from "@/components/app-sidebar"
-import { RouteList } from "@/components/RouteList"
-import { Calendar } from "@/components/Calendar"
-import { Settings } from "@/components/Settings"
-import { PlanoVM } from "@/components/PlanoVM"
 import { ThemeToggle } from "@/components/theme-toggle"
+
+const RouteList = lazy(() => import("@/components/RouteList").then(m => ({ default: m.RouteList })))
+const Calendar = lazy(() => import("@/components/Calendar").then(m => ({ default: m.Calendar })))
+const Settings = lazy(() => import("@/components/Settings").then(m => ({ default: m.Settings })))
+const PlanoVM = lazy(() => import("@/components/PlanoVM").then(m => ({ default: m.PlanoVM })))
 import { EditModeProvider, useEditMode } from "@/contexts/EditModeContext"
 import { Edit3, Save, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -168,9 +169,11 @@ function AppContent() {
             <ThemeToggle />
           </div>
         </header>
-        <div className={isTransitioning ? "page-fade-out" : "page-fade-in"}>
-          {renderContent()}
-        </div>
+        <Suspense fallback={<div className="flex flex-1 items-center justify-center p-8 text-muted-foreground">Loading…</div>}>
+          <div className={isTransitioning ? "page-fade-out" : "page-fade-in"}>
+            {renderContent()}
+          </div>
+        </Suspense>
       </main>
 
       {/* Exit Edit Mode Confirmation Dialog */}
