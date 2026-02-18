@@ -1,87 +1,83 @@
-const CACHE_NAME = 'fcalendar-v2';
-const urlsToCache = [
-  '/',
-  '/index.html',
+const CACHE_NAME = 'fcalendar-v3';
+
+// Only cache truly immutable assets (icons/manifest that don't change between deploys)
+const PRECACHE_URLS = [
   '/manifest.json',
   '/icon-192x192.png',
   '/icon-512x512.png'
 ];
 
-// Install event - cache resources
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then((cache) => {
-        console.log('Opened cache');
-        return cache.addAll(urlsToCache);
-      })
-      .catch((error) => {
-        console.log('Cache install failed:', error);
-      })
+      .then((cache) => cache.addAll(PRECACHE_URLS))
+      .catch(() => {})
   );
   self.skipWaiting();
 });
 
-// Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('Deleting old cache:', cacheName);
-            return caches.delete(cacheName);
-          }
+    caches.keys().then((cacheNames) =>
+      Promise.all(
+        cacheNames.map((name) => {
+          if (name !== CACHE_NAME) return caches.delete(name);
         })
-      );
-    })
+      )
+    )
   );
   self.clients.claim();
 });
 
-// Fetch event
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // API calls: NEVER cache, always go straight to network
+  // 1. API calls — always network, never cache
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(fetch(event.request));
     return;
   }
 
-  // Static assets: cache first, fallback to network
-  event.respondWith(
-    caches.match(event.request)
-      .then((response) => {
-        // Cache hit - return response
-        if (response) {
-          return response;
-        }
+  // 2. HTML navigation requests — network first so new deploys are always picked up
+  //    Falls back to cached /index.html only when fully offline
+  if (event.request.mode === 'navigate' || event.request.headers.get('accept')?.includes('text/html')) {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match('/index.html'))
+    );
+    return;
+  }
 
-        // Clone the request
-        const fetchRequest = event.request.clone();
-
-        return fetch(fetchRequest).then((response) => {
-          // Only cache valid same-origin responses
-          if (!response || response.status !== 200 || response.type !== 'basic') {
-            return response;
+  // 3. Hashed JS/CSS assets (/assets/...) — cache first (they are content-hashed, safe to cache)
+  if (url.pathname.startsWith('/assets/')) {
+    event.respondWith(
+      caches.match(event.request).then((cached) => {
+        if (cached) return cached;
+        return fetch(event.request).then((response) => {
+          if (response && response.status === 200 && response.type === 'basic') {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
           }
-
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME)
-            .then((cache) => {
-              cache.put(event.request, responseToCache);
-            });
-
           return response;
-        }).catch(() => {
-          return caches.match('/index.html');
         });
       })
+    );
+    return;
+  }
+
+  // 4. Everything else — network first, cache fallback
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        if (response && response.status === 200 && response.type === 'basic') {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+        }
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });
 
-// Handle messages from client
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
