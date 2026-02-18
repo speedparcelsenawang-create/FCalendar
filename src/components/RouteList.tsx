@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react"
 import { List, Maximize2, LocateFixed, Info, ExternalLink, Plus, Check, X, Edit2, Trash2, Search, Settings, Map, MapPin, Save, ArrowUp, ArrowDown, RotateCcw } from "lucide-react"
+import { RowInfoModal } from "./RowInfoModal"
 import { useEditMode } from "@/contexts/EditModeContext"
 import {
   Dialog,
@@ -768,11 +769,23 @@ export function RouteList() {
                                   )
                                   if (col.key === 'action') return (
                                     <td key="action" className="p-3 text-center">
-                                      {point.latitude !== 0 && point.longitude !== 0 && (
-                                        <Button variant="ghost" size="sm" onClick={() => { setSelectedPoint(point); setInfoModalOpen(true) }}>
-                                          <Info className="size-4" />
-                                        </Button>
-                                      )}
+                                      <RowInfoModal
+                                        point={point}
+                                        rowIndex={index + 1}
+                                        isEditMode={isEditMode}
+                                        trigger={
+                                          <button className="p-1.5 rounded-md hover:bg-accent transition-colors">
+                                            <Info className="size-4" />
+                                          </button>
+                                        }
+                                        onSave={(updated) => {
+                                          setDeliveryPoints(prev => prev.map(p => p.code === point.code ? updated : p))
+                                          setHasUnsavedChanges(true)
+                                        }}
+                                        onDelete={(p) => {
+                                          setDeliveryPoints(prev => prev.filter(dp => dp.code !== p.code))
+                                        }}
+                                      />
                                     </td>
                                   )
                                   return null
@@ -1090,175 +1103,7 @@ export function RouteList() {
                   </DialogContent>
                 </Dialog>
                 
-                {/* Info Modal */}
-                <Dialog open={infoModalOpen} onOpenChange={(open) => {
-                  setInfoModalOpen(open)
-                  if (!open) {
-                    setIsEditingInfo(false)
-                    setEditedInfoPoint(null)
-                  }
-                }}>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>
-                        {isEditingInfo ? "Edit Delivery Point" : selectedPoint?.name}
-                      </DialogTitle>
-                      <DialogDescription>
-                        {isEditingInfo ? "Update delivery point information" : "Delivery point details and navigation options"}
-                      </DialogDescription>
-                    </DialogHeader>
-                    
-                    {selectedPoint && (
-                      <div className="space-y-4">
-                        {isEditingInfo && editedInfoPoint ? (
-                          <>
-                            {/* Edit Mode */}
-                            <div className="space-y-3">
-                              <div>
-                                <label className="text-sm font-medium">Code *</label>
-                                <Input
-                                  value={editedInfoPoint.code}
-                                  onChange={(e) => setEditedInfoPoint({ ...editedInfoPoint, code: e.target.value })}
-                                  placeholder="Code"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-sm font-medium">Name</label>
-                                <Input
-                                  value={editedInfoPoint.name}
-                                  onChange={(e) => setEditedInfoPoint({ ...editedInfoPoint, name: e.target.value })}
-                                  placeholder="Name"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-sm font-medium">Delivery Type</label>
-                                <div className="flex flex-col gap-1 mt-1 border rounded-md">
-                                  {["Daily", "Weekday", "Alt 1", "Alt 2"].map((type) => (
-                                    <button
-                                      key={type}
-                                      onClick={() => setEditedInfoPoint({ ...editedInfoPoint, delivery: type as DeliveryPoint["delivery"] })}
-                                      className={`px-3 py-2 text-sm text-left hover:bg-accent ${
-                                        editedInfoPoint.delivery === type ? "bg-accent font-medium" : ""
-                                      }`}
-                                    >
-                                      {type}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                              <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                  <label className="text-sm font-medium">Latitude</label>
-                                  <Input
-                                    type="number"
-                                    step="0.000001"
-                                    value={editedInfoPoint.latitude}
-                                    onChange={(e) => setEditedInfoPoint({ ...editedInfoPoint, latitude: parseFloat(e.target.value) || 0 })}
-                                    placeholder="Latitude"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="text-sm font-medium">Longitude</label>
-                                  <Input
-                                    type="number"
-                                    step="0.000001"
-                                    value={editedInfoPoint.longitude}
-                                    onChange={(e) => setEditedInfoPoint({ ...editedInfoPoint, longitude: parseFloat(e.target.value) || 0 })}
-                                    placeholder="Longitude"
-                                  />
-                                </div>
-                              </div>
-                              <div>
-                                <label className="text-sm font-medium">Description</label>
-                                <Input
-                                  value={editedInfoPoint.description}
-                                  onChange={(e) => setEditedInfoPoint({ ...editedInfoPoint, description: e.target.value })}
-                                  placeholder="Description"
-                                />
-                              </div>
-                            </div>
-                            
-                            {/* Save/Cancel Buttons */}
-                            <div className="flex gap-2 pt-2">
-                              <Button onClick={handleSaveInfo} className="flex-1">
-                                <Check className="size-4 mr-2" />
-                                Save Changes
-                              </Button>
-                              <Button onClick={handleCancelInfo} variant="outline" className="flex-1">
-                                <X className="size-4 mr-2" />
-                                Cancel
-                              </Button>
-                            </div>
-                          </>
-                        ) : (
-                          <>
-                            {/* View Mode */}
-                            <dl className="space-y-3">
-                              <div>
-                                <dt className="font-bold text-sm">Description</dt>
-                                <dd className="ml-0 mb-2 text-sm text-muted-foreground">{selectedPoint.description || "No description"}</dd>
-                              </div>
-                              
-                              <div>
-                                <dt className="font-bold text-sm">Code</dt>
-                                <dd className="ml-0 mb-2 text-sm">{selectedPoint.code}</dd>
-                              </div>
-                              
-                              <div>
-                                <dt className="font-bold text-sm">Delivery Type</dt>
-                                <dd className="ml-0 mb-2 text-sm">{selectedPoint.delivery}</dd>
-                              </div>
-                              
-                              {isEditMode && (
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <dt className="font-bold text-sm">Latitude</dt>
-                                  <dd className="ml-0 mb-2 text-sm">{selectedPoint.latitude.toFixed(4)}</dd>
-                                </div>
-                                <div>
-                                  <dt className="font-bold text-sm">Longitude</dt>
-                                  <dd className="ml-0 mb-2 text-sm">{selectedPoint.longitude.toFixed(4)}</dd>
-                                </div>
-                              </div>
-                              )}
-                            </dl>
-                            
-                            {isEditMode && (
-                            <div className="flex gap-2 pt-2">
-                              <Button onClick={handleEditInfo} variant="outline" className="flex-1">
-                                <Edit2 className="size-4 mr-2" />
-                                Edit
-                              </Button>
-                              <Button onClick={handleDeleteInfo} variant="destructive" className="flex-1">
-                                <Trash2 className="size-4 mr-2" />
-                                Delete
-                              </Button>
-                            </div>
-                            )}
-                            
-                            <div className="flex gap-2">
-                              <Button
-                                onClick={() => openGoogleMaps(selectedPoint.latitude, selectedPoint.longitude)}
-                                className="flex-1"
-                              >
-                                <ExternalLink className="size-4 mr-2" />
-                                Google Maps
-                              </Button>
-                              <Button
-                                onClick={() => openWaze(selectedPoint.latitude, selectedPoint.longitude)}
-                                variant="outline"
-                                className="flex-1"
-                              >
-                                <ExternalLink className="size-4 mr-2" />
-                                Waze
-                              </Button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </DialogContent>
-                </Dialog>
+                {/* Info Modal handled per-row via RowInfoModal */}
                 </div>
               </div>
               
