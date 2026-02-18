@@ -89,19 +89,28 @@ export function RouteList() {
   const [searchQuery, setSearchQuery] = useState("")
   const [showMaps, setShowMaps] = useState(false)
 
+  // Fetch routes from database
+  const fetchRoutes = useCallback(async (preserveCurrentId?: string) => {
+    try {
+      const res = await fetch('/api/routes')
+      const data = await res.json()
+      if (data.success && data.data.length > 0) {
+        setRoutes(data.data)
+        // Keep current route if it still exists, else go to first
+        const stillExists = preserveCurrentId && data.data.some((r: Route) => r.id === preserveCurrentId)
+        setCurrentRouteId(stillExists ? preserveCurrentId! : data.data[0].id)
+      }
+    } catch {
+      /* fallback to default routes */
+    } finally {
+      setIsLoading(false)
+    }
+  }, [])
+
   // Fetch routes from database on mount
   useEffect(() => {
-    fetch('/api/routes')
-      .then(res => res.json())
-      .then(data => {
-        if (data.success && data.data.length > 0) {
-          setRoutes(data.data)
-          setCurrentRouteId(data.data[0].id)
-        }
-      })
-      .catch(() => { /* fallback to default routes */ })
-      .finally(() => setIsLoading(false))
-  }, [])
+    fetchRoutes()
+  }, [fetchRoutes])
 
   const currentRoute = routes.find(r => r.id === currentRouteId)
   const deliveryPoints = currentRoute?.deliveryPoints || []
@@ -475,7 +484,9 @@ export function RouteList() {
     })
     const data = await res.json()
     if (!data.success) throw new Error(data.error || 'Gagal simpan')
-  }, [routes])
+    // Re-fetch from server so UI mirrors exactly what was persisted
+    await fetchRoutes(currentRouteId)
+  }, [routes, fetchRoutes, currentRouteId])
 
   useEffect(() => {
     registerSaveHandler(doSave)
