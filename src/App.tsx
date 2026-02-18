@@ -31,6 +31,91 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 
+const DAYS = [
+  { en: "Monday",    my: "Isnin"  },
+  { en: "Tuesday",   my: "Selasa" },
+  { en: "Wednesday", my: "Rabu"   },
+  { en: "Thursday",  my: "Khamis" },
+  { en: "Friday",    my: "Jumaat" },
+  { en: "Saturday",  my: "Sabtu"  },
+  { en: "Sunday",    my: "Ahad"   },
+]
+
+const STOCK_IN_COLORS  = ["#3B82F6","#F97316","#92400E","#22C55E","#A855F7","#EC4899","#EAB308"]
+const MOVE_FRONT_COLORS = ["#EAB308","#3B82F6","#F97316","#92400E","#22C55E","#A855F7","#EC4899"]
+const EXPIRED_COLORS   = ["#EC4899","#EAB308","#3B82F6","#F97316","#92400E","#22C55E","#A855F7"]
+
+function ColorDot({ color }: { color: string }) {
+  return (
+    <span
+      className="inline-block w-4 h-4 rounded-full shrink-0 ring-1 ring-black/10 dark:ring-white/10"
+      style={{ backgroundColor: color }}
+    />
+  )
+}
+
+function HomePage() {
+  return (
+    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6 max-w-2xl mx-auto w-full">
+      {/* Welcome */}
+      <div>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-white">Welcome to FCalendar</h1>
+        <p className="text-sm text-muted-foreground mt-1">Daily colour guide for stock operations.</p>
+      </div>
+
+      {/* Color Guide Table */}
+      <div className="rounded-2xl border border-border overflow-hidden shadow-sm">
+        {/* Table header */}
+        <div className="grid grid-cols-4 bg-muted/60 text-xs font-semibold uppercase tracking-wide text-muted-foreground px-4 py-3 gap-2">
+          <span>Day</span>
+          <span className="text-center">✅ Stock In</span>
+          <span className="text-center">🔄 Move Front</span>
+          <span className="text-center">🚫 Expired</span>
+        </div>
+        {/* Rows */}
+        {DAYS.map((day, i) => (
+          <div
+            key={day.en}
+            className="grid grid-cols-4 items-center px-4 py-3 gap-2 border-t border-border/60 hover:bg-muted/30 transition-colors"
+          >
+            <div>
+              <p className="text-sm font-semibold text-foreground">{day.my}</p>
+              <p className="text-xs text-muted-foreground">{day.en}</p>
+            </div>
+            <div className="flex justify-center">
+              <ColorDot color={STOCK_IN_COLORS[i]} />
+            </div>
+            <div className="flex justify-center">
+              <ColorDot color={MOVE_FRONT_COLORS[i]} />
+            </div>
+            <div className="flex justify-center">
+              <ColorDot color={EXPIRED_COLORS[i]} />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Legend */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {[
+          { color: "#3B82F6", label: "Blue / Biru" },
+          { color: "#F97316", label: "Orange" },
+          { color: "#92400E", label: "Brown / Coklat" },
+          { color: "#22C55E", label: "Green / Hijau" },
+          { color: "#A855F7", label: "Purple / Ungu" },
+          { color: "#EC4899", label: "Pink" },
+          { color: "#EAB308", label: "Yellow / Kuning" },
+        ].map(({ color, label }) => (
+          <div key={label} className="flex items-center gap-2 text-sm text-muted-foreground">
+            <ColorDot color={color} />
+            <span>{label}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function AppContent() {
   const [currentPage, setCurrentPage] = useState("dashboard")
   const [isTransitioning, setIsTransitioning] = useState(false)
@@ -85,16 +170,7 @@ function AppContent() {
         return <PlanoVM />
       case "dashboard":
       default:
-        return (
-          <div className="flex flex-1 flex-col gap-4 p-4">
-            <div className="grid auto-rows-min gap-4 md:grid-cols-3">
-              <div className="aspect-video rounded-xl bg-muted/50" />
-              <div className="aspect-video rounded-xl bg-muted/50" />
-              <div className="aspect-video rounded-xl bg-muted/50" />
-            </div>
-            <div className="min-h-[100vh] flex-1 rounded-xl bg-muted/50 md:min-h-min" />
-          </div>
-        )
+        return <HomePage />
     }
   }
 
@@ -116,7 +192,7 @@ function AppContent() {
         return "Plano VM"
       case "dashboard":
       default:
-        return "Dashboard"
+        return "Home"
     }
   }
 
@@ -133,7 +209,7 @@ function AppContent() {
       )}
       
       <main className={`relative flex w-full flex-1 flex-col bg-background transition-all duration-500 ease-in-out ${(isMobile && openMobile) || (!isMobile && open) ? 'scale-95 opacity-90' : 'scale-100 opacity-100'}`}>
-        <header className="sticky top-0 z-30 flex shrink-0 items-center gap-2 border-b border-border/60 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 px-3 md:px-4 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-all duration-500" style={{ paddingTop: 'env(safe-area-inset-top)', minHeight: 'calc(3.5rem + env(safe-area-inset-top))' }}>
+        <header className="sticky top-0 z-30 flex shrink-0 items-center gap-2 border-b border-border/60 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 px-3 md:px-4 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-all duration-500" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.5rem)', paddingBottom: '0.25rem', minHeight: 'calc(3.5rem + env(safe-area-inset-top) + 0.5rem)' }}>
           <SidebarTrigger className="-ml-1 shrink-0" disabled={isEditMode} />
           <Separator orientation="vertical" className="mr-1 md:mr-2 h-4 shrink-0" />
           <Breadcrumb className="min-w-0 flex-1">
@@ -264,7 +340,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
 export function App() {
   return (
     <ErrorBoundary>
-      <SidebarProvider>
+      <SidebarProvider defaultOpen={false}>
         <EditModeProvider>
           <AppContent />
         </EditModeProvider>
