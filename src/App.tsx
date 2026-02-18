@@ -32,9 +32,20 @@ import {
 
 function AppContent() {
   const [currentPage, setCurrentPage] = useState("dashboard")
+  const [isTransitioning, setIsTransitioning] = useState(false)
   const { open, openMobile, isMobile, toggleSidebar } = useSidebar()
   const { isEditMode, hasUnsavedChanges, setIsEditMode, setHasUnsavedChanges, saveChanges } = useEditMode()
   const [showExitDialog, setShowExitDialog] = useState(false)
+
+  const handlePageChange = (page: string) => {
+    if (page === currentPage) return
+    
+    setIsTransitioning(true)
+    setTimeout(() => {
+      setCurrentPage(page)
+      setIsTransitioning(false)
+    }, 300) // Match animation duration
+  }
 
   const handleToggleEditMode = () => {
     if (isEditMode && hasUnsavedChanges) {
@@ -98,7 +109,7 @@ function AppContent() {
 
   return (
     <>
-      <AppSidebar onNavigate={setCurrentPage} />
+      <AppSidebar onNavigate={handlePageChange} />
       
       {/* Backdrop for desktop sidebar */}
       {!isMobile && open && (
@@ -115,7 +126,7 @@ function AppContent() {
           <Breadcrumb>
             <BreadcrumbList>
               <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="#" onClick={() => setCurrentPage("dashboard")}>
+                <BreadcrumbLink href="#" onClick={() => handlePageChange("dashboard")}>
                   FCalendar
                 </BreadcrumbLink>
               </BreadcrumbItem>
@@ -157,7 +168,9 @@ function AppContent() {
             <ThemeToggle />
           </div>
         </header>
-        {renderContent()}
+        <div className={isTransitioning ? "page-fade-out" : "page-fade-in"}>
+          {renderContent()}
+        </div>
       </main>
 
       {/* Exit Edit Mode Confirmation Dialog */}

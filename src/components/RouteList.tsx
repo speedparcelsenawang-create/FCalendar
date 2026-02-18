@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react"
-import { List, Maximize2, LocateFixed, Info, ExternalLink, Plus, Check, X, Edit2, Trash2, Search, Settings, Map, MapPin } from "lucide-react"
+import { List, Maximize2, LocateFixed, Info, ExternalLink, Plus, Check, X, Edit2, Trash2, Search, Settings, Map, MapPin, Save } from "lucide-react"
+import { useEditMode } from "@/contexts/EditModeContext"
 import {
   Dialog,
   DialogContent,
@@ -35,6 +36,7 @@ interface Route {
 }
 
 export function RouteList() {
+  const { isEditMode, hasUnsavedChanges, setHasUnsavedChanges } = useEditMode()
   const [routes, setRoutes] = useState<Route[]>([
     {
       id: "route-1",
@@ -70,12 +72,6 @@ export function RouteList() {
     }
   ])
   const [currentRouteId, setCurrentRouteId] = useState<string>("route-1")
-  const [] = useState({
-    countries: false,
-    categories: false,
-    rating: false,
-  })
-  const [] = useState({ min: 10, max: 0 })
   const [dialogOpen, setDialogOpen] = useState(false)
   const [infoModalOpen, setInfoModalOpen] = useState(false)
   const [addRouteDialogOpen, setAddRouteDialogOpen] = useState(false)
@@ -92,6 +88,7 @@ export function RouteList() {
   const currentRoute = routes.find(r => r.id === currentRouteId)
   const deliveryPoints = currentRoute?.deliveryPoints || []
   const setDeliveryPoints = (updater: (prev: DeliveryPoint[]) => DeliveryPoint[]) => {
+    setHasUnsavedChanges(true)
     setRoutes(prev => prev.map(route => 
       route.id === currentRouteId 
         ? { ...route, deliveryPoints: updater(route.deliveryPoints) }
@@ -256,6 +253,7 @@ export function RouteList() {
       // Get the points to move
       const pointsToMove = deliveryPoints.filter(point => pendingSelectedRows.includes(point.code))
       
+      setHasUnsavedChanges(true)
       // Move points to target route
       setRoutes(prev => prev.map(route => {
         if (route.id === selectedTargetRoute) {
@@ -339,11 +337,19 @@ export function RouteList() {
       return
     }
 
+    setHasUnsavedChanges(true)
     setRoutes(prev => prev.map(r => 
       r.id === editingRoute.id ? editingRoute : r
     ))
     setEditRouteDialogOpen(false)
     setEditingRoute(null)
+  }
+
+  const handleSaveChanges = () => {
+    // Save changes to persistent storage (e.g., localStorage, API)
+    console.log('Saving changes...', routes)
+    // For now, just clear the unsaved flag
+    setHasUnsavedChanges(false)
   }
 
   const handleDeleteRoute = () => {
@@ -354,6 +360,7 @@ export function RouteList() {
       return
     }
 
+    setHasUnsavedChanges(true)
     setRoutes(prev => prev.filter(r => r.id !== routeToDelete.id))
     setDeleteRouteConfirmOpen(false)
     setRouteToDelete(null)
@@ -403,80 +410,65 @@ export function RouteList() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredRoutes.map((route) => (
           <div key={route.id} className="w-full">
             {/* Card */}
             <div 
-              className="bg-card rounded-lg border border-border shadow-sm hover:shadow-xl hover:border-primary/60 transition-all duration-300 overflow-hidden h-[380px] relative group"
+              className="bg-card rounded-xl border border-border shadow-md hover:shadow-xl hover:border-primary/50 transition-all duration-300 overflow-hidden h-[400px] flex flex-col group"
             >
-              {/* Map Section */}
-              {showMaps ? (
-                <div className="absolute inset-0">
-                  <DeliveryMap deliveryPoints={route.deliveryPoints} />
-                </div>
-              ) : (
-                <div className="absolute inset-0 bg-gradient-to-br from-muted/40 via-muted/30 to-background/40 flex items-center justify-center">
-                  <MapPin className="size-16 text-muted-foreground/20" />
-                </div>
-              )}
-              
-              {/* Map Controls */}
-              <div className="absolute top-2 right-2 flex flex-col gap-2 z-[1000]">
-                <button className="p-2 bg-background/95 backdrop-blur-md border border-border rounded-lg hover:bg-primary/10 hover:border-primary/50 transition-all shadow-lg group-control">
-                  <Maximize2 className="size-4 text-foreground group-control-hover:text-primary" />
-                </button>
-                <button className="p-2 bg-background/95 backdrop-blur-md border border-border rounded-lg hover:bg-primary/10 hover:border-primary/50 transition-all shadow-lg group-control">
-                  <LocateFixed className="size-4 text-foreground group-control-hover:text-primary" />
-                </button>
-              </div>
-              
-              {/* Bottom Info - Overlay on Map */}
-              <div className="absolute bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-md border-t border-border flex items-center justify-between gap-4 z-[1000]">
-                <div className="text-left">
-                  <h3 className="text-base font-semibold leading-tight">{route.name}</h3>
-                  <p className="text-xs text-muted-foreground">{route.code} - {route.shift}</p>
-                </div>
-                <div className="flex gap-2">
-                  <button 
-                    className="p-2 bg-primary/10 border border-primary/20 text-primary rounded-lg hover:bg-primary hover:text-primary-foreground transition-all shadow-md"
-                    onClick={() => handleEditRoute(route)}
-                  >
-                    <Settings className="size-4" />
-                  </button>
-                  <Dialog open={dialogOpen && currentRouteId === route.id} onOpenChange={(open) => {
-                    setDialogOpen(open)
-                    if (open) setCurrentRouteId(route.id)
-                  }}>
-                    <DialogTrigger asChild>
-                      <button 
-                        className="p-2 bg-primary/10 border border-primary/20 text-primary rounded-lg hover:bg-primary hover:text-primary-foreground transition-all shadow-md"
-                        onClick={() => setCurrentRouteId(route.id)}
-                      >
-                        <List className="size-4" />
-                      </button>
-                    </DialogTrigger>
-                  <DialogContent className="max-w-6xl max-h-[80vh] overflow-hidden flex flex-col">
-                    <DialogHeader>
-                      <DialogTitle>Delivery Points - {route.name}</DialogTitle>
-                      <DialogDescription>
-                        Manage delivery locations and schedules
-                      </DialogDescription>
-                    </DialogHeader>
-                    
-                    <div className="flex-1 overflow-auto">
-                      <table className="w-full border-collapse">
-                        <thead className="bg-muted/50 sticky top-0">
-                          <tr>
-                            <th className="p-3 text-center font-semibold text-sm w-12">
-                              <input
-                                type="checkbox"
-                                checked={selectedRows.length === deliveryPoints.length && deliveryPoints.length > 0}
-                                onChange={toggleSelectAll}
-                                className="w-4 h-4 rounded border-border cursor-pointer"
-                              />
-                            </th>
-                            <th className="p-3 text-center font-semibold text-sm">No</th>
+              {/* Header Section - Point Count & Buttons */}
+              <div className="p-4 border-b border-border bg-card">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    <MapPin className="size-4" />
+                    <span>{route.deliveryPoints.length} location{route.deliveryPoints.length !== 1 ? 's' : ''}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button 
+                      className="p-1 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      onClick={() => handleEditRoute(route)}
+                      title="Edit Route"
+                      disabled={!isEditMode}
+                    >
+                      <Settings className="size-5" />
+                    </button>
+                    <Dialog open={dialogOpen && currentRouteId === route.id} onOpenChange={(open) => {
+                      setDialogOpen(open)
+                      if (open) setCurrentRouteId(route.id)
+                    }}>
+                      <DialogTrigger asChild>
+                        <button 
+                          className="p-1 text-muted-foreground hover:text-primary transition-colors"
+                          onClick={() => setCurrentRouteId(route.id)}
+                          title="View Details"
+                        >
+                          <List className="size-5" />
+                        </button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-6xl max-h-[80vh] overflow-hidden flex flex-col">
+                        <DialogHeader>
+                          <DialogTitle>Delivery Points - {route.name}</DialogTitle>
+                          <DialogDescription>
+                            Manage delivery locations and schedules
+                          </DialogDescription>
+                        </DialogHeader>
+                        
+                        <div className="flex-1 overflow-auto">
+                          <table className="w-full border-collapse">
+                            <thead className="bg-muted/50 sticky top-0">
+                              <tr>
+                                {isEditMode && (
+                                  <th className="p-3 text-center font-semibold text-sm w-12">
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedRows.length === deliveryPoints.length && deliveryPoints.length > 0}
+                                      onChange={toggleSelectAll}
+                                      className="w-4 h-4 rounded border-border cursor-pointer"
+                                    />
+                                  </th>
+                                )}
+                                <th className="p-3 text-center font-semibold text-sm">No</th>
                             <th 
                               className="p-3 text-center font-semibold text-sm cursor-pointer hover:bg-muted"
                               onClick={() => handleSort('code')}
@@ -495,8 +487,8 @@ export function RouteList() {
                             >
                               Delivery {sortConfig?.key === 'delivery' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                             </th>
-                            <th className="p-3 text-center font-semibold text-sm">Latitude</th>
-                            <th className="p-3 text-center font-semibold text-sm">Longitude</th>
+                            {isEditMode && <th className="p-3 text-center font-semibold text-sm">Latitude</th>}
+                            {isEditMode && <th className="p-3 text-center font-semibold text-sm">Longitude</th>}
                             <th className="p-3 text-center font-semibold text-sm">Action</th>
                           </tr>
                         </thead>
@@ -506,14 +498,16 @@ export function RouteList() {
                             
                             return (
                               <tr key={point.code} className="hover:bg-muted/30 border-b border-border/50">
-                                <td className="p-3 text-center">
-                                  <input
-                                    type="checkbox"
-                                    checked={selectedRows.includes(point.code)}
-                                    onChange={() => toggleRowSelection(point.code)}
-                                    className="w-4 h-4 rounded border-border cursor-pointer"
-                                  />
-                                </td>
+                                {isEditMode && (
+                                  <td className="p-3 text-center">
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedRows.includes(point.code)}
+                                      onChange={() => toggleRowSelection(point.code)}
+                                      className="w-4 h-4 rounded border-border cursor-pointer"
+                                    />
+                                  </td>
+                                )}
                                 <td className="p-3 text-sm text-center">{index + 1}</td>
                                 
                                 {/* Code - Editable */}
@@ -663,7 +657,8 @@ export function RouteList() {
                                   </Popover>
                                 </td>
                                 
-                                {/* Latitude - Editable */}
+                                {/* Latitude - Editable (Edit Mode Only) */}
+                                {isEditMode && (
                                 <td className="p-3 text-sm font-mono text-center">
                                   <Popover 
                                     open={popoverOpen[`${point.code}-latitude`]} 
@@ -711,8 +706,10 @@ export function RouteList() {
                                     </PopoverContent>
                                   </Popover>
                                 </td>
+                                )}
                                 
-                                {/* Longitude - Editable */}
+                                {/* Longitude - Editable (Edit Mode Only) */}
+                                {isEditMode && (
                                 <td className="p-3 text-sm font-mono text-center">
                                   <Popover 
                                     open={popoverOpen[`${point.code}-longitude`]} 
@@ -760,6 +757,7 @@ export function RouteList() {
                                     </PopoverContent>
                                   </Popover>
                                 </td>
+                                )}
                                 
                                 {/* Action */}
                                 <td className="p-3 text-center">
@@ -781,6 +779,7 @@ export function RouteList() {
                           })}
                           
                           {/* Add New Row */}
+                          {isEditMode && (
                           <tr 
                             className="border-2 border-dashed border-border hover:border-primary hover:bg-accent/30 cursor-pointer transition-all group"
                             onClick={() => {
@@ -799,12 +798,13 @@ export function RouteList() {
                               </div>
                             </td>
                           </tr>
+                          )}
                         </tbody>
                       </table>
                     </div>
                     
-                    {/* Action Buttons - Show when rows are selected */}
-                    {selectedRows.length > 0 && (
+                    {/* Action Buttons - Show when rows are selected in Edit Mode */}
+                    {selectedRows.length > 0 && isEditMode && (
                       <div className="border-t border-border p-4 flex justify-end gap-2 bg-muted/30">
                         <Button
                           variant="outline"
@@ -821,6 +821,7 @@ export function RouteList() {
                     )}
                   </DialogContent>
                 </Dialog>
+                  </div>
                 
                 {/* Action Modal - After Done is clicked */}
                 <Dialog open={actionModalOpen} onOpenChange={setActionModalOpen}>
@@ -1181,6 +1182,7 @@ export function RouteList() {
                                 <dd className="ml-0 mb-2 text-sm">{selectedPoint.delivery}</dd>
                               </div>
                               
+                              {isEditMode && (
                               <div className="grid grid-cols-2 gap-4">
                                 <div>
                                   <dt className="font-bold text-sm">Latitude</dt>
@@ -1191,8 +1193,10 @@ export function RouteList() {
                                   <dd className="ml-0 mb-2 text-sm">{selectedPoint.longitude.toFixed(4)}</dd>
                                 </div>
                               </div>
+                              )}
                             </dl>
                             
+                            {isEditMode && (
                             <div className="flex gap-2 pt-2">
                               <Button onClick={handleEditInfo} variant="outline" className="flex-1">
                                 <Edit2 className="size-4 mr-2" />
@@ -1203,6 +1207,7 @@ export function RouteList() {
                                 Delete
                               </Button>
                             </div>
+                            )}
                             
                             <div className="flex gap-2">
                               <Button
@@ -1229,32 +1234,84 @@ export function RouteList() {
                 </Dialog>
                 </div>
               </div>
+              
+              {/* Map Section */}
+              <div className="flex-1 relative bg-muted/30 rounded-none">
+                {showMaps ? (
+                  <div className="absolute inset-0 rounded-none">
+                    <DeliveryMap deliveryPoints={route.deliveryPoints} />
+                  </div>
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center rounded-none">
+                    <MapPin className="size-16 text-muted-foreground/20" />
+                  </div>
+                )}
+                
+                {/* Map Controls */}
+                {showMaps && (
+                  <div className="absolute top-3 right-3 flex flex-col gap-2 z-[100]">
+                    <button className="p-2 bg-background/90 backdrop-blur-sm border border-border rounded-md hover:bg-primary/10 hover:border-primary/50 transition-all shadow-sm">
+                      <Maximize2 className="size-3.5" />
+                    </button>
+                    <button className="p-2 bg-background/90 backdrop-blur-sm border border-border rounded-md hover:bg-primary/10 hover:border-primary/50 transition-all shadow-sm">
+                      <LocateFixed className="size-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+              
+              {/* Footer Section - Route Info */}
+              <div className="p-4 border-t border-border bg-gradient-to-br from-primary/5 to-transparent">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-bold mb-1.5 truncate group-hover:text-primary transition-colors">{route.name}</h3>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-card border border-border">
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                      {route.code}
+                    </span>
+                    <span className={`px-2.5 py-1 text-xs font-semibold rounded-md border ${route.shift === 'AM' ? 'bg-orange-500/10 text-orange-600 border-orange-500/20 dark:bg-orange-500/15 dark:text-orange-400' : 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:bg-blue-500/15 dark:text-blue-400'}`}>
+                      {route.shift}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         ))}
         
         {/* No Results Message */}
         {filteredRoutes.length === 0 && searchQuery && (
-          <div className="col-span-full flex flex-col items-center justify-center py-12 text-center">
-            <Search className="size-12 text-muted-foreground/50 mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No routes found</h3>
-            <p className="text-sm text-muted-foreground">
-              No routes match &quot;{searchQuery}&quot;. Try a different search term.
+          <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
+            <div className="relative mb-6">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-muted/50 to-muted/30 flex items-center justify-center">
+                <Search className="size-10 text-muted-foreground/50" />
+              </div>
+              <div className="absolute inset-0 bg-gradient-to-t from-primary/5 to-transparent blur-xl" />
+            </div>
+            <h3 className="text-xl font-bold mb-2 text-foreground">No routes found</h3>
+            <p className="text-sm text-muted-foreground max-w-md">
+              No routes match &quot;{searchQuery}&quot;. Try a different search term or create a new route.
             </p>
           </div>
         )}
         
         {/* Add New Route Card */}
+        {isEditMode && (
         <div className="w-full">
           <Dialog open={addRouteDialogOpen} onOpenChange={setAddRouteDialogOpen}>
             <DialogTrigger asChild>
-              <button className="w-full h-[380px] rounded-lg border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 transition-all duration-300 flex flex-col items-center justify-center gap-4 group">
-                <div className="w-16 h-16 rounded-full bg-primary/10 border-2 border-primary/20 group-hover:bg-primary/20 group-hover:border-primary/40 flex items-center justify-center transition-all">
-                  <Plus className="size-8 text-primary transition-transform group-hover:scale-110" />
-                </div>
-                <div className="text-center">
-                  <h3 className="text-lg font-semibold mb-1 group-hover:text-primary transition-colors">Add New Route</h3>
-                  <p className="text-sm text-muted-foreground">Create a new delivery route</p>
+              <button className="w-full h-[400px] rounded-xl border-2 border-dashed border-border hover:border-primary hover:bg-gradient-to-br hover:from-primary/5 hover:via-purple-500/5 hover:to-pink-500/5 transition-all duration-300 flex flex-col items-center justify-center gap-6 group relative overflow-hidden">
+                {/* Animated Background Effect */}
+                <div className="absolute inset-0 bg-gradient-to-br from-transparent via-primary/0 to-transparent group-hover:via-primary/5 transition-all duration-500" />
+                
+                <div className="relative z-10 flex flex-col items-center gap-6">
+                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-primary/20 group-hover:border-primary/50 group-hover:shadow-xl group-hover:shadow-primary/20 flex items-center justify-center transition-all duration-300 group-hover:scale-110">
+                    <Plus className="size-10 text-primary transition-transform group-hover:rotate-90 duration-300" />
+                  </div>
+                  <div className="text-center">
+                    <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">Add New Route</h3>
+                    <p className="text-sm text-muted-foreground">Create a new delivery route</p>
+                  </div>
                 </div>
               </button>
             </DialogTrigger>
@@ -1315,6 +1372,7 @@ export function RouteList() {
                         shift: newRoute.shift,
                         deliveryPoints: []
                       }
+                      setHasUnsavedChanges(true)
                       setRoutes(prev => [...prev, newRouteData])
                       setNewRoute({ name: "", code: "", shift: "AM" })
                       setAddRouteDialogOpen(false)
@@ -1327,6 +1385,7 @@ export function RouteList() {
             </DialogContent>
           </Dialog>
         </div>
+        )}
         </div>
 
         {/* Edit Route Dialog */}
@@ -1464,6 +1523,18 @@ export function RouteList() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Floating Save Button */}
+      {hasUnsavedChanges && isEditMode && (
+        <Button
+          onClick={handleSaveChanges}
+          className="fixed bottom-6 right-6 z-50 bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl transition-all h-12 px-6"
+          size="lg"
+        >
+          <Save className="size-5 mr-2" />
+          Save Changes
+        </Button>
+      )}
     </div>
   )
 }

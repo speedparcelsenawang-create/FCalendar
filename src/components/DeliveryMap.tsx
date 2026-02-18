@@ -93,7 +93,7 @@ export function DeliveryMap({ deliveryPoints }: DeliveryMapProps) {
     <MapContainer
       center={[center.lat, center.lng]}
       zoom={13}
-      style={{ width: "100%", height: "100%", borderRadius: "0.5rem" }}
+      style={{ width: "100%", height: "100%", borderRadius: "0" }}
       scrollWheelZoom={false}
     >
       <TileLayer
