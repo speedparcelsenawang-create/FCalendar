@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useCallback } from "react"
 import { List, Maximize2, LocateFixed, Info, ExternalLink, Plus, Check, X, Edit2, Trash2, Search, Settings, Map, MapPin, Save, ArrowUp, ArrowDown, RotateCcw } from "lucide-react"
 import { useEditMode } from "@/contexts/EditModeContext"
 import {
@@ -71,7 +71,7 @@ const DEFAULT_ROUTES: Route[] = [
 ]
 
 export function RouteList() {
-  const { isEditMode, hasUnsavedChanges, setHasUnsavedChanges } = useEditMode()
+  const { isEditMode, hasUnsavedChanges, isSaving, setHasUnsavedChanges, registerSaveHandler } = useEditMode()
   const [routes, setRoutes] = useState<Route[]>(DEFAULT_ROUTES)
   const [isLoading, setIsLoading] = useState(true)
   const [currentRouteId, setCurrentRouteId] = useState<string>("route-1")
@@ -467,21 +467,27 @@ export function RouteList() {
     setEditingRoute(null)
   }
 
-  const handleSaveChanges = () => {
-    fetch('/api/routes', {
+  const doSave = useCallback(async () => {
+    const res = await fetch('/api/routes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ routes }),
     })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          setHasUnsavedChanges(false)
-        } else {
-          alert('Gagal simpan: ' + data.error)
-        }
-      })
-      .catch(() => alert('Gagal sambung ke server'))
+    const data = await res.json()
+    if (!data.success) throw new Error(data.error || 'Gagal simpan')
+  }, [routes])
+
+  useEffect(() => {
+    registerSaveHandler(doSave)
+  }, [doSave, registerSaveHandler])
+
+  const handleSaveChanges = async () => {
+    try {
+      await doSave()
+      setHasUnsavedChanges(false)
+    } catch (e) {
+      alert('Gagal simpan: ' + (e instanceof Error ? e.message : 'Unknown error'))
+    }
   }
 
   const handleDeleteRoute = () => {
@@ -1788,11 +1794,12 @@ export function RouteList() {
       {hasUnsavedChanges && isEditMode && (
         <Button
           onClick={handleSaveChanges}
+          disabled={isSaving}
           className="fixed bottom-6 right-6 z-50 bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl transition-all h-12 px-6"
           size="lg"
         >
           <Save className="size-5 mr-2" />
-          Save Changes
+          {isSaving ? 'Saving...' : 'Save Changes'}
         </Button>
       )}
     </div>

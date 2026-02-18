@@ -35,7 +35,7 @@ function AppContent() {
   const [currentPage, setCurrentPage] = useState("dashboard")
   const [isTransitioning, setIsTransitioning] = useState(false)
   const { open, openMobile, isMobile, toggleSidebar } = useSidebar()
-  const { isEditMode, hasUnsavedChanges, setIsEditMode, setHasUnsavedChanges, saveChanges } = useEditMode()
+  const { isEditMode, hasUnsavedChanges, isSaving, setIsEditMode, setHasUnsavedChanges, saveChanges } = useEditMode()
   const [showExitDialog, setShowExitDialog] = useState(false)
 
   const handlePageChange = (page: string) => {
@@ -142,10 +142,11 @@ function AppContent() {
               <Button 
                 onClick={handleSaveChanges}
                 size="sm"
+                disabled={isSaving}
                 className="bg-green-600 hover:bg-green-700"
               >
                 <Save className="size-4 mr-2" />
-                Save
+                {isSaving ? 'Saving...' : 'Save'}
               </Button>
             )}
             <Button 
