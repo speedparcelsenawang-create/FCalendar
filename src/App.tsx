@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from "react"
+import { useState, lazy, Suspense, Component, type ErrorInfo, type ReactNode } from "react"
 import { AppSidebar } from "@/components/app-sidebar"
 import { ThemeToggle } from "@/components/theme-toggle"
 
@@ -217,13 +217,47 @@ function AppContent() {
   )
 }
 
+class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  constructor(props: { children: ReactNode }) {
+    super(props)
+    this.state = { error: null }
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { error }
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error('App error:', error, info)
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-8 text-center">
+          <h1 className="text-xl font-semibold">Ralat berlaku</h1>
+          <pre className="max-w-xl rounded bg-muted p-4 text-left text-xs text-destructive overflow-auto">
+            {this.state.error.message}
+          </pre>
+          <button
+            className="rounded bg-primary px-4 py-2 text-sm text-primary-foreground"
+            onClick={() => this.setState({ error: null })}
+          >
+            Cuba semula
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
+
 export function App() {
   return (
-    <SidebarProvider>
-      <EditModeProvider>
-        <AppContent />
-      </EditModeProvider>
-    </SidebarProvider>
+    <ErrorBoundary>
+      <SidebarProvider>
+        <EditModeProvider>
+          <AppContent />
+        </EditModeProvider>
+      </SidebarProvider>
+    </ErrorBoundary>
   )
 }
 
