@@ -5,6 +5,18 @@
 /* Safe area support for notch/island devices */
 body {
   -webkit-tap-highlight-color: transparent;
+  width: 100%;
+  min-height: 100dvh;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+#root {
+  width: 100%;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Prevent content from hiding behind phone status bar */
