@@ -26,6 +26,8 @@ interface DeliveryPoint {
   latitude: number
   longitude: number
   descriptions: { key: string; value: string }[]
+  qrCodeImageUrl?: string
+  qrCodeDestinationUrl?: string
 }
 
 interface Route {

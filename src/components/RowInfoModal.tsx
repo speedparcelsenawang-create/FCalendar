@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { Plus, Trash2 } from "lucide-react"
+import { Plus, Trash2, QrCode, ExternalLink, Pencil } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -18,6 +18,8 @@ interface DeliveryPoint {
   latitude: number
   longitude: number
   descriptions: { key: string; value: string }[]
+  qrCodeImageUrl?: string
+  qrCodeDestinationUrl?: string
 }
 
 interface RowInfoModalProps {
@@ -38,10 +40,15 @@ const DELIVERY_COLORS: Record<string, string> = {
 export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: RowInfoModalProps) {
   const [drafts, setDrafts] = useState<{ key: string; value: string }[]>([])
   const [isEditing, setIsEditing] = useState(false)
+  const [qrCodeImageUrl, setQrCodeImageUrl] = useState("")
+  const [qrCodeDestinationUrl, setQrCodeDestinationUrl] = useState("")
+  const [showQRDialog, setShowQRDialog] = useState(false)
 
   useEffect(() => {
     if (open) {
       setDrafts(point.descriptions ?? [])
+      setQrCodeImageUrl(point.qrCodeImageUrl ?? "")
+      setQrCodeDestinationUrl(point.qrCodeDestinationUrl ?? "")
       setIsEditing(false)
     }
   }, [open, point])
@@ -56,7 +63,7 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
     setDrafts(prev => prev.map((d, idx) => idx === i ? { ...d, [field]: val } : d))
 
   const handleSave = () => {
-    onSave?.({ ...point, descriptions: drafts.filter(d => d.key.trim() !== "") })
+    onSave?.({ ...point, descriptions: drafts.filter(d => d.key.trim() !== ""), qrCodeImageUrl, qrCodeDestinationUrl })
     setIsEditing(false)
   }
 
@@ -210,8 +217,100 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
                 </div>
                 <span className="text-[10px] text-gray-600 dark:text-gray-400">FamilyMart</span>
               </button>
+
+              {/* QR Code Button — shown if QR exists or in edit mode */}
+              {(qrCodeImageUrl || isEditMode) && (
+                <button
+                  onClick={() => setShowQRDialog(true)}
+                  title={qrCodeImageUrl ? "QR Code" : "Add QR Code"}
+                  className="flex flex-col items-center gap-1 group"
+                >
+                  <div className="relative w-9 h-9 rounded-xl bg-orange-500 hover:bg-orange-600 flex items-center justify-center shadow hover:shadow-md transition-all group-hover:scale-105">
+                    <QrCode className="w-5 h-5 text-white" />
+                    {isEditMode && (
+                      <span className="absolute -top-1 -right-1 bg-background rounded-full p-0.5">
+                        {qrCodeImageUrl
+                          ? <Pencil className="w-2.5 h-2.5" />
+                          : <Plus className="w-2.5 h-2.5" />}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-gray-600 dark:text-gray-400">QR Code</span>
+                </button>
+              )}
             </div>
           )}
+
+          {/* QR Code dialog */}
+          <Dialog open={showQRDialog} onOpenChange={setShowQRDialog}>
+            <DialogContent className="max-w-xs rounded-2xl">
+              <DialogHeader>
+                <DialogTitle className="text-base">
+                  {isEditMode ? "QR Code Settings" : "QR Code"}
+                </DialogTitle>
+                {!isEditMode && (
+                  <DialogDescription>
+                    Scan the QR code or open the destination link.
+                  </DialogDescription>
+                )}
+              </DialogHeader>
+
+              <div className="space-y-3">
+                {/* QR Image preview */}
+                {(qrCodeImageUrl) && (
+                  <div className="flex justify-center">
+                    <img
+                      src={qrCodeImageUrl}
+                      alt="QR Code"
+                      className="w-40 h-40 object-contain border rounded-xl"
+                    />
+                  </div>
+                )}
+
+                {isEditMode && (
+                  <>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">QR Code Image URL</label>
+                      <Input
+                        value={qrCodeImageUrl}
+                        onChange={e => setQrCodeImageUrl(e.target.value)}
+                        placeholder="https://example.com/qr.png"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Destination URL</label>
+                      <Input
+                        value={qrCodeDestinationUrl}
+                        onChange={e => setQrCodeDestinationUrl(e.target.value)}
+                        placeholder="https://example.com/destination"
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <DialogFooter className="flex gap-2 justify-end">
+                {isEditMode ? (
+                  <>
+                    <Button variant="outline" size="sm" onClick={() => setShowQRDialog(false)}>Cancel</Button>
+                    <Button size="sm" onClick={() => { handleSave(); setShowQRDialog(false) }}>Save</Button>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="outline" size="sm" onClick={() => setShowQRDialog(false)}>Close</Button>
+                    {qrCodeDestinationUrl && (
+                      <Button size="sm" onClick={() => { openUrl(qrCodeDestinationUrl); setShowQRDialog(false) }}>
+                        <ExternalLink className="w-3.5 h-3.5 mr-1" />
+                        Open Link
+                      </Button>
+                    )}
+                  </>
+                )}
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           {/* Confirmation dialog */}
           <Dialog open={!!pendingUrl} onOpenChange={(o) => { if (!o) setPendingUrl(null) }}>
