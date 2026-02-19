@@ -23,7 +23,6 @@ interface DeliveryPoint {
   code: string
   name: string
   delivery: "Daily" | "Weekday" | "Alt 1" | "Alt 2"
-  showBadge?: boolean
   latitude: number
   longitude: number
   descriptions: { key: string; value: string }[]
@@ -726,21 +725,21 @@ export function RouteList() {
                                     <td key="delivery" className="p-3 text-center">
                                       {isEditMode ? (
                                         <button
-                                          className="group flex items-center justify-center gap-1.5 hover:scale-105 transition-transform mx-auto"
+                                          className="group inline-flex items-center gap-1.5 hover:scale-105 transition-transform mx-auto"
                                           onClick={() => {
                                             setDeliveryModalCode(point.code)
                                             setDeliveryModalOpen(true)
                                           }}
                                         >
                                           <span className="text-sm">{point.delivery}</span>
+                                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isActive ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400'}`}>{isActive ? 'ON' : 'OFF'}</span>
                                           <Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
                                         </button>
                                       ) : (
-                                        point.showBadge ? (
-                                          <span className={`inline-flex items-center px-3 py-1 rounded text-xs font-semibold ${ point.delivery === 'Daily' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : point.delivery === 'Weekday' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : point.delivery === 'Alt 1' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' }`}>{point.delivery}</span>
-                                        ) : (
+                                        <span className="inline-flex items-center gap-1.5">
                                           <span className="text-sm">{point.delivery}</span>
-                                        )
+                                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isActive ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400'}`}>{isActive ? 'ON' : 'OFF'}</span>
+                                        </span>
                                       )}
                                     </td>
                                   )
@@ -1079,17 +1078,18 @@ export function RouteList() {
                     {deliveryModalCode && (() => {
                       const pt = deliveryPoints.find(p => p.code === deliveryModalCode)
                       if (!pt) return null
-                      const options: { value: DeliveryPoint['delivery']; label: string; desc: string; color: string }[] = [
-                        { value: 'Daily',   label: 'Daily',   desc: 'Penghantaran setiap hari',                   color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
-                        { value: 'Alt 1',   label: 'Alt 1',   desc: 'Penghantaran pada tarikh ganjil sahaja',     color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' },
-                        { value: 'Alt 2',   label: 'Alt 2',   desc: 'Penghantaran pada tarikh genap sahaja',      color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' },
-                        { value: 'Weekday', label: 'Weekday', desc: 'Penghantaran hari Ahad – Khamis sahaja',    color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
+                      const today = new Date()
+                      const options: { value: DeliveryPoint['delivery']; label: string; desc: string }[] = [
+                        { value: 'Daily',   label: 'Daily',   desc: 'Penghantaran setiap hari' },
+                        { value: 'Alt 1',   label: 'Alt 1',   desc: 'Penghantaran pada tarikh ganjil sahaja' },
+                        { value: 'Alt 2',   label: 'Alt 2',   desc: 'Penghantaran pada tarikh genap sahaja' },
+                        { value: 'Weekday', label: 'Weekday', desc: 'Penghantaran hari Ahad – Khamis sahaja' },
                       ]
                       return (
-                        <div className="space-y-4 py-2">
-                          {/* Options */}
-                          <div className="space-y-2">
-                            {options.map(opt => (
+                        <div className="space-y-3 py-2">
+                          {options.map(opt => {
+                            const optActive = isDeliveryActive(opt.value, today)
+                            return (
                               <button
                                 key={opt.value}
                                 onClick={() => {
@@ -1103,54 +1103,19 @@ export function RouteList() {
                                     : 'border-border hover:border-primary/40 hover:bg-muted/40'
                                 }`}
                               >
-                                <span className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-semibold shrink-0 ${opt.color}`}>
-                                  {opt.label}
-                                </span>
-                                <span className="text-sm text-muted-foreground">{opt.desc}</span>
+                                <span className="text-sm font-medium w-16 shrink-0">{opt.label}</span>
+                                <span className="text-xs text-muted-foreground flex-1">{opt.desc}</span>
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
+                                  optActive ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400'
+                                }`}>{optActive ? 'ON' : 'OFF'}</span>
                                 {pt.delivery === opt.value && (
-                                  <Check className="size-4 text-primary ml-auto shrink-0" />
+                                  <Check className="size-4 text-primary shrink-0" />
                                 )}
                               </button>
-                            ))}
-                          </div>
+                            )
+                          })}
 
-                          {/* Badge toggle */}
-                          <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
-                            <div>
-                              <p className="text-sm font-medium">Tunjuk Badge</p>
-                              <p className="text-xs text-muted-foreground">Papar warna jenis penghantaran di jadual</p>
-                            </div>
-                            <button
-                              onClick={() => {
-                                setDeliveryPoints(prev => prev.map(p =>
-                                  p.code === deliveryModalCode ? { ...p, showBadge: !p.showBadge } : p
-                                ))
-                              }}
-                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                                pt.showBadge ? 'bg-primary' : 'bg-muted-foreground/30'
-                              }`}
-                            >
-                              <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
-                                pt.showBadge ? 'translate-x-6' : 'translate-x-1'
-                              }`} />
-                            </button>
-                          </div>
-
-                          {/* Preview */}
-                          <div className="rounded-lg border border-border p-3 bg-muted/20">
-                            <p className="text-xs text-muted-foreground mb-2">Preview di jadual:</p>
-                            <div className="flex items-center gap-2">
-                              {pt.showBadge ? (
-                                <span className={`inline-flex items-center px-3 py-1 rounded text-xs font-semibold ${
-                                  options.find(o => o.value === pt.delivery)?.color ?? ''
-                                }`}>{pt.delivery}</span>
-                              ) : (
-                                <span className="text-sm">{pt.delivery}</span>
-                              )}
-                            </div>
-                          </div>
-
-                          <div className="flex justify-end gap-2 pt-1">
+                          <div className="flex justify-end pt-1">
                             <Button variant="outline" onClick={() => {
                               setDeliveryModalOpen(false)
                               setDeliveryModalCode(null)
