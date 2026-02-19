@@ -550,15 +550,15 @@ export function RouteList() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredRoutes.map((route) => (
           <div key={route.id} className="w-full">
             {/* Card */}
             <div 
-              className="bg-card rounded-xl border border-border shadow-md hover:shadow-xl hover:border-primary/50 transition-all duration-300 overflow-hidden h-[400px] flex flex-col group"
+              className="bg-card rounded-xl border border-border shadow-md hover:shadow-xl hover:border-primary/50 transition-all duration-300 overflow-hidden h-[320px] flex flex-col group"
             >
               {/* Header Section - Point Count & Buttons */}
-              <div className="p-4 border-b border-border bg-card">
+              <div className="p-3 border-b border-border bg-card">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                     <MapPin className="size-4" />
@@ -611,11 +611,11 @@ export function RouteList() {
                         </DialogHeader>
                         
                         <div className="flex-1 overflow-auto">
-                          <table className="w-full border-collapse">
+                          <table className="w-full border-collapse table-auto">
                             <thead className="bg-muted/50 sticky top-0">
                               <tr>
                                 {isEditMode && (
-                                  <th className="p-3 text-center font-semibold text-sm w-12">
+                                  <th className="p-2 text-center font-semibold text-xs w-10">
                                     <input
                                       type="checkbox"
                                       checked={selectedRows.length === deliveryPoints.length && deliveryPoints.length > 0}
@@ -625,10 +625,18 @@ export function RouteList() {
                                   </th>
                                 )}
                                 {columns.filter(c => c.visible).map(col => (
-                                  <th key={col.key} className="p-3 text-center font-semibold text-sm">{col.label}</th>
+                                  <th
+                                    key={col.key}
+                                    className={`p-2 text-center font-semibold text-xs whitespace-nowrap ${
+                                      col.key === 'no' ? 'w-10' :
+                                      col.key === 'code' ? 'w-20' :
+                                      col.key === 'delivery' ? 'w-28' :
+                                      col.key === 'action' ? 'w-10' : ''
+                                    }`}
+                                  >{col.label}</th>
                                 ))}
-                                {isEditMode && <th className="p-3 text-center font-semibold text-sm">Latitude</th>}
-                                {isEditMode && <th className="p-3 text-center font-semibold text-sm">Longitude</th>}
+                                {isEditMode && <th className="p-2 text-center font-semibold text-xs whitespace-nowrap">Latitude</th>}
+                                {isEditMode && <th className="p-2 text-center font-semibold text-xs whitespace-nowrap">Longitude</th>}
                           </tr>
                         </thead>
                         <tbody>
@@ -642,7 +650,7 @@ export function RouteList() {
                                   : 'bg-muted/40 opacity-50 hover:opacity-60'
                               }`}>
                                 {isEditMode && (
-                                  <td className="p-3 text-center">
+                                  <td className="p-2 text-center">
                                     <input
                                       type="checkbox"
                                       checked={selectedRows.includes(point.code)}
@@ -653,10 +661,10 @@ export function RouteList() {
                                 )}
                                 {columns.filter(c => c.visible).map(col => {
                                   if (col.key === 'no') return (
-                                    <td key="no" className="p-3 text-sm text-center">{index + 1}</td>
+                                    <td key="no" className="p-2 text-xs text-center whitespace-nowrap">{index + 1}</td>
                                   )
                                   if (col.key === 'code') return (
-                                    <td key="code" className="p-3 text-sm text-center">
+                                    <td key="code" className="p-2 text-xs text-center whitespace-nowrap">
                                       {isEditMode ? (
                                       <Popover
                                         open={isEditMode && !!popoverOpen[`${point.code}-code`]}
@@ -689,7 +697,7 @@ export function RouteList() {
                                     </td>
                                   )
                                   if (col.key === 'name') return (
-                                    <td key="name" className="p-3 text-sm text-center">
+                                    <td key="name" className="p-2 text-xs text-left overflow-hidden max-w-0">
                                       {isEditMode ? (
                                       <Popover
                                         open={isEditMode && !!popoverOpen[`${point.code}-name`]}
@@ -718,11 +726,11 @@ export function RouteList() {
                                           </div>
                                         </PopoverContent>
                                       </Popover>
-                                      ) : (<span className="px-3 py-1">{point.name}</span>)}
+                                      ) : (<span className="block truncate whitespace-nowrap">{point.name}</span>)}
                                     </td>
                                   )
                                   if (col.key === 'delivery') return (
-                                    <td key="delivery" className="p-3 text-center">
+                                    <td key="delivery" className="p-2 text-center whitespace-nowrap">
                                       {isEditMode ? (
                                         <button
                                           className="group inline-flex items-center gap-1.5 hover:scale-105 transition-transform mx-auto"
@@ -741,7 +749,7 @@ export function RouteList() {
                                     </td>
                                   )
                                   if (col.key === 'action') return (
-                                    <td key="action" className="p-3 text-center">
+                                    <td key="action" className="p-2 text-center">
                                       <button
                                         className="p-1.5 rounded-md hover:bg-accent transition-colors"
                                         onClick={() => { setSelectedPoint(point); setInfoModalOpen(true) }}
@@ -753,7 +761,7 @@ export function RouteList() {
                                   return null
                                 })}
                                 {isEditMode && (
-                                  <td className="p-3 text-sm font-mono text-center">
+                                  <td className="p-2 text-xs font-mono text-center whitespace-nowrap">
                                     <Popover open={isEditMode && !!popoverOpen[`${point.code}-latitude`]} onOpenChange={(open) => { if (!isEditMode) return; if (!open) cancelEdit(); setPopoverOpen({ [`${point.code}-latitude`]: open }) }}>
                                       <PopoverTrigger asChild>
                                         <button className="hover:bg-accent px-3 py-1 rounded flex items-center justify-center gap-1.5 group font-mono mx-auto" onClick={() => startEdit(point.code, 'latitude', point.latitude.toFixed(4))}>
@@ -765,7 +773,7 @@ export function RouteList() {
                                   </td>
                                 )}
                                 {isEditMode && (
-                                  <td className="p-3 text-sm font-mono text-center">
+                                  <td className="p-2 text-xs font-mono text-center whitespace-nowrap">
                                     <Popover open={isEditMode && !!popoverOpen[`${point.code}-longitude`]} onOpenChange={(open) => { if (!isEditMode) return; if (!open) cancelEdit(); setPopoverOpen({ [`${point.code}-longitude`]: open }) }}>
                                       <PopoverTrigger asChild>
                                         <button className="hover:bg-accent px-3 py-1 rounded flex items-center justify-center gap-1.5 group font-mono mx-auto" onClick={() => startEdit(point.code, 'longitude', point.longitude.toFixed(4))}>
@@ -1168,10 +1176,10 @@ export function RouteList() {
               </div>
               
               {/* Footer Section - Route Info */}
-              <div className="p-4 border-t border-border bg-gradient-to-br from-primary/5 to-transparent">
+              <div className="p-3 border-t border-border bg-gradient-to-br from-primary/5 to-transparent">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-bold mb-1.5 truncate group-hover:text-primary transition-colors">{route.name}</h3>
+                    <h3 className="text-base font-bold mb-1 truncate group-hover:text-primary transition-colors">{route.name}</h3>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-card border border-border">
                         <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
@@ -1220,7 +1228,7 @@ export function RouteList() {
         <div className="w-full">
           <Dialog open={addRouteDialogOpen} onOpenChange={setAddRouteDialogOpen}>
             <DialogTrigger asChild>
-              <button className="w-full h-[400px] rounded-xl border-2 border-dashed border-border hover:border-primary hover:bg-gradient-to-br hover:from-primary/5 hover:via-purple-500/5 hover:to-pink-500/5 transition-all duration-300 flex flex-col items-center justify-center gap-6 group relative overflow-hidden">
+              <button className="w-full h-[320px] rounded-xl border-2 border-dashed border-border hover:border-primary hover:bg-gradient-to-br hover:from-primary/5 hover:via-purple-500/5 hover:to-pink-500/5 transition-all duration-300 flex flex-col items-center justify-center gap-4 group relative overflow-hidden">
                 {/* Animated Background Effect */}
                 <div className="absolute inset-0 bg-gradient-to-br from-transparent via-primary/0 to-transparent group-hover:via-primary/5 transition-all duration-500" />
                 
