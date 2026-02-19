@@ -1,6 +1,7 @@
 import { useState, lazy, Suspense, Component, type ErrorInfo, type ReactNode } from "react"
 import { AppSidebar } from "@/components/app-sidebar"
 import { ThemeToggle } from "@/components/theme-toggle"
+import { PWAInstallPrompt } from "@/components/PWAInstallPrompt"
 
 const RouteList = lazy(() => import("@/components/RouteList").then(m => ({ default: m.RouteList })))
 const Calendar = lazy(() => import("@/components/Calendar").then(m => ({ default: m.Calendar })))
@@ -391,6 +392,7 @@ export function App() {
           <AppContent />
         </EditModeProvider>
       </SidebarProvider>
+      <PWAInstallPrompt />
     </ErrorBoundary>
   )
 }

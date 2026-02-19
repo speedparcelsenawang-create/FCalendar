@@ -1,12 +1,13 @@
 {
+  "id": "/",
   "name": "FCalendar - Route & Calendar Management",
   "short_name": "FCalendar",
   "description": "Professional route planning and calendar management application for delivery services",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#ffffff",
-  "dark_theme_color": "#242424",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "background_color": "#2563eb",
+  "theme_color": "#2563eb",
   "orientation": "portrait-primary",
   "scope": "/",
   "icons": [
