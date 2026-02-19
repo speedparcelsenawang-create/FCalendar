@@ -753,33 +753,10 @@ export function PlanoVM() {
             {/* Add Row Button at Bottom */}
             {currentPage.rows.length > 0 && isEditMode && (
               <div className="mt-8 flex justify-center">
-                <Dialog open={addRowDialog} onOpenChange={setAddRowDialog}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="lg">
-                      <Plus className="size-4 mr-2" />
-                      Add Row
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Create New Row</DialogTitle>
-                      <DialogDescription>Add a new product row</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <Input
-                        placeholder="Row title (e.g., Top Shelf Products)"
-                        value={newRowTitle}
-                        onChange={(e) => setNewRowTitle(e.target.value)}
-                      />
-                      <div className="flex justify-end gap-2">
-                        <Button variant="outline" onClick={() => setAddRowDialog(false)}>
-                          Cancel
-                        </Button>
-                        <Button onClick={handleAddRow}>Create Row</Button>
-                      </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                <Button variant="outline" size="lg" onClick={() => setAddRowDialog(true)}>
+                  <Plus className="size-4 mr-2" />
+                  Add Row
+                </Button>
               </div>
             )}
           </>
@@ -790,6 +767,29 @@ export function PlanoVM() {
           </div>
         )}
       </div>
+
+      {/* Add Row Dialog */}
+      <Dialog open={addRowDialog} onOpenChange={setAddRowDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New Row</DialogTitle>
+            <DialogDescription>Add a new product row</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Input
+              placeholder="Row title (e.g., Top Shelf Products)"
+              value={newRowTitle}
+              onChange={(e) => setNewRowTitle(e.target.value)}
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setAddRowDialog(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleAddRow}>Create Row</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Add Image Dialog */}
       <Dialog open={addImageDialog.open} onOpenChange={(open) => {
