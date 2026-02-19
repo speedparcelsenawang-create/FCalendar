@@ -7,7 +7,7 @@ const Calendar = lazy(() => import("@/components/Calendar").then(m => ({ default
 const Settings = lazy(() => import("@/components/Settings").then(m => ({ default: m.Settings })))
 const PlanoVM = lazy(() => import("@/components/PlanoVM").then(m => ({ default: m.PlanoVM })))
 import { EditModeProvider, useEditMode } from "@/contexts/EditModeContext"
-import { Edit3, Save, X } from "lucide-react"
+import { Edit3, Save, X, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -119,6 +119,8 @@ function HomePage() {
 function AppContent() {
   const [currentPage, setCurrentPage] = useState("dashboard")
   const [isTransitioning, setIsTransitioning] = useState(false)
+  const [isEditTransitioning, setIsEditTransitioning] = useState(false)
+  const [editTransitionPhase, setEditTransitionPhase] = useState<"idle" | "closing" | "opening">("idle")
   const { open, openMobile, isMobile, toggleSidebar } = useSidebar()
   const { isEditMode, hasUnsavedChanges, isSaving, setIsEditMode, setHasUnsavedChanges, saveChanges } = useEditMode()
   const [showExitDialog, setShowExitDialog] = useState(false)
@@ -136,9 +138,19 @@ function AppContent() {
   const handleToggleEditMode = () => {
     if (isEditMode && hasUnsavedChanges) {
       setShowExitDialog(true)
-    } else {
-      setIsEditMode(!isEditMode)
+      return
     }
+    // Shutdown transition
+    setIsEditTransitioning(true)
+    setEditTransitionPhase("closing")
+    setTimeout(() => {
+      setIsEditMode(!isEditMode)
+      setEditTransitionPhase("opening")
+      setTimeout(() => {
+        setIsEditTransitioning(false)
+        setEditTransitionPhase("idle")
+      }, 600)
+    }, 600)
   }
 
   const handleDiscardChanges = () => {
@@ -239,9 +251,14 @@ function AppContent() {
             )}
             <Button 
               onClick={handleToggleEditMode}
-              variant={isEditMode ? "default" : "outline"}
+              variant="default"
               size="sm"
-              className={`h-8 px-2.5 md:px-3 ${isEditMode ? "bg-blue-600 hover:bg-blue-700" : ""}`}
+              disabled={isEditTransitioning}
+              className={`h-8 px-2.5 md:px-3 transition-colors duration-300 ${
+                isEditMode
+                  ? "bg-red-600 hover:bg-red-700 text-white"
+                  : "bg-orange-600 hover:bg-orange-700 text-white"
+              }`}
             >
               {isEditMode ? (
                 <>
@@ -264,6 +281,22 @@ function AppContent() {
           </div>
         </Suspense>
       </main>
+
+      {/* Edit Mode Shutdown Transition Overlay */}
+      {isEditTransitioning && (
+        <div
+          className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-4 bg-black transition-opacity duration-500 ${
+            editTransitionPhase === "closing" ? "opacity-100" : "opacity-0 pointer-events-none"
+          }`}
+        >
+          <Loader2 className="size-10 animate-spin text-white/80" />
+          <p className="text-white/60 text-sm tracking-widest uppercase">
+            {editTransitionPhase === "closing"
+              ? (isEditMode ? "Exiting Edit Mode..." : "Entering Edit Mode...")
+              : ""}
+          </p>
+        </div>
+      )}
 
       {/* Exit Edit Mode Confirmation Dialog */}
       <Dialog open={showExitDialog} onOpenChange={setShowExitDialog}>
