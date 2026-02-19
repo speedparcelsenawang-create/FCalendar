@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { Plus, Trash2, QrCode, ExternalLink, Pencil, Link2, ImageUp, X } from "lucide-react"
+import { Plus, Trash2, QrCode, ExternalLink, Pencil, Link2, ImageUp, X, ScanLine, CheckCircle2 } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -56,6 +56,7 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
   }, [open, point])
 
   const [pendingUrl, setPendingUrl] = useState<string | null>(null)
+  const [scannedUrl, setScannedUrl] = useState<string | null>(null)
 
   const hasCoords = point.latitude !== 0 && point.longitude !== 0
 
@@ -223,8 +224,15 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
               {/* QR Code Button — shown if QR exists or in edit mode */}
               {(qrCodeImageUrl || isEditMode) && (
                 <button
-                  onClick={() => setShowQRDialog(true)}
-                  title={qrCodeImageUrl ? "QR Code" : "Add QR Code"}
+                  onClick={() => {
+                    if (isEditMode) {
+                      setShowQRDialog(true)
+                    } else {
+                      // Auto-scan: directly show scanned result modal
+                      setScannedUrl(qrCodeDestinationUrl ?? "")
+                    }
+                  }}
+                  title={isEditMode ? (qrCodeImageUrl ? "Edit QR Code" : "Add QR Code") : "Scan QR Code"}
                   className="flex flex-col items-center gap-1 group"
                 >
                   <div className="relative w-9 h-9 rounded-xl bg-orange-500 hover:bg-orange-600 flex items-center justify-center shadow hover:shadow-md transition-all group-hover:scale-105">
@@ -237,7 +245,7 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
                       </span>
                     )}
                   </div>
-                  <span className="text-[10px] text-gray-600 dark:text-gray-400">QR Code</span>
+                  <span className="text-[10px] text-gray-600 dark:text-gray-400">QR Scan</span>
                 </button>
               )}
             </div>
@@ -380,7 +388,7 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
             </DialogContent>
           </Dialog>
 
-          {/* Confirmation dialog */}
+          {/* Confirmation dialog (for nav buttons) */}
           <Dialog open={!!pendingUrl} onOpenChange={(o) => { if (!o) setPendingUrl(null) }}>
             <DialogContent className="max-w-xs rounded-2xl">
               <DialogHeader>
@@ -401,6 +409,54 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
                 <Button size="sm" onClick={confirmOpen}>
                   Open
                 </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* QR Scan result modal */}
+          <Dialog open={!!scannedUrl || scannedUrl === ""} onOpenChange={(o) => { if (!o) setScannedUrl(null) }}>
+            <DialogContent className="max-w-xs rounded-2xl">
+              <DialogHeader>
+                <DialogTitle asChild>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center">
+                      <ScanLine className="w-4 h-4 text-green-600 dark:text-green-400" />
+                    </div>
+                    <span className="text-base font-semibold">QR Scanned</span>
+                  </div>
+                </DialogTitle>
+                <DialogDescription asChild>
+                  <div className="space-y-3 pt-1">
+                    {scannedUrl ? (
+                      <>
+                        <div className="flex items-start gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Link berjaya dikesan. Tekan <span className="font-semibold text-gray-700 dark:text-gray-200">Buka</span> untuk teruskan.</p>
+                        </div>
+                        <div className="bg-gray-100 dark:bg-neutral-800 rounded-xl px-3 py-2.5">
+                          <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">Destination</p>
+                          <p className="text-xs font-mono break-all text-gray-700 dark:text-gray-200 leading-relaxed">
+                            {scannedUrl}
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex items-start gap-2 py-1">
+                        <X className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Tiada destination URL ditetapkan untuk QR code ini.</p>
+                      </div>
+                    )}
+                  </div>
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="flex gap-2 justify-end">
+                <Button variant="outline" size="sm" onClick={() => setScannedUrl(null)}>Tutup</Button>
+                {scannedUrl && (
+                  <Button size="sm" onClick={() => { window.open(scannedUrl, "_blank"); setScannedUrl(null) }}>
+                    <ExternalLink className="w-3.5 h-3.5 mr-1" />
+                    Buka
+                  </Button>
+                )}
               </DialogFooter>
             </DialogContent>
           </Dialog>
