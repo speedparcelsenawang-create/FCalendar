@@ -81,7 +81,7 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm rounded-2xl p-0 overflow-hidden gap-0">
         {/* Header */}
-        <DialogHeader className="px-5 pt-5 pb-4 border-b border-gray-200 dark:border-neutral-700">
+        <DialogHeader className="px-5 pt-5 pb-4 border-b border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shrink-0 shadow">
               {point.name.charAt(0).toUpperCase()}
@@ -91,7 +91,7 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
                 {point.name}
               </DialogTitle>
               <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                <span className={`px-2 py-0.5 text-xs font-semibold rounded-md border ${DELIVERY_COLORS[point.delivery] ?? ""}`}>
+                <span className={`px-2 py-0.5 text-xs font-semibold rounded-md border shadow-sm ${DELIVERY_COLORS[point.delivery] ?? ""}`}>
                   {point.delivery}
                 </span>
                 <span className="text-xs font-mono text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded">
@@ -103,11 +103,11 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
         </DialogHeader>
 
         {/* Body */}
-        <div className="px-5 py-4 space-y-4">
+        <div className="px-5 py-4 space-y-4 bg-white dark:bg-neutral-900">
           {/* Information section */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">Information</p>
+              <p className="text-xs font-semibold uppercase tracking-widest text-gray-600 dark:text-gray-400">Information</p>
               {isEditMode && !isEditing && (
                 <button
                   onClick={() => setIsEditing(true)}
@@ -151,23 +151,23 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
                 </button>
               </div>
             ) : (
-              <div className="rounded-xl border border-gray-200 dark:border-neutral-700 overflow-hidden">
+              <div className="rounded-xl border border-gray-300 dark:border-neutral-700 overflow-hidden shadow-sm">
                 {point.descriptions && point.descriptions.length > 0 ? (
                   point.descriptions.map((d, i) => (
                     <div
                       key={i}
-                      className="flex items-center gap-3 px-3 py-2.5 border-b border-gray-100 dark:border-neutral-800 last:border-0 bg-gray-50 dark:bg-neutral-800/50"
+                      className="flex items-center gap-3 px-3 py-2.5 border-b border-gray-200 dark:border-neutral-800 last:border-0 bg-gray-50 dark:bg-neutral-800/50"
                     >
-                        <span className="w-24 shrink-0 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide truncate">
+                        <span className="w-24 shrink-0 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide truncate">
                         {d.key}
                       </span>
-                        <span className="flex-1 text-sm font-medium text-gray-900 dark:text-gray-200">
+                        <span className="flex-1 text-sm font-medium text-gray-900 dark:text-gray-100">
                         {d.value}
                       </span>
                     </div>
                   ))
                 ) : (
-                  <p className="text-sm text-gray-500 text-center py-4">No Information</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No Information</p>
                 )}
               </div>
             )}
@@ -186,7 +186,7 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
                     <div className="w-9 h-9 rounded-xl overflow-hidden shadow hover:shadow-md transition-all group-hover:scale-105">
                       <img src="/Gmaps.png" alt="Google Maps" className="w-full h-full object-cover" />
                     </div>
-                    <span className="text-[10px] text-gray-500 dark:text-gray-400">Google Maps</span>
+                    <span className="text-[10px] text-gray-600 dark:text-gray-400">Google Maps</span>
                   </button>
                   <button
                     onClick={() => openUrl(wazeUrl)}
@@ -196,7 +196,7 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
                     <div className="w-9 h-9 rounded-xl overflow-hidden shadow hover:shadow-md transition-all group-hover:scale-105">
                       <img src="/waze.png" alt="Waze" className="w-full h-full object-cover" />
                     </div>
-                    <span className="text-[10px] text-gray-500 dark:text-gray-400">Waze</span>
+                    <span className="text-[10px] text-gray-600 dark:text-gray-400">Waze</span>
                   </button>
                 </>
               )}
@@ -208,7 +208,7 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
                 <div className="w-9 h-9 rounded-xl overflow-hidden shadow hover:shadow-md transition-all group-hover:scale-105">
                   <img src="/FamilyMart.png" alt="FamilyMart" className="w-full h-full object-cover" />
                 </div>
-                <span className="text-[10px] text-gray-500 dark:text-gray-400">FamilyMart</span>
+                <span className="text-[10px] text-gray-600 dark:text-gray-400">FamilyMart</span>
               </button>
             </div>
           )}
@@ -241,7 +241,7 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
 
         {/* Footer — only in edit mode */}
         {isEditing && (
-          <div className="px-5 pb-5 flex gap-2 justify-end">
+          <div className="px-5 pb-5 flex gap-2 justify-end bg-white dark:bg-neutral-900">
             <Button variant="outline" size="sm" onClick={handleCancel}>
               Cancel
             </Button>

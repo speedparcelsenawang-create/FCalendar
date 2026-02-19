@@ -163,15 +163,21 @@ export function RouteList() {
         : route
     ))
   }
-  // Filter routes based on search query
+  // Filter routes based on search query, then sort A-Z / 1-10 by name
   const filteredRoutes = useMemo(() => {
-    if (!searchQuery.trim()) return routes
-    
-    const query = searchQuery.toLowerCase()
-    return routes.filter(route => 
-      route.name.toLowerCase().includes(query) ||
-      route.code.toLowerCase().includes(query) ||
-      route.shift.toLowerCase().includes(query)
+    const list = !searchQuery.trim()
+      ? routes
+      : (() => {
+          const query = searchQuery.toLowerCase()
+          return routes.filter(route =>
+            route.name.toLowerCase().includes(query) ||
+            route.code.toLowerCase().includes(query) ||
+            route.shift.toLowerCase().includes(query)
+          )
+        })()
+
+    return [...list].sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
     )
   }, [routes, searchQuery])
   const [editingCell, setEditingCell] = useState<{ rowCode: string; field: string } | null>(null)
