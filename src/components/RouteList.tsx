@@ -139,6 +139,20 @@ export function RouteList() {
     fetchRoutes()
   }, [fetchRoutes])
 
+  // Load My Sort List from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('fcalendar_my_sorts')
+      if (stored) {
+        const parsed: SavedRowOrder[] = JSON.parse(stored)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setSavedRowOrders(parsed)
+          setSavedRowOrderOnce(true)
+        }
+      }
+    } catch {}
+  }, [])
+
   const currentRoute = routes.find(r => r.id === currentRouteId)
   const deliveryPoints = currentRoute?.deliveryPoints || []
   const setDeliveryPoints = (updater: (prev: DeliveryPoint[]) => DeliveryPoint[]) => {
@@ -233,6 +247,7 @@ export function RouteList() {
   type SortType = { type: 'column'; key: ColumnKey; dir: 'asc' | 'desc' } | { type: 'saved'; id: string } | null
   const [activeSortConfig, setActiveSortConfig] = useState<SortType>(null)
   const [draftSort, setDraftSort] = useState<SortType>(null)
+  const [sortingTab, setSortingTab] = useState<'example' | 'my'>('example')
 
   const openSettings = (routeId: string) => {
     setCurrentRouteId(routeId)
@@ -240,6 +255,7 @@ export function RouteList() {
     setDraftRowOrder(buildRowEntries(routes.find(r => r.id === routeId)?.deliveryPoints || []))
     setDraftSort(activeSortConfig)
     setSettingsMenu('column')
+    setSortingTab('example')
     setSettingsOpen(true)
   }
 
@@ -278,7 +294,12 @@ export function RouteList() {
     const sorted = [...draftRowOrder].sort((a, b) => parseInt(a.position) - parseInt(b.position))
     const id = `roworder-${Date.now()}`
     const label = `Order ${savedRowOrders.length + 1} (${new Date().toLocaleTimeString()})`
-    setSavedRowOrders(prev => [...prev, { id, label, order: sorted.map(r => r.code) }])
+    const newEntry = { id, label, order: sorted.map(r => r.code) }
+    setSavedRowOrders(prev => {
+      const updated = [...prev, newEntry]
+      try { localStorage.setItem('fcalendar_my_sorts', JSON.stringify(updated)) } catch {}
+      return updated
+    })
     setSavedRowOrderOnce(true)
     setRowOrderError('')
   }
@@ -293,7 +314,10 @@ export function RouteList() {
       return [...active, ...inactive]
     }
 
-    if (!activeSortConfig) return sortByActive(deliveryPoints)
+    if (!activeSortConfig) {
+      const byCode = [...deliveryPoints].sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true, sensitivity: 'base' }))
+      return sortByActive(byCode)
+    }
     if (activeSortConfig.type === 'column') {
       const { key, dir } = activeSortConfig
       const fieldMap: Partial<Record<ColumnKey, keyof DeliveryPoint>> = {
@@ -550,15 +574,15 @@ export function RouteList() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredRoutes.map((route) => (
           <div key={route.id} className="w-full">
             {/* Card */}
             <div 
-              className="bg-card rounded-xl border border-border shadow-md hover:shadow-xl hover:border-primary/50 transition-all duration-300 overflow-hidden h-[320px] flex flex-col group"
+              className="bg-card rounded-xl border border-border shadow-md hover:shadow-xl hover:border-primary/50 transition-all duration-300 overflow-hidden h-[400px] flex flex-col group"
             >
               {/* Header Section - Point Count & Buttons */}
-              <div className="p-3 border-b border-border bg-card">
+              <div className="p-4 border-b border-border bg-card">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                     <MapPin className="size-4" />
@@ -1168,10 +1192,10 @@ export function RouteList() {
               </div>
               
               {/* Footer Section - Route Info */}
-              <div className="p-3 border-t border-border bg-gradient-to-br from-primary/5 to-transparent">
+              <div className="p-4 border-t border-border bg-gradient-to-br from-primary/5 to-transparent">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-base font-bold mb-1 truncate group-hover:text-primary transition-colors">{route.name}</h3>
+                    <h3 className="text-lg font-bold mb-1.5 truncate group-hover:text-primary transition-colors">{route.name}</h3>
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-card border border-border">
                         <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
@@ -1220,7 +1244,7 @@ export function RouteList() {
         <div className="w-full">
           <Dialog open={addRouteDialogOpen} onOpenChange={setAddRouteDialogOpen}>
             <DialogTrigger asChild>
-              <button className="w-full h-[320px] rounded-xl border-2 border-dashed border-border hover:border-primary hover:bg-gradient-to-br hover:from-primary/5 hover:via-purple-500/5 hover:to-pink-500/5 transition-all duration-300 flex flex-col items-center justify-center gap-4 group relative overflow-hidden">
+              <button className="w-full h-[400px] rounded-xl border-2 border-dashed border-border hover:border-primary hover:bg-gradient-to-br hover:from-primary/5 hover:via-purple-500/5 hover:to-pink-500/5 transition-all duration-300 flex flex-col items-center justify-center gap-6 group relative overflow-hidden">
                 {/* Animated Background Effect */}
                 <div className="absolute inset-0 bg-gradient-to-br from-transparent via-primary/0 to-transparent group-hover:via-primary/5 transition-all duration-500" />
                 
@@ -1571,55 +1595,97 @@ export function RouteList() {
 
             {/* ── SORTING ── */}
             {settingsMenu === 'sorting' && (
-              <div className="p-4 space-y-4">
-                <div>
-                  <p className="text-sm font-medium mb-2">Sort by Column</p>
-                  <div className="space-y-1">
-                    {(['code', 'name', 'delivery'] as ColumnKey[]).map((key) => (
-                      <div key={key} className="flex items-center gap-2">
-                        {(['asc', 'desc'] as const).map((dir) => (
-                          <button
-                            key={dir}
-                            onClick={() => setDraftSort({ type: 'column', key, dir })}
-                            className={`flex-1 py-2 px-3 text-sm rounded border transition-colors text-left capitalize
-                              ${draftSort?.type === 'column' && draftSort.key === key && draftSort.dir === dir
-                                ? 'border-primary bg-primary/10 text-primary font-medium'
-                                : 'border-border hover:bg-muted'
-                              }`}
-                          >
-                            {key} {dir === 'asc' ? '↑ A→Z' : '↓ Z→A'}
-                          </button>
-                        ))}
-                      </div>
-                    ))}
-                  </div>
+              <div className="p-4 space-y-3">
+                {/* Sub-tabs */}
+                <div className="flex gap-1 p-1 bg-muted rounded-lg">
+                  {(['example', 'my'] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setSortingTab(tab)}
+                      className={`flex-1 py-1.5 px-3 text-sm rounded-md font-medium transition-colors ${
+                        sortingTab === tab
+                          ? 'bg-background shadow-sm text-foreground'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {tab === 'example' ? 'Example Sort List' : 'My Sort List'}
+                    </button>
+                  ))}
                 </div>
 
-                {savedRowOrders.length > 0 && (
-                  <div>
-                    <p className="text-sm font-medium mb-2">Sort by Saved Row Order</p>
-                    <div className="space-y-1">
-                      {savedRowOrders.map((s) => (
-                        <button
-                          key={s.id}
-                          onClick={() => setDraftSort({ type: 'saved', id: s.id })}
-                          className={`w-full py-2 px-3 text-sm rounded border transition-colors text-left
-                            ${draftSort?.type === 'saved' && draftSort.id === s.id
-                              ? 'border-primary bg-primary/10 text-primary font-medium'
-                              : 'border-border hover:bg-muted'
+                {/* Example Sort List */}
+                {sortingTab === 'example' && (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground mb-2">Predefined sort orders — visible to all users.</p>
+                    {[
+                      { key: 'code'     as ColumnKey, dir: 'asc'  as const, label: 'Code A → Z' },
+                      { key: 'code'     as ColumnKey, dir: 'desc' as const, label: 'Code Z → A' },
+                      { key: 'name'     as ColumnKey, dir: 'asc'  as const, label: 'Name A → Z' },
+                      { key: 'name'     as ColumnKey, dir: 'desc' as const, label: 'Name Z → A' },
+                      { key: 'delivery' as ColumnKey, dir: 'asc'  as const, label: 'Delivery A → Z' },
+                      { key: 'delivery' as ColumnKey, dir: 'desc' as const, label: 'Delivery Z → A' },
+                    ].map(({ key, dir, label }) => (
+                      <button
+                        key={`${key}-${dir}`}
+                        onClick={() => setDraftSort({ type: 'column', key, dir })}
+                        className={`w-full py-2 px-3 text-sm rounded border transition-colors text-left ${
+                          draftSort?.type === 'column' && draftSort.key === key && draftSort.dir === dir
+                            ? 'border-primary bg-primary/10 text-primary font-medium'
+                            : 'border-border hover:bg-muted'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* My Sort List */}
+                {sortingTab === 'my' && (
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground mb-2">Your saved row orders from Row Customize — stored privately in this browser.</p>
+                    {savedRowOrders.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground text-sm">
+                        <p>No saved sort orders yet.</p>
+                        <p className="text-xs mt-1">Go to <strong>Row Customize</strong> tab and save a custom order.</p>
+                      </div>
+                    ) : (
+                      savedRowOrders.map((s) => (
+                        <div key={s.id} className="flex items-center gap-2">
+                          <button
+                            onClick={() => setDraftSort({ type: 'saved', id: s.id })}
+                            className={`flex-1 py-2 px-3 text-sm rounded border transition-colors text-left ${
+                              draftSort?.type === 'saved' && draftSort.id === s.id
+                                ? 'border-primary bg-primary/10 text-primary font-medium'
+                                : 'border-border hover:bg-muted'
                             }`}
-                        >
-                          {s.label}
-                        </button>
-                      ))}
-                    </div>
+                          >
+                            {s.label}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSavedRowOrders(prev => {
+                                const updated = prev.filter(r => r.id !== s.id)
+                                try { localStorage.setItem('fcalendar_my_sorts', JSON.stringify(updated)) } catch {}
+                                return updated
+                              })
+                              if (draftSort?.type === 'saved' && draftSort.id === s.id) setDraftSort(null)
+                            }}
+                            className="p-1.5 rounded hover:bg-destructive/10 hover:text-destructive transition-colors text-muted-foreground shrink-0"
+                            title="Delete this sort"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </div>
+                      ))
+                    )}
                   </div>
                 )}
 
                 {draftSort && (
                   <button
                     onClick={() => setDraftSort(null)}
-                    className="text-sm text-muted-foreground hover:text-destructive flex items-center gap-1"
+                    className="text-sm text-muted-foreground hover:text-destructive flex items-center gap-1 pt-1"
                   >
                     <X className="size-3.5" /> Clear sorting
                   </button>
