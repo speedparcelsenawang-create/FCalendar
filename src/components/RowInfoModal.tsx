@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react"
-import { Plus, Trash2, QrCode, ExternalLink, Pencil } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { Plus, Trash2, QrCode, ExternalLink, Pencil, Link2, ImageUp, X } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -43,6 +43,8 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
   const [qrCodeImageUrl, setQrCodeImageUrl] = useState("")
   const [qrCodeDestinationUrl, setQrCodeDestinationUrl] = useState("")
   const [showQRDialog, setShowQRDialog] = useState(false)
+  const [qrTab, setQrTab] = useState<"url" | "media">("url")
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (open) {
@@ -257,27 +259,93 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
 
               <div className="space-y-3">
                 {/* QR Image preview */}
-                {(qrCodeImageUrl) && (
-                  <div className="flex justify-center">
+                {qrCodeImageUrl && (
+                  <div className="relative flex justify-center">
                     <img
                       src={qrCodeImageUrl}
                       alt="QR Code"
                       className="w-40 h-40 object-contain border rounded-xl"
                     />
+                    {isEditMode && (
+                      <button
+                        onClick={() => { setQrCodeImageUrl(""); if (fileInputRef.current) fileInputRef.current.value = "" }}
+                        className="absolute -top-2 -right-2 bg-destructive text-white rounded-full p-0.5 hover:bg-destructive/80 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    )}
                   </div>
                 )}
 
                 {isEditMode && (
                   <>
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">QR Code Image URL</label>
-                      <Input
-                        value={qrCodeImageUrl}
-                        onChange={e => setQrCodeImageUrl(e.target.value)}
-                        placeholder="https://example.com/qr.png"
-                        className="h-8 text-sm"
-                      />
+                    {/* Tabs */}
+                    <div className="flex rounded-lg border overflow-hidden">
+                      <button
+                        onClick={() => setQrTab("url")}
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-semibold transition-colors ${
+                          qrTab === "url"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground hover:bg-muted/70"
+                        }`}
+                      >
+                        <Link2 className="w-3.5 h-3.5" />
+                        URL
+                      </button>
+                      <button
+                        onClick={() => setQrTab("media")}
+                        className={`flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-semibold transition-colors ${
+                          qrTab === "media"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground hover:bg-muted/70"
+                        }`}
+                      >
+                        <ImageUp className="w-3.5 h-3.5" />
+                        Media
+                      </button>
                     </div>
+
+                    {/* Tab: URL */}
+                    {qrTab === "url" && (
+                      <div className="space-y-1">
+                        <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">QR Image URL</label>
+                        <Input
+                          value={qrCodeImageUrl}
+                          onChange={e => setQrCodeImageUrl(e.target.value)}
+                          placeholder="https://example.com/qr.png"
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                    )}
+
+                    {/* Tab: Media */}
+                    {qrTab === "media" && (
+                      <div className="space-y-2">
+                        <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Upload Image</label>
+                        <div
+                          onClick={() => fileInputRef.current?.click()}
+                          className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-xl py-5 cursor-pointer hover:bg-muted/40 transition-colors"
+                        >
+                          <ImageUp className="w-7 h-7 text-muted-foreground" />
+                          <p className="text-xs text-muted-foreground">Click to choose image</p>
+                        </div>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={e => {
+                            const file = e.target.files?.[0]
+                            if (!file) return
+                            const reader = new FileReader()
+                            reader.onloadend = () => setQrCodeImageUrl(reader.result as string)
+                            reader.readAsDataURL(file)
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Destination URL — always visible in edit mode */}
                     <div className="space-y-1">
                       <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Destination URL</label>
                       <Input
