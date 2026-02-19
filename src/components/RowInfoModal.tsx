@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react"
+import QrScanner from "qr-scanner"
 import { Plus, Trash2, QrCode, ExternalLink, Pencil, Link2, ImageUp, X, ScanLine, CheckCircle2, Loader2, AlertCircle } from "lucide-react"
 import {
   Dialog,
@@ -57,28 +58,45 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
 
   const [pendingUrl, setPendingUrl] = useState<string | null>(null)
   const [scannedUrl, setScannedUrl] = useState<string | null>(null)
-  const [qrDecodeStatus, setQrDecodeStatus] = useState<"idle" | "decoding" | "decoded" | "failed" | "unsupported">("idle")
+  const [isScanning, setIsScanning] = useState(false)
+  const [qrDecodeStatus, setQrDecodeStatus] = useState<"idle" | "decoding" | "decoded" | "failed">("idle")
 
-  // Decode QR code from an HTMLImageElement using BarcodeDetector API
-  const decodeQrFromImage = async (imgEl: HTMLImageElement): Promise<string | null> => {
-    if (!("BarcodeDetector" in window)) {
-      setQrDecodeStatus("unsupported")
+  // Decode QR code from a data URL or Blob using qr-scanner
+  const decodeQrFromSource = async (source: string | Blob): Promise<string | null> => {
+    try {
+      const result = await QrScanner.scanImage(source, { returnDetailedScanResult: true })
+      return result.data ?? null
+    } catch {
       return null
     }
+  }
+
+  // Scan QR image in view mode: fetch via proxy if remote URL, then decode
+  const handleScanQr = async () => {
+    if (!qrCodeImageUrl) return
+    setIsScanning(true)
+    // Minimum animation duration
+    await new Promise(resolve => setTimeout(resolve, 800))
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const detector = new (window as any).BarcodeDetector({ formats: ["qr_code"] })
-      const barcodes = await detector.detect(imgEl)
-      if (barcodes.length > 0) {
-        setQrDecodeStatus("decoded")
-        return barcodes[0].rawValue as string
+      let source: string | Blob = qrCodeImageUrl
+      if (qrCodeImageUrl.startsWith("http")) {
+        const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(qrCodeImageUrl)}`
+        const response = await fetch(proxyUrl)
+        if (response.ok) {
+          source = await response.blob()
+        }
+      }
+      const decoded = await decodeQrFromSource(source)
+      setIsScanning(false)
+      if (decoded) {
+        setScannedUrl(decoded)
       } else {
-        setQrDecodeStatus("failed")
-        return null
+        // fallback to stored destination URL
+        setScannedUrl(qrCodeDestinationUrl ?? "")
       }
     } catch {
-      setQrDecodeStatus("failed")
-      return null
+      setIsScanning(false)
+      setScannedUrl(qrCodeDestinationUrl ?? "")
     }
   }
 
@@ -252,16 +270,20 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
                     if (isEditMode) {
                       setShowQRDialog(true)
                     } else {
-                      // Auto-scan: directly show scanned result modal
-                      setScannedUrl(qrCodeDestinationUrl ?? "")
+                      handleScanQr()
                     }
                   }}
+                  disabled={isScanning}
                   title={isEditMode ? (qrCodeImageUrl ? "Edit QR Code" : "Add QR Code") : "Scan QR Code"}
-                  className="flex flex-col items-center gap-1 group"
+                  className="flex flex-col items-center gap-1 group disabled:opacity-70 disabled:cursor-not-allowed"
                 >
-                  <div className="relative w-9 h-9 rounded-xl bg-orange-500 hover:bg-orange-600 flex items-center justify-center shadow hover:shadow-md transition-all group-hover:scale-105">
-                    <QrCode className="w-5 h-5 text-white" />
-                    {isEditMode && (
+                  <div className="relative w-9 h-9 rounded-xl bg-orange-500 hover:bg-orange-600 flex items-center justify-center shadow hover:shadow-md transition-all group-hover:scale-105 overflow-hidden">
+                    {isScanning ? (
+                      <Loader2 className="w-5 h-5 text-white animate-spin" />
+                    ) : (
+                      <QrCode className="w-5 h-5 text-white" />
+                    )}
+                    {isEditMode && !isScanning && (
                       <span className="absolute -top-1 -right-1 bg-background rounded-full p-0.5">
                         {qrCodeImageUrl
                           ? <Pencil className="w-2.5 h-2.5" />
@@ -269,7 +291,9 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
                       </span>
                     )}
                   </div>
-                  <span className="text-[10px] text-gray-600 dark:text-gray-400">QR Scan</span>
+                  <span className="text-[10px] text-gray-600 dark:text-gray-400">
+                    {isScanning ? "Scanning..." : "QR Scan"}
+                  </span>
                 </button>
               )}
             </div>
@@ -381,12 +405,7 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
                             <span>QR tidak dapat dibaca. Sila isi Destination URL secara manual.</span>
                           </div>
                         )}
-                        {qrDecodeStatus === "unsupported" && (
-                          <div className="flex items-center gap-2 text-xs text-yellow-600 dark:text-yellow-400">
-                            <AlertCircle className="w-3.5 h-3.5" />
-                            <span>Browser tidak support auto-scan. Sila isi URL manual.</span>
-                          </div>
-                        )}
+
                         <input
                           ref={fileInputRef}
                           type="file"
@@ -397,18 +416,17 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
                             if (!file) return
                             setQrDecodeStatus("decoding")
                             const reader = new FileReader()
-                            reader.onloadend = () => {
+                            reader.onloadend = async () => {
                               const dataUrl = reader.result as string
                               setQrCodeImageUrl(dataUrl)
-                              // Auto-decode QR from uploaded image
-                              const img = new Image()
-                              img.onload = async () => {
-                                const decoded = await decodeQrFromImage(img)
-                                if (decoded) {
-                                  setQrCodeDestinationUrl(decoded)
-                                }
+                              // Auto-decode using qr-scanner
+                              const decoded = await decodeQrFromSource(file)
+                              if (decoded) {
+                                setQrDecodeStatus("decoded")
+                                setQrCodeDestinationUrl(decoded)
+                              } else {
+                                setQrDecodeStatus("failed")
                               }
-                              img.src = dataUrl
                             }
                             reader.readAsDataURL(file)
                           }}
