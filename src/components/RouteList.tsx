@@ -23,6 +23,7 @@ interface DeliveryPoint {
   code: string
   name: string
   delivery: "Daily" | "Weekday" | "Alt 1" | "Alt 2"
+  showBadge?: boolean
   latitude: number
   longitude: number
   descriptions: { key: string; value: string }[]
@@ -34,6 +35,19 @@ interface Route {
   code: string
   shift: string
   deliveryPoints: DeliveryPoint[]
+}
+
+// Returns true if the delivery point is active on the given date
+function isDeliveryActive(delivery: DeliveryPoint['delivery'], date: Date = new Date()): boolean {
+  const dayOfWeek = date.getDay()   // 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+  const dateNum   = date.getDate()  // 1-31
+  switch (delivery) {
+    case 'Daily':   return true
+    case 'Alt 1':   return dateNum % 2 !== 0   // odd dates
+    case 'Alt 2':   return dateNum % 2 === 0   // even dates
+    case 'Weekday': return dayOfWeek <= 4       // Sun(0) – Thu(4)
+    default:        return true
+  }
 }
 
 const DEFAULT_ROUTES: Route[] = [
@@ -166,6 +180,9 @@ export function RouteList() {
   const [moveDialogOpen, setMoveDialogOpen] = useState(false)
   const [selectedTargetRoute, setSelectedTargetRoute] = useState("")
   const [pendingSelectedRows, setPendingSelectedRows] = useState<string[]>([])
+  const [deliveryModalOpen, setDeliveryModalOpen] = useState(false)
+  const [deliveryModalCode, setDeliveryModalCode] = useState<string | null>(null)
+  const [deliveryModalShowBadge, setDeliveryModalShowBadge] = useState(true)
 
   // ── Settings Modal ────────────────────────────────────────────────
   type ColumnKey = 'no' | 'code' | 'name' | 'delivery' | 'action'
@@ -270,30 +287,40 @@ export function RouteList() {
 
   // Apply sort to deliveryPoints
   const sortedDeliveryPoints = useMemo(() => {
-    if (!activeSortConfig) return deliveryPoints
+    const today = new Date()
+    const sortByActive = (pts: DeliveryPoint[]) => {
+      // Active rows first, disabled rows last (stable within each group)
+      const active   = pts.filter(p =>  isDeliveryActive(p.delivery, today))
+      const inactive = pts.filter(p => !isDeliveryActive(p.delivery, today))
+      return [...active, ...inactive]
+    }
+
+    if (!activeSortConfig) return sortByActive(deliveryPoints)
     if (activeSortConfig.type === 'column') {
       const { key, dir } = activeSortConfig
       const fieldMap: Partial<Record<ColumnKey, keyof DeliveryPoint>> = {
         code: 'code', name: 'name', delivery: 'delivery'
       }
       const field = fieldMap[key]
-      if (!field) return deliveryPoints
-      return [...deliveryPoints].sort((a, b) => {
+      if (!field) return sortByActive(deliveryPoints)
+      const sorted = [...deliveryPoints].sort((a, b) => {
         if (a[field] < b[field]) return dir === 'asc' ? -1 : 1
         if (a[field] > b[field]) return dir === 'asc' ? 1 : -1
         return 0
       })
+      return sortByActive(sorted)
     }
     if (activeSortConfig.type === 'saved') {
       const saved = savedRowOrders.find(s => s.id === activeSortConfig.id)
-      if (!saved) return deliveryPoints
-      return [...deliveryPoints].sort((a, b) => {
+      if (!saved) return sortByActive(deliveryPoints)
+      const sorted = [...deliveryPoints].sort((a, b) => {
         const ai = saved.order.indexOf(a.code)
         const bi = saved.order.indexOf(b.code)
         return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
       })
+      return sortByActive(sorted)
     }
-    return deliveryPoints
+    return sortByActive(deliveryPoints)
   }, [deliveryPoints, activeSortConfig, savedRowOrders])
 
   const startEdit = (rowCode: string, field: string, currentValue: string | number) => {
@@ -606,10 +633,14 @@ export function RouteList() {
                         </thead>
                         <tbody>
                           {sortedDeliveryPoints.map((point, index) => {
-                            const deliveryTypes = ['Daily', 'Weekday', 'Alt 1', 'Alt 2']
+                            const isActive = isDeliveryActive(point.delivery)
                             
                             return (
-                              <tr key={point.code} className="hover:bg-muted/30 border-b border-border/50">
+                              <tr key={point.code} className={`border-b border-border/50 transition-colors ${
+                                isActive
+                                  ? 'hover:bg-muted/30'
+                                  : 'bg-muted/40 opacity-50 hover:opacity-60'
+                              }`}>
                                 {isEditMode && (
                                   <td className="p-3 text-center">
                                     <input
@@ -693,32 +724,23 @@ export function RouteList() {
                                   if (col.key === 'delivery') return (
                                     <td key="delivery" className="p-3 text-center">
                                       {isEditMode ? (
-                                      <Popover
-                                        open={isEditMode && !!popoverOpen[`${point.code}-delivery`]}
-                                        onOpenChange={(open) => {
-                                          if (!isEditMode) return
-                                          if (!open) cancelEdit()
-                                          setPopoverOpen({ [`${point.code}-delivery`]: open })
-                                        }}
-                                      >
-                                        <PopoverTrigger asChild>
-                                          <button className="group flex items-center justify-center gap-1.5 hover:scale-105 transition-transform mx-auto" onClick={() => startEdit(point.code, 'delivery', point.delivery)}>
-                                            <span className={`inline-flex items-center px-3 py-1 rounded text-xs font-medium ${ point.delivery === 'Daily' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : point.delivery === 'Weekday' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : point.delivery === 'Alt 1' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' }`}>{point.delivery}</span>
-                                            <Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-                                          </button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-48">
-                                          <div className="space-y-1">
-                                            {deliveryTypes.map((type) => (
-                                              <button key={type} onClick={() => { setDeliveryPoints(prev => prev.map(p => p.code === point.code ? { ...p, delivery: type as DeliveryPoint['delivery'] } : p)); cancelEdit() }} className="w-full p-2 text-left text-sm rounded hover:bg-accent transition-colors">
-                                                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${ type === 'Daily' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : type === 'Weekday' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : type === 'Alt 1' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' }`}>{type}</span>
-                                              </button>
-                                            ))}
-                                          </div>
-                                        </PopoverContent>
-                                      </Popover>
+                                        <button
+                                          className="group flex items-center justify-center gap-1.5 hover:scale-105 transition-transform mx-auto"
+                                          onClick={() => {
+                                            setDeliveryModalCode(point.code)
+                                            setDeliveryModalShowBadge(true)
+                                            setDeliveryModalOpen(true)
+                                          }}
+                                        >
+                                          <span className="text-sm">{point.delivery}</span>
+                                          <Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                                        </button>
                                       ) : (
-                                        <span className={`inline-flex items-center px-3 py-1 rounded text-xs font-medium ${ point.delivery === 'Daily' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : point.delivery === 'Weekday' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : point.delivery === 'Alt 1' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' }`}>{point.delivery}</span>
+                                        point.showBadge ? (
+                                          <span className={`inline-flex items-center px-3 py-1 rounded text-xs font-semibold ${ point.delivery === 'Daily' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : point.delivery === 'Weekday' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : point.delivery === 'Alt 1' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' }`}>{point.delivery}</span>
+                                        ) : (
+                                          <span className="text-sm">{point.delivery}</span>
+                                        )
                                       )}
                                     </td>
                                   )
@@ -1038,6 +1060,108 @@ export function RouteList() {
                   </DialogContent>
                 </Dialog>
                 
+                {/* Delivery Edit Modal */}
+                <Dialog open={deliveryModalOpen && currentRouteId === route.id} onOpenChange={(open) => {
+                  setDeliveryModalOpen(open)
+                  if (!open) setDeliveryModalCode(null)
+                }}>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Edit Delivery Schedule</DialogTitle>
+                      <DialogDescription>
+                        {deliveryModalCode && (() => {
+                          const pt = deliveryPoints.find(p => p.code === deliveryModalCode)
+                          return pt ? `${pt.code} — ${pt.name}` : ''
+                        })()}
+                      </DialogDescription>
+                    </DialogHeader>
+
+                    {deliveryModalCode && (() => {
+                      const pt = deliveryPoints.find(p => p.code === deliveryModalCode)
+                      if (!pt) return null
+                      const options: { value: DeliveryPoint['delivery']; label: string; desc: string; color: string }[] = [
+                        { value: 'Daily',   label: 'Daily',   desc: 'Penghantaran setiap hari',                   color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
+                        { value: 'Alt 1',   label: 'Alt 1',   desc: 'Penghantaran pada tarikh ganjil sahaja',     color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' },
+                        { value: 'Alt 2',   label: 'Alt 2',   desc: 'Penghantaran pada tarikh genap sahaja',      color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' },
+                        { value: 'Weekday', label: 'Weekday', desc: 'Penghantaran hari Ahad – Khamis sahaja',    color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
+                      ]
+                      return (
+                        <div className="space-y-4 py-2">
+                          {/* Options */}
+                          <div className="space-y-2">
+                            {options.map(opt => (
+                              <button
+                                key={opt.value}
+                                onClick={() => {
+                                  setDeliveryPoints(prev => prev.map(p =>
+                                    p.code === deliveryModalCode ? { ...p, delivery: opt.value } : p
+                                  ))
+                                }}
+                                className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left ${
+                                  pt.delivery === opt.value
+                                    ? 'border-primary bg-primary/5 ring-1 ring-primary/30'
+                                    : 'border-border hover:border-primary/40 hover:bg-muted/40'
+                                }`}
+                              >
+                                <span className={`inline-flex items-center px-2.5 py-1 rounded text-xs font-semibold shrink-0 ${opt.color}`}>
+                                  {opt.label}
+                                </span>
+                                <span className="text-sm text-muted-foreground">{opt.desc}</span>
+                                {pt.delivery === opt.value && (
+                                  <Check className="size-4 text-primary ml-auto shrink-0" />
+                                )}
+                              </button>
+                            ))}
+                          </div>
+
+                          {/* Badge toggle */}
+                          <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
+                            <div>
+                              <p className="text-sm font-medium">Tunjuk Badge</p>
+                              <p className="text-xs text-muted-foreground">Papar warna jenis penghantaran di jadual</p>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setDeliveryPoints(prev => prev.map(p =>
+                                  p.code === deliveryModalCode ? { ...p, showBadge: !p.showBadge } : p
+                                ))
+                              }}
+                              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                pt.showBadge ? 'bg-primary' : 'bg-muted-foreground/30'
+                              }`}
+                            >
+                              <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+                                pt.showBadge ? 'translate-x-6' : 'translate-x-1'
+                              }`} />
+                            </button>
+                          </div>
+
+                          {/* Preview */}
+                          <div className="rounded-lg border border-border p-3 bg-muted/20">
+                            <p className="text-xs text-muted-foreground mb-2">Preview di jadual:</p>
+                            <div className="flex items-center gap-2">
+                              {pt.showBadge ? (
+                                <span className={`inline-flex items-center px-3 py-1 rounded text-xs font-semibold ${
+                                  options.find(o => o.value === pt.delivery)?.color ?? ''
+                                }`}>{pt.delivery}</span>
+                              ) : (
+                                <span className="text-sm">{pt.delivery}</span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex justify-end gap-2 pt-1">
+                            <Button variant="outline" onClick={() => {
+                              setDeliveryModalOpen(false)
+                              setDeliveryModalCode(null)
+                            }}>Tutup</Button>
+                          </div>
+                        </div>
+                      )
+                    })()}
+                  </DialogContent>
+                </Dialog>
+
                 {/* Info Modal */}
                 {selectedPoint && (
                   <RowInfoModal

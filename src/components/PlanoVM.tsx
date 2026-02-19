@@ -42,61 +42,35 @@ interface PlanoPage {
 }
 
 export function PlanoVM() {
-  const { isEditMode, setHasUnsavedChanges } = useEditMode()
+  const { isEditMode, setHasUnsavedChanges, registerSaveHandler } = useEditMode()
   const lightGalleryRefs = useRef<Map<string, any>>(new Map())
   const [selectedImage, setSelectedImage] = useState<{ url: string; title: string; description: string } | null>(null)
-  const [pages, setPages] = useState<PlanoPage[]>([
-    {
-      id: "page-1",
-      name: "Store Layout 1",
-      rows: [
-        {
-          id: "row-1",
-          title: "Top Shelf Products",
-          images: [
-            {
-              id: "img-1",
-              url: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400",
-              title: "Product 1",
-              description: "Premium Headphones"
-            },
-            {
-              id: "img-2",
-              url: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400",
-              title: "Product 2",
-              description: "Smart Watch"
-            },
-            {
-              id: "img-3",
-              url: "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=400",
-              title: "Product 3",
-              description: "Sunglasses"
-            }
-          ]
-        },
-        {
-          id: "row-2",
-          title: "Featured Collection",
-          images: [
-            {
-              id: "img-4",
-              url: "https://images.unsplash.com/photo-1560343090-f0409e92791a?w=400",
-              title: "Product 4",
-              description: "Sneakers"
-            },
-            {
-              id: "img-5",
-              url: "https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=400",
-              title: "Product 5",
-              description: "Backpack"
-            }
-          ]
-        }
-      ]
-    }
-  ])
+  const [pages, setPages] = useState<PlanoPage[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
 
-  const [activePage, setActivePage] = useState<string>("page-1")
+  // Load data from database on mount
+  useEffect(() => {
+    const loadPages = async () => {
+      try {
+        setIsLoading(true)
+        setLoadError(null)
+        const res = await fetch('/api/plano')
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const json = await res.json()
+        const loaded: PlanoPage[] = json.data ?? []
+        setPages(loaded)
+        if (loaded.length > 0) setActivePage(loaded[0].id)
+      } catch (err) {
+        setLoadError(err instanceof Error ? err.message : 'Gagal memuatkan data')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    loadPages()
+  }, [])
+
+  const [activePage, setActivePage] = useState<string>("")
   const [addPageDialog, setAddPageDialog] = useState(false)
   const [editPageDialog, setEditPageDialog] = useState<{ open: boolean; pageId?: string }>({ open: false })
   const [deletePageDialog, setDeletePageDialog] = useState<{ open: boolean; pageId?: string }>({ open: false })
@@ -136,6 +110,21 @@ export function PlanoVM() {
   }
 
   const currentPage = pages.find(p => p.id === activePage)
+
+  // Register save handler so App-level Save button persists to DB
+  useEffect(() => {
+    registerSaveHandler(async () => {
+      const res = await fetch('/api/plano', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pages }),
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error(json.error ?? `HTTP ${res.status}`)
+      }
+    })
+  }, [pages, registerSaveHandler])
 
   // Initialize lightGallery for each row when not in edit mode
   useEffect(() => {
@@ -440,6 +429,25 @@ export function PlanoVM() {
       left: direction === 'left' ? -scrollAmount : scrollAmount,
       behavior: 'smooth'
     })
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-1 items-center justify-center min-h-[40vh] gap-3 text-muted-foreground">
+        <Loader2 className="size-5 animate-spin" />
+        <span>Memuatkan data...</span>
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center min-h-[40vh] gap-3 text-destructive">
+        <p className="font-medium">Gagal memuatkan data</p>
+        <p className="text-sm text-muted-foreground">{loadError}</p>
+        <Button variant="outline" onClick={() => window.location.reload()}>Cuba semula</Button>
+      </div>
+    )
   }
 
   return (
