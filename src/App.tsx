@@ -48,7 +48,7 @@ const EXPIRED_COLORS   = ["#EC4899","#EAB308","#3B82F6","#F97316","#92400E","#22
 function ColorDot({ color }: { color: string }) {
   return (
     <span
-      className="inline-block w-4 h-4 rounded-full shrink-0 ring-1 ring-black/10 dark:ring-white/10"
+      className="inline-block w-5 h-5 rounded-full shrink-0 shadow-sm ring-2 ring-white/60 dark:ring-black/30"
       style={{ backgroundColor: color }}
     />
   )
@@ -56,61 +56,72 @@ function ColorDot({ color }: { color: string }) {
 
 function HomePage() {
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6 max-w-2xl mx-auto w-full">
-      {/* Welcome */}
-      <div>
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white">Welcome to FCalendar</h1>
-        <p className="text-sm text-muted-foreground mt-1">Daily colour guide for stock operations.</p>
+    <div className="flex flex-1 flex-col gap-5 p-4 md:p-6 max-w-2xl mx-auto w-full">
+      {/* Welcome Banner */}
+      <div className="rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/15 px-5 py-4 flex items-center gap-4 shadow-sm">
+        <div className="w-12 h-12 rounded-xl bg-primary/15 border border-primary/20 flex items-center justify-center shrink-0">
+          <span className="text-2xl">📅</span>
+        </div>
+        <div className="min-w-0">
+          <h1 className="text-base font-bold text-gray-900 dark:text-white leading-snug">FCalendar</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">Panduan warna harian untuk operasi stok.</p>
+        </div>
       </div>
 
       {/* Color Guide Table */}
-      <div className="rounded-2xl border border-border overflow-hidden shadow-sm">
-        {/* Table header */}
-        <div className="grid grid-cols-4 bg-muted/60 text-xs font-semibold uppercase tracking-wide text-muted-foreground px-4 py-3 gap-2">
-          <span>Day</span>
-          <span className="text-center">✅ Stock In</span>
-          <span className="text-center">🔄 Move Front</span>
-          <span className="text-center">🚫 Expired</span>
-        </div>
-        {/* Rows */}
-        {DAYS.map((day, i) => (
-          <div
-            key={day.en}
-            className="grid grid-cols-4 items-center px-4 py-3 gap-2 border-t border-border/60 hover:bg-muted/30 transition-colors"
-          >
-            <div>
-              <p className="text-sm font-semibold text-foreground">{day.my}</p>
-              <p className="text-xs text-muted-foreground">{day.en}</p>
-            </div>
-            <div className="flex justify-center">
-              <ColorDot color={STOCK_IN_COLORS[i]} />
-            </div>
-            <div className="flex justify-center">
-              <ColorDot color={MOVE_FRONT_COLORS[i]} />
-            </div>
-            <div className="flex justify-center">
-              <ColorDot color={EXPIRED_COLORS[i]} />
-            </div>
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2 px-1">Jadual Warna</p>
+        <div className="rounded-2xl border border-border overflow-hidden shadow-sm">
+          {/* Table header */}
+          <div className="grid grid-cols-4 bg-muted/70 dark:bg-muted/40 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground px-4 py-2.5 gap-2 border-b border-border">
+            <span>Hari</span>
+            <span className="text-center">✅ Masuk</span>
+            <span className="text-center">🔄 Hadapan</span>
+            <span className="text-center">🚫 Luput</span>
           </div>
-        ))}
+          {/* Rows */}
+          {DAYS.map((day, i) => (
+            <div
+              key={day.en}
+              className="grid grid-cols-4 items-center px-4 py-3 gap-2 border-t border-border/50 hover:bg-muted/25 transition-colors"
+            >
+              <div>
+                <p className="text-sm font-semibold text-foreground leading-tight">{day.my}</p>
+                <p className="text-[11px] text-muted-foreground/70 mt-0.5">{day.en}</p>
+              </div>
+              <div className="flex justify-center">
+                <ColorDot color={STOCK_IN_COLORS[i]} />
+              </div>
+              <div className="flex justify-center">
+                <ColorDot color={MOVE_FRONT_COLORS[i]} />
+              </div>
+              <div className="flex justify-center">
+                <ColorDot color={EXPIRED_COLORS[i]} />
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Legend */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {[
-          { color: "#3B82F6", label: "Blue / Biru" },
-          { color: "#F97316", label: "Orange" },
-          { color: "#92400E", label: "Brown / Coklat" },
-          { color: "#22C55E", label: "Green / Hijau" },
-          { color: "#A855F7", label: "Purple / Ungu" },
-          { color: "#EC4899", label: "Pink" },
-          { color: "#EAB308", label: "Yellow / Kuning" },
-        ].map(({ color, label }) => (
-          <div key={label} className="flex items-center gap-2 text-sm text-muted-foreground">
-            <ColorDot color={color} />
-            <span>{label}</span>
-          </div>
-        ))}
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground mb-2 px-1">Petunjuk Warna</p>
+        <div className="rounded-2xl border border-border bg-card shadow-sm p-4 grid grid-cols-2 gap-x-4 gap-y-2.5 sm:grid-cols-3">
+          {[
+            { color: "#3B82F6", label: "Blue / Biru" },
+            { color: "#F97316", label: "Orange" },
+            { color: "#92400E", label: "Brown / Coklat" },
+            { color: "#22C55E", label: "Green / Hijau" },
+            { color: "#A855F7", label: "Purple / Ungu" },
+            { color: "#EC4899", label: "Pink" },
+            { color: "#EAB308", label: "Yellow / Kuning" },
+          ].map(({ color, label }) => (
+            <div key={label} className="flex items-center gap-2.5">
+              <ColorDot color={color} />
+              <span className="text-xs font-medium text-foreground/80">{label}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   )
@@ -221,7 +232,7 @@ function AppContent() {
       )}
       
       <main className={`relative flex w-full flex-1 flex-col min-h-0 overflow-y-auto bg-background transition-all duration-500 ease-in-out ${(isMobile && openMobile) || (!isMobile && open) ? 'scale-95 opacity-90' : 'scale-100 opacity-100'}`}>
-        <header className="sticky top-0 z-30 flex shrink-0 items-center gap-2 border-b border-border/60 bg-background backdrop-blur-md px-3 md:px-4 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-colors duration-300" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.625rem)', paddingBottom: '0.5rem', minHeight: 'calc(4rem + env(safe-area-inset-top))' }}>
+        <header className="sticky top-0 z-30 flex shrink-0 items-center gap-2 border-b border-border/50 bg-background/95 backdrop-blur-md px-3 md:px-4 shadow-[0_1px_8px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_8px_rgba(0,0,0,0.25)] transition-colors duration-300" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.5rem)', paddingBottom: '0.5rem', minHeight: 'calc(3.5rem + env(safe-area-inset-top))' }}>
           <SidebarTrigger className="-ml-1 shrink-0" disabled={isEditMode} />
           <Separator orientation="vertical" className="mr-1 md:mr-2 h-4 shrink-0" />
           <Breadcrumb className="min-w-0 flex-1">

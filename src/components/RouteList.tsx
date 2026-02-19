@@ -545,8 +545,9 @@ export function RouteList() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center mt-20 text-muted-foreground text-sm">
-        Memuatkan routes...
+      <div className="flex flex-col items-center justify-center mt-24 gap-3 text-muted-foreground">
+        <div className="w-8 h-8 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+        <span className="text-sm">Memuatkan routes...</span>
       </div>
     )
   }
@@ -556,23 +557,23 @@ export function RouteList() {
       {/* Route List */}
       <div className="mt-4 px-4 max-w-5xl mx-auto" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
         {/* Search Field */}
-        <div className="mb-6">
+        <div className="mb-5">
           <div className="flex items-center gap-3 max-w-md mx-auto">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/60" />
               <Input
                 type="text"
-                placeholder="Search routes by name, code, or shift..."
+                placeholder="Cari nama, kod, atau shift..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4"
+                className="pl-9 pr-4 h-10 rounded-xl border-border/70 bg-card shadow-sm text-sm placeholder:text-muted-foreground/50 focus-visible:ring-primary/30"
               />
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery("")}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  <X className="size-4" />
+                  <X className="size-3.5" />
                 </button>
               )}
             </div>
@@ -580,28 +581,28 @@ export function RouteList() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
         {filteredRoutes.map((route) => (
           <div key={route.id} className="w-full">
             {/* Card */}
             <div 
-              className="bg-card rounded-xl border border-border shadow-md hover:shadow-xl hover:border-primary/50 transition-all duration-300 overflow-hidden h-[400px] flex flex-col group"
+              className="bg-card rounded-2xl border border-border shadow-sm hover:shadow-lg hover:border-primary/40 transition-all duration-300 overflow-hidden h-[400px] flex flex-col group"
             >
               {/* Header Section - Point Count & Buttons */}
-              <div className="p-4 border-b border-border bg-card">
+              <div className="px-4 py-3 border-b border-border/60 bg-card">
                 <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                    <MapPin className="size-4" />
-                    <span>{route.deliveryPoints.length} location{route.deliveryPoints.length !== 1 ? 's' : ''}</span>
+                  <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                    <MapPin className="size-3.5" />
+                    <span>{route.deliveryPoints.length} lokasi</span>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1.5">
                     <button 
-                      className="p-1 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/8 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                       onClick={() => handleEditRoute(route)}
                       title="Edit Route"
                       disabled={!isEditMode}
                     >
-                      <Settings className="size-5" />
+                      <Settings className="size-4" />
                     </button>
                     <Dialog open={dialogOpen && currentRouteId === route.id} onOpenChange={(open) => {
                       setDialogOpen(open)
@@ -609,11 +610,11 @@ export function RouteList() {
                     }}>
                       <DialogTrigger asChild>
                         <button 
-                          className="p-1 text-muted-foreground hover:text-primary transition-colors"
+                          className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/8 transition-colors"
                           onClick={() => setCurrentRouteId(route.id)}
                           title="View Details"
                         >
-                          <List className="size-5" />
+                          <List className="size-4" />
                         </button>
                       </DialogTrigger>
                       <DialogContent className="max-w-6xl max-h-[80vh] overflow-hidden flex flex-col">
@@ -1172,14 +1173,15 @@ export function RouteList() {
               </div>
               
               {/* Map Section */}
-              <div className="flex-1 relative bg-muted/30 rounded-none">
+              <div className="flex-1 relative bg-muted/20 rounded-none">
                 {showMapCards.has(route.id) ? (
                   <div className="absolute inset-0 rounded-none">
                     <DeliveryMap deliveryPoints={route.deliveryPoints} />
                   </div>
                 ) : (
-                  <div className="absolute inset-0 flex items-center justify-center rounded-none">
-                    <MapPin className="size-16 text-muted-foreground/20" />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-none">
+                    <MapPin className="size-10 text-muted-foreground/15" />
+                    <span className="text-[11px] text-muted-foreground/40 font-medium">Tekan ikon peta untuk lihat</span>
                   </div>
                 )}
                 
@@ -1198,28 +1200,28 @@ export function RouteList() {
               </div>
               
               {/* Footer Section - Route Info */}
-              <div className="p-4 border-t border-border bg-gradient-to-br from-primary/5 to-transparent">
-                <div className="flex items-start justify-between gap-2">
+              <div className="px-4 py-3 border-t border-border/60 bg-card">
+                <div className="flex items-center justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-bold mb-1.5 truncate group-hover:text-primary transition-colors">{route.name}</h3>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-card border border-border">
-                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                    <h3 className="text-sm font-bold truncate group-hover:text-primary transition-colors leading-tight">{route.name}</h3>
+                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold rounded-md bg-muted/70 border border-border text-muted-foreground">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary/70" />
                         {route.code}
                       </span>
-                      <span className={`px-2.5 py-1 text-xs font-semibold rounded-md border ${route.shift === 'AM' ? 'bg-orange-500/10 text-orange-600 border-orange-500/20 dark:bg-orange-500/15 dark:text-orange-400' : 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:bg-blue-500/15 dark:text-blue-400'}`}>
+                      <span className={`px-2 py-0.5 text-[11px] font-semibold rounded-md border ${route.shift === 'AM' ? 'bg-orange-500/10 text-orange-600 border-orange-500/20 dark:bg-orange-500/15 dark:text-orange-400' : 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:bg-blue-500/15 dark:text-blue-400'}`}>
                         {route.shift}
                       </span>
                     </div>
                   </div>
                   <button
                     onClick={() => toggleCardMap(route.id)}
-                    className={`shrink-0 p-2 rounded-lg border transition-all ${
+                    className={`shrink-0 p-2 rounded-xl border transition-all ${
                       showMapCards.has(route.id)
                         ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                        : 'bg-card text-muted-foreground border-border hover:text-primary hover:border-primary/50'
+                        : 'bg-muted/50 text-muted-foreground border-border/60 hover:text-primary hover:border-primary/40 hover:bg-primary/5'
                     }`}
-                    title={showMapCards.has(route.id) ? 'Hide map' : 'Show map'}
+                    title={showMapCards.has(route.id) ? 'Sorok peta' : 'Tunjuk peta'}
                   >
                     {showMapCards.has(route.id) ? <EyeOff className="size-4" /> : <Map className="size-4" />}
                   </button>
