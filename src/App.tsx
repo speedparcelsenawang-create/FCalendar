@@ -208,8 +208,8 @@ function AppContent() {
         />
       )}
       
-      <main className={`relative flex w-full flex-1 flex-col bg-background transition-all duration-500 ease-in-out ${(isMobile && openMobile) || (!isMobile && open) ? 'scale-95 opacity-90' : 'scale-100 opacity-100'}`}>
-        <header className="sticky top-0 z-30 flex shrink-0 items-center gap-2 border-b border-border/60 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 px-3 md:px-4 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-all duration-500" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.5rem)', paddingBottom: '0.25rem', minHeight: 'calc(3.5rem + env(safe-area-inset-top) + 0.5rem)' }}>
+      <main className={`relative flex w-full flex-1 flex-col min-h-0 overflow-y-auto bg-background transition-all duration-500 ease-in-out ${(isMobile && openMobile) || (!isMobile && open) ? 'scale-95 opacity-90' : 'scale-100 opacity-100'}`}>
+        <header className="sticky top-0 z-30 flex shrink-0 items-center gap-2 border-b border-border/60 bg-background backdrop-blur-md px-3 md:px-4 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-colors duration-300" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.625rem)', paddingBottom: '0.5rem', minHeight: 'calc(4rem + env(safe-area-inset-top))' }}>
           <SidebarTrigger className="-ml-1 shrink-0" disabled={isEditMode} />
           <Separator orientation="vertical" className="mr-1 md:mr-2 h-4 shrink-0" />
           <Breadcrumb className="min-w-0 flex-1">

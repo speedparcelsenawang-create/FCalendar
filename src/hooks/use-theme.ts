@@ -31,14 +31,16 @@ export function useTheme() {
     //   dark:  oklch(0.145 0 0) → #242424
     const color = theme === "dark" ? "#242424" : "#ffffff"
 
-    // Update or create theme-color meta
-    let themeColorMeta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
-    if (!themeColorMeta) {
-      themeColorMeta = document.createElement("meta")
-      themeColorMeta.name = "theme-color"
-      document.head.appendChild(themeColorMeta)
+    // Update ALL theme-color metas (handles the ones with media query too)
+    const allMetas = document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')
+    if (allMetas.length === 0) {
+      const meta = document.createElement("meta")
+      meta.name = "theme-color"
+      meta.setAttribute("content", color)
+      document.head.appendChild(meta)
+    } else {
+      allMetas.forEach((meta) => meta.setAttribute("content", color))
     }
-    themeColorMeta.setAttribute("content", color)
   }, [theme])
 
   const toggleTheme = () => {

@@ -6,6 +6,7 @@
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#ffffff",
+  "dark_theme_color": "#242424",
   "orientation": "portrait-primary",
   "scope": "/",
   "icons": [
