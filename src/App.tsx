@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense, Component, useEffect, type ErrorInfo, type ReactNode } from "react"
+import { useState, lazy, Suspense, Component, type ErrorInfo, type ReactNode } from "react"
 import { AppSidebar } from "@/components/app-sidebar"
 import { ThemeToggle } from "@/components/theme-toggle"
 
@@ -9,7 +9,6 @@ const PlanoVM = lazy(() => import("@/components/PlanoVM").then(m => ({ default: 
 import { EditModeProvider, useEditMode } from "@/contexts/EditModeContext"
 import { Edit3, Save, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Footer } from "@/components/Footer"
 import {
   Dialog,
   DialogContent,
@@ -57,7 +56,7 @@ function ColorDot({ color }: { color: string }) {
 
 function HomePage() {
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6 max-w-2xl mx-auto w-full" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
+    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6 max-w-2xl mx-auto w-full">
       {/* Welcome */}
       <div>
         <h1 className="text-xl font-bold text-gray-900 dark:text-white">Welcome to FCalendar</h1>
@@ -121,23 +120,8 @@ function AppContent() {
   const [currentPage, setCurrentPage] = useState("dashboard")
   const [isTransitioning, setIsTransitioning] = useState(false)
   const { open, openMobile, isMobile, toggleSidebar } = useSidebar()
-  const { isEditMode, hasUnsavedChanges, setIsEditMode, setHasUnsavedChanges, saveChanges } = useEditMode()
+  const { isEditMode, hasUnsavedChanges, isSaving, setIsEditMode, setHasUnsavedChanges, saveChanges } = useEditMode()
   const [showExitDialog, setShowExitDialog] = useState(false)
-
-  // Update browser tab title whenever the active page changes
-  useEffect(() => {
-    const titles: Record<string, string> = {
-      dashboard:        "Home — FCalendar",
-      "route-list":     "Route List — FCalendar",
-      "calendar-month": "Calendar (Month) — FCalendar",
-      "calendar-week":  "Calendar (Week) — FCalendar",
-      "calendar-day":   "Calendar (Day) — FCalendar",
-      calendar:         "Calendar — FCalendar",
-      settings:         "Settings — FCalendar",
-      "plano-vm":       "Plano VM — FCalendar",
-    }
-    document.title = titles[currentPage] ?? "FCalendar"
-  }, [currentPage])
 
   const handlePageChange = (page: string) => {
     if (page === currentPage) return
@@ -161,6 +145,11 @@ function AppContent() {
     setHasUnsavedChanges(false)
     setIsEditMode(false)
     setShowExitDialog(false)
+  }
+
+  const handleSaveChanges = () => {
+    saveChanges()
+    // Keep edit mode on after saving
   }
 
   const renderContent = () => {
@@ -219,8 +208,8 @@ function AppContent() {
         />
       )}
       
-      <main className={`relative flex w-full min-h-0 flex-1 flex-col bg-background overflow-y-auto transition-[transform,opacity,border-radius] duration-500 ease-in-out ${(isMobile && openMobile) || (!isMobile && open) ? 'scale-95 opacity-90 rounded-xl' : 'scale-100 opacity-100'}`}>
-        <header className="sticky top-0 z-30 flex shrink-0 items-center gap-2 border-b border-border/60 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 px-3 md:px-4 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)]" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.5rem)', paddingBottom: '0.25rem', minHeight: 'calc(3.5rem + env(safe-area-inset-top) + 0.5rem)' }}>
+      <main className={`relative flex w-full flex-1 flex-col bg-background transition-all duration-500 ease-in-out ${(isMobile && openMobile) || (!isMobile && open) ? 'scale-95 opacity-90' : 'scale-100 opacity-100'}`}>
+        <header className="sticky top-0 z-30 flex shrink-0 items-center gap-2 border-b border-border/60 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 px-3 md:px-4 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-all duration-500" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.5rem)', paddingBottom: '0.25rem', minHeight: 'calc(3.5rem + env(safe-area-inset-top) + 0.5rem)' }}>
           <SidebarTrigger className="-ml-1 shrink-0" disabled={isEditMode} />
           <Separator orientation="vertical" className="mr-1 md:mr-2 h-4 shrink-0" />
           <Breadcrumb className="min-w-0 flex-1">
@@ -237,6 +226,17 @@ function AppContent() {
             </BreadcrumbList>
           </Breadcrumb>
           <div className="ml-auto flex items-center gap-1.5 md:gap-2 shrink-0">
+            {hasUnsavedChanges && isEditMode && (
+              <Button 
+                onClick={handleSaveChanges}
+                size="sm"
+                disabled={isSaving}
+                className="bg-green-600 hover:bg-green-700 h-8 px-2.5 md:px-3"
+              >
+                <Save className="size-4" />
+                <span className="hidden sm:inline ml-1.5">{isSaving ? 'Saving...' : 'Save'}</span>
+              </Button>
+            )}
             <Button 
               onClick={handleToggleEditMode}
               variant={isEditMode ? "default" : "outline"}
@@ -259,11 +259,10 @@ function AppContent() {
           </div>
         </header>
         <Suspense fallback={<div className="flex flex-1 items-center justify-center p-8 text-muted-foreground">Loading…</div>}>
-          <div className={`flex flex-col flex-1 min-h-0 ${isTransitioning ? "page-fade-out" : "page-fade-in"}`}>
+          <div className={isTransitioning ? "page-fade-out" : "page-fade-in"}>
             {renderContent()}
           </div>
         </Suspense>
-        <Footer />
       </main>
 
       {/* Exit Edit Mode Confirmation Dialog */}

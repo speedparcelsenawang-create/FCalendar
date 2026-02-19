@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef, useCallback } from "react"
-import { Plus, Trash2, ChevronLeft, ChevronRight, Image as ImageIcon, Pencil, MoreVertical, ArrowUp, ArrowDown, Upload, Link, Loader2, Save } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { Plus, Trash2, ChevronLeft, ChevronRight, Image as ImageIcon, Pencil, MoreVertical, ArrowUp, ArrowDown, Upload, Link, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useEditMode } from "@/contexts/EditModeContext"
@@ -42,13 +42,61 @@ interface PlanoPage {
 }
 
 export function PlanoVM() {
-  const { isEditMode, hasUnsavedChanges, setHasUnsavedChanges, isSaving, registerSaveHandler } = useEditMode()
+  const { isEditMode, setHasUnsavedChanges } = useEditMode()
   const lightGalleryRefs = useRef<Map<string, any>>(new Map())
-  const [isLoading, setIsLoading] = useState(true)
   const [selectedImage, setSelectedImage] = useState<{ url: string; title: string; description: string } | null>(null)
-  const [pages, setPages] = useState<PlanoPage[]>([])
+  const [pages, setPages] = useState<PlanoPage[]>([
+    {
+      id: "page-1",
+      name: "Store Layout 1",
+      rows: [
+        {
+          id: "row-1",
+          title: "Top Shelf Products",
+          images: [
+            {
+              id: "img-1",
+              url: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400",
+              title: "Product 1",
+              description: "Premium Headphones"
+            },
+            {
+              id: "img-2",
+              url: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400",
+              title: "Product 2",
+              description: "Smart Watch"
+            },
+            {
+              id: "img-3",
+              url: "https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=400",
+              title: "Product 3",
+              description: "Sunglasses"
+            }
+          ]
+        },
+        {
+          id: "row-2",
+          title: "Featured Collection",
+          images: [
+            {
+              id: "img-4",
+              url: "https://images.unsplash.com/photo-1560343090-f0409e92791a?w=400",
+              title: "Product 4",
+              description: "Sneakers"
+            },
+            {
+              id: "img-5",
+              url: "https://images.unsplash.com/photo-1491553895911-0055eca6402d?w=400",
+              title: "Product 5",
+              description: "Backpack"
+            }
+          ]
+        }
+      ]
+    }
+  ])
 
-  const [activePage, setActivePage] = useState<string>("")
+  const [activePage, setActivePage] = useState<string>("page-1")
   const [addPageDialog, setAddPageDialog] = useState(false)
   const [editPageDialog, setEditPageDialog] = useState<{ open: boolean; pageId?: string }>({ open: false })
   const [deletePageDialog, setDeletePageDialog] = useState<{ open: boolean; pageId?: string }>({ open: false })
@@ -74,49 +122,6 @@ export function PlanoVM() {
   const [editUploading, setEditUploading] = useState(false)
   const addFileRef = useRef<HTMLInputElement>(null)
   const editFileRef = useRef<HTMLInputElement>(null)
-
-  // Fetch pages from database on mount
-  const fetchPages = useCallback(async () => {
-    try {
-      const res = await fetch('/api/plano')
-      const data = await res.json()
-      if (data.success && Array.isArray(data.data) && data.data.length > 0) {
-        setPages(data.data)
-        setActivePage(data.data[0].id)
-      }
-    } catch {
-      /* fallback to empty */
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchPages()
-  }, [fetchPages])
-
-  const doSave = useCallback(async () => {
-    const res = await fetch('/api/plano', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pages }),
-    })
-    const data = await res.json()
-    if (!data.success) throw new Error(data.error || 'Gagal simpan')
-  }, [pages])
-
-  useEffect(() => {
-    registerSaveHandler(doSave)
-  }, [doSave, registerSaveHandler])
-
-  const handleSaveChanges = async () => {
-    try {
-      await doSave()
-      setHasUnsavedChanges(false)
-    } catch (e) {
-      alert('Gagal simpan: ' + (e instanceof Error ? e.message : 'Unknown error'))
-    }
-  }
 
   const uploadToImgBB = async (file: File): Promise<string> => {
     const formData = new FormData()
@@ -438,16 +443,9 @@ export function PlanoVM() {
   }
 
   return (
-    <div className="flex flex-col flex-1 bg-background">
-      {/* Loading */}
-      {isLoading && (
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="size-6 animate-spin text-muted-foreground" />
-        </div>
-      )}
-      {!isLoading && (
-      <>{/* Content */}
-      <div className="px-4 md:px-8 pt-6" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
+    <div className="flex-1 bg-background min-h-screen">
+      {/* Content */}
+      <div className="px-8 py-6">
         {/* Title and Add Page Button */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -1162,21 +1160,6 @@ export function PlanoVM() {
           </div>
         </DialogContent>
       </Dialog>
-    </>
-    )}
-
-      {/* Floating Save Button */}
-      {!isLoading && hasUnsavedChanges && isEditMode && (
-        <Button
-          onClick={handleSaveChanges}
-          disabled={isSaving}
-          className="fixed bottom-6 right-6 z-50 bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl transition-all h-12 px-6"
-          size="lg"
-        >
-          <Save className="size-5 mr-2" />
-          {isSaving ? 'Saving...' : 'Save Changes'}
-        </Button>
-      )}
     </div>
   )
 }
