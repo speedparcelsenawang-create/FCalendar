@@ -221,7 +221,7 @@ function WeekView({ events }: { events: Event[] }) {
   const currentHour = today.getHours()
 
   return (
-    <div className="flex flex-col h-full p-4 lg:p-6 gap-4">
+    <div className="flex flex-col flex-1 min-h-0 p-4 lg:p-6 gap-4">
       <div className="bg-card border border-border rounded-lg shadow overflow-hidden flex flex-col flex-1 min-h-0">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/30 shrink-0">
           <h2 className="text-xl font-semibold">{weekLabel}</h2>
@@ -315,7 +315,7 @@ function DayView({ events }: { events: Event[] }) {
   const currentHour = new Date().getHours()
 
   return (
-    <div className="flex flex-col h-full p-4 lg:p-6 gap-4">
+    <div className="flex flex-col flex-1 min-h-0 p-4 lg:p-6 gap-4">
       <div className="bg-card border border-border rounded-lg shadow overflow-hidden flex flex-col flex-1 min-h-0">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/30 shrink-0">
           <h2 className="text-xl font-semibold flex items-center gap-2">

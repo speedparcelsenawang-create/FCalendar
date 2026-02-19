@@ -19,48 +19,26 @@ export function useTheme() {
   useEffect(() => {
     const root = document.documentElement
 
-    // Remove both classes first
-    root.classList.remove("light", "dark")
-
-    // Add the current theme class
-    root.classList.add(theme)
+    // Atomic class swap — toggle avoids the brief no-class gap that causes grey flash
+    root.classList.toggle("dark", theme === "dark")
+    root.classList.toggle("light", theme === "light")
 
     // Save to localStorage
     localStorage.setItem("theme", theme)
 
-    // Update theme-color meta tags for browser UI
-    const color = theme === "dark" ? "#020817" : "#ffffff"
-    
-    // Update all theme-color meta tags
-    const themeColorMetas = document.querySelectorAll('meta[name="theme-color"]')
-    themeColorMetas.forEach((meta) => {
-      meta.setAttribute("content", color)
-    })
-    
-    // If no theme-color meta exists, create one
-    if (themeColorMetas.length === 0) {
-      const meta = document.createElement('meta')
-      meta.name = 'theme-color'
-      meta.content = color
-      document.head.appendChild(meta)
-    }
+    // Theme-color values that match the actual CSS --background variable:
+    //   light: oklch(1 0 0)     → #ffffff
+    //   dark:  oklch(0.145 0 0) → #242424
+    const color = theme === "dark" ? "#242424" : "#ffffff"
 
-    // Update Apple status bar style
-    const appleStatusBar = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]')
-    if (appleStatusBar) {
-      appleStatusBar.setAttribute("content", theme === "dark" ? "black-translucent" : "black-translucent")
+    // Update or create theme-color meta
+    let themeColorMeta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]')
+    if (!themeColorMeta) {
+      themeColorMeta = document.createElement("meta")
+      themeColorMeta.name = "theme-color"
+      document.head.appendChild(themeColorMeta)
     }
-
-    // Update manifest theme color dynamically
-    const manifestLink = document.querySelector('link[rel="manifest"]')
-    if (manifestLink) {
-      // Force browser to re-read manifest
-      const href = manifestLink.getAttribute('href')
-      if (href) {
-        manifestLink.setAttribute('href', '')
-        setTimeout(() => manifestLink.setAttribute('href', href), 0)
-      }
-    }
+    themeColorMeta.setAttribute("content", color)
   }, [theme])
 
   const toggleTheme = () => {

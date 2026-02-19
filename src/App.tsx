@@ -9,6 +9,7 @@ const PlanoVM = lazy(() => import("@/components/PlanoVM").then(m => ({ default: 
 import { EditModeProvider, useEditMode } from "@/contexts/EditModeContext"
 import { Edit3, Save, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Footer } from "@/components/Footer"
 import {
   Dialog,
   DialogContent,
@@ -218,8 +219,8 @@ function AppContent() {
         />
       )}
       
-      <main className={`relative flex w-full min-h-0 flex-1 flex-col bg-background overflow-y-auto transition-all duration-500 ease-in-out ${(isMobile && openMobile) || (!isMobile && open) ? 'scale-95 opacity-90 rounded-xl' : 'scale-100 opacity-100'}`}>
-        <header className="sticky top-0 z-30 flex shrink-0 items-center gap-2 border-b border-border/60 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 px-3 md:px-4 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-all duration-500" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.5rem)', paddingBottom: '0.25rem', minHeight: 'calc(3.5rem + env(safe-area-inset-top) + 0.5rem)' }}>
+      <main className={`relative flex w-full min-h-0 flex-1 flex-col bg-background overflow-y-auto transition-[transform,opacity,border-radius] duration-500 ease-in-out ${(isMobile && openMobile) || (!isMobile && open) ? 'scale-95 opacity-90 rounded-xl' : 'scale-100 opacity-100'}`}>
+        <header className="sticky top-0 z-30 flex shrink-0 items-center gap-2 border-b border-border/60 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/80 px-3 md:px-4 shadow-[0_1px_3px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)]" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.5rem)', paddingBottom: '0.25rem', minHeight: 'calc(3.5rem + env(safe-area-inset-top) + 0.5rem)' }}>
           <SidebarTrigger className="-ml-1 shrink-0" disabled={isEditMode} />
           <Separator orientation="vertical" className="mr-1 md:mr-2 h-4 shrink-0" />
           <Breadcrumb className="min-w-0 flex-1">
@@ -262,6 +263,7 @@ function AppContent() {
             {renderContent()}
           </div>
         </Suspense>
+        <Footer />
       </main>
 
       {/* Exit Edit Mode Confirmation Dialog */}

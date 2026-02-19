@@ -30,12 +30,11 @@
           (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
         document.documentElement.classList.add(theme);
         
-        // Set theme-color meta tags immediately
-        const themeColor = theme === 'dark' ? '#020817' : '#ffffff';
-        const themeColorMetas = document.querySelectorAll('meta[name="theme-color"]');
-        themeColorMetas.forEach(function(meta) {
-          meta.setAttribute('content', themeColor);
-        });
+        // Set theme-color meta tag immediately to match CSS --background
+        // light: oklch(1 0 0) → #ffffff  |  dark: oklch(0.145 0 0) → #242424
+        const themeColor = theme === 'dark' ? '#242424' : '#ffffff'
+        const themeColorMeta = document.querySelector('meta[name="theme-color"]')
+        if (themeColorMeta) themeColorMeta.setAttribute('content', themeColor)
       })();
     </script>
   </head>
