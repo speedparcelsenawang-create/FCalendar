@@ -3,10 +3,14 @@
 @import "shadcn/tailwind.css";
 
 /* Safe area support for notch/island devices */
+html {
+  height: 100%;
+}
+
 body {
+  height: 100%;
   -webkit-tap-highlight-color: transparent;
   width: 100%;
-  min-height: 100dvh;
   overflow-x: hidden;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
@@ -14,9 +18,10 @@ body {
 
 #root {
   width: 100%;
-  min-height: 100dvh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 /* Prevent content from hiding behind phone status bar */
@@ -179,6 +184,49 @@ body {
 
 .page-fade-out {
   animation: fadeOut 0.3s ease-out forwards;
+  pointer-events: none;
+}
+
+/* ── Scrollbar styling (Webkit) ───────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border) / 0.6);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--border));
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border) / 0.6) transparent;
+}
+
+/* Smooth scrolling for main content areas */
+.overflow-y-auto,
+.overflow-auto {
+  scroll-behavior: smooth;
+}
+
+/* ── Leaflet CSS override ─────────────────────────────────── */
+/* Leaflet sets img { max-width: none } globally which breaks Tailwind */
+img {
+  max-width: 100%;
+}
+
+/* Leaflet map container should still ignore this */
+.leaflet-container img {
+  max-width: none;
 }
 
 /* ── Animated Modal ── */

@@ -63,7 +63,7 @@ export function Settings() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6 max-w-4xl mx-auto">
+    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6 max-w-4xl mx-auto w-full" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
         <p className="text-muted-foreground mt-2">

@@ -497,7 +497,7 @@ export function RouteList() {
   return (
     <div className="relative font-light">
       {/* Route List */}
-      <div className="mt-4 pb-20 px-4 max-w-5xl mx-auto">
+      <div className="mt-4 px-4 max-w-5xl mx-auto" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
         {/* Search Field */}
         <div className="mb-6">
           <div className="flex items-center gap-3 max-w-md mx-auto">

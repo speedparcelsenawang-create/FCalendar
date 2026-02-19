@@ -80,7 +80,7 @@ function MonthView({ events }: { events: Event[] }) {
     [selectedDate, events])
 
   return (
-    <div className="flex flex-col gap-4 p-4 lg:p-6">
+    <div className="flex flex-col gap-4 p-4 lg:p-6" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
       <div className="bg-card border border-border rounded-lg shadow overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/30">
           <h2 className="text-xl font-semibold">{MONTHS[month]} {year}</h2>
@@ -221,9 +221,9 @@ function WeekView({ events }: { events: Event[] }) {
   const currentHour = today.getHours()
 
   return (
-    <div className="flex flex-col gap-4 p-4 lg:p-6">
-      <div className="bg-card border border-border rounded-lg shadow overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/30">
+    <div className="flex flex-col h-full p-4 lg:p-6 gap-4">
+      <div className="bg-card border border-border rounded-lg shadow overflow-hidden flex flex-col flex-1 min-h-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/30 shrink-0">
           <h2 className="text-xl font-semibold">{weekLabel}</h2>
           <div className="flex items-center gap-1">
             <Button variant="outline" size="sm" className="h-8" onClick={() => setCurrentDate(new Date())}>Today</Button>
@@ -231,7 +231,7 @@ function WeekView({ events }: { events: Event[] }) {
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goToNextWeek}><ChevronRight className="size-4" /></Button>
           </div>
         </div>
-        <div className="overflow-auto max-h-[calc(100vh-220px)]">
+        <div className="flex-1 min-h-0 overflow-auto">
           <div className="min-w-[640px]">
             {/* Day column headers */}
             <div className="grid border-b border-border bg-muted/20 sticky top-0 z-10" style={{ gridTemplateColumns: "56px repeat(7, 1fr)" }}>
@@ -295,7 +295,7 @@ function WeekView({ events }: { events: Event[] }) {
           </div>
         </div>
       </div>
-      <div className="bg-card border border-border rounded-lg px-6 py-3 flex items-center">
+      <div className="bg-card border border-border rounded-lg px-6 py-3 flex items-center shrink-0">
         <Legend />
       </div>
     </div>
@@ -315,9 +315,9 @@ function DayView({ events }: { events: Event[] }) {
   const currentHour = new Date().getHours()
 
   return (
-    <div className="flex flex-col gap-4 p-4 lg:p-6">
-      <div className="bg-card border border-border rounded-lg shadow overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/30">
+    <div className="flex flex-col h-full p-4 lg:p-6 gap-4">
+      <div className="bg-card border border-border rounded-lg shadow overflow-hidden flex flex-col flex-1 min-h-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/30 shrink-0">
           <h2 className="text-xl font-semibold flex items-center gap-2">
             {dayLabel}
             {isToday && <span className="text-xs font-medium bg-primary text-primary-foreground px-2 py-0.5 rounded-full">Today</span>}
@@ -328,7 +328,7 @@ function DayView({ events }: { events: Event[] }) {
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goToNext}><ChevronRight className="size-4" /></Button>
           </div>
         </div>
-        <div className="overflow-auto max-h-[calc(100vh-220px)]">
+        <div className="flex-1 min-h-0 overflow-auto">
           <div className="min-w-[300px]">
             {dayEvents.length > 0 && (
               <div className="flex border-b border-border">
@@ -368,7 +368,7 @@ function DayView({ events }: { events: Event[] }) {
           </div>
         </div>
       </div>
-      <div className="bg-card border border-border rounded-lg px-6 py-3 flex items-center">
+      <div className="bg-card border border-border rounded-lg px-6 py-3 flex items-center shrink-0">
         <Legend />
       </div>
     </div>

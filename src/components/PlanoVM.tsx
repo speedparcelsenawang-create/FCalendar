@@ -438,7 +438,7 @@ export function PlanoVM() {
   }
 
   return (
-    <div className="flex-1 bg-background min-h-screen">
+    <div className="flex flex-col flex-1 bg-background">
       {/* Loading */}
       {isLoading && (
         <div className="flex items-center justify-center h-64">
@@ -447,7 +447,7 @@ export function PlanoVM() {
       )}
       {!isLoading && (
       <>{/* Content */}
-      <div className="px-8 py-6">
+      <div className="px-4 md:px-8 pt-6" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
         {/* Title and Add Page Button */}
         <div className="flex items-center justify-between mb-6">
           <div>
