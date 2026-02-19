@@ -736,10 +736,7 @@ export function RouteList() {
                                           <Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
                                         </button>
                                       ) : (
-                                        <span className="inline-flex items-center gap-1.5">
-                                          <span className="text-sm">{point.delivery}</span>
-                                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isActive ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400'}`}>{isActive ? 'ON' : 'OFF'}</span>
-                                        </span>
+                                        <span className="text-sm">{point.delivery}</span>
                                       )}
                                     </td>
                                   )
