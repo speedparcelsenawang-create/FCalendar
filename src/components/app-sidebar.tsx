@@ -11,6 +11,7 @@ import {
   LifeBuoy,
   Send,
   Route,
+  Truck,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -139,6 +140,11 @@ const data = {
       icon: CalendarDays,
     },
     {
+      name: "Deliveries",
+      url: "#",
+      icon: Truck,
+    },
+    {
       name: "Team Meetings",
       url: "#",
       icon: Users,
@@ -170,6 +176,8 @@ export function AppSidebar({
         onNavigate("route-list")
       } else if (projectName === "Plano Vm") {
         onNavigate("plano-vm")
+      } else if (projectName === "Deliveries") {
+        onNavigate("deliveries")
       }
     }
   }

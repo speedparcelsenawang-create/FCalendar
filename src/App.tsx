@@ -6,6 +6,7 @@ const RouteList = lazy(() => import("@/components/RouteList").then(m => ({ defau
 const Calendar = lazy(() => import("@/components/Calendar").then(m => ({ default: m.Calendar })))
 const Settings = lazy(() => import("@/components/Settings").then(m => ({ default: m.Settings })))
 const PlanoVM = lazy(() => import("@/components/PlanoVM").then(m => ({ default: m.PlanoVM })))
+const DeliveryTableDialog = lazy(() => import("@/components/DeliveryTableDialog").then(m => ({ default: m.DeliveryTableDialog })))
 import { EditModeProvider, useEditMode } from "@/contexts/EditModeContext"
 import { Edit3, Save, X, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -168,6 +169,16 @@ function AppContent() {
     switch (currentPage) {
       case "route-list":
         return <RouteList />
+      case "deliveries":
+        return (
+          <div className="flex flex-col flex-1 min-h-0 gap-4 p-4 md:p-6">
+            <div className="shrink-0">
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white">Deliveries</h1>
+              <p className="text-sm text-muted-foreground mt-1">View and manage delivery records.</p>
+            </div>
+            <DeliveryTableDialog />
+          </div>
+        )
       case "calendar-month":
         return <Calendar view="month" />
       case "calendar-week":
@@ -202,6 +213,8 @@ function AppContent() {
         return "Settings"
       case "plano-vm":
         return "Plano VM"
+      case "deliveries":
+        return "Deliveries"
       case "dashboard":
       default:
         return "Home"
