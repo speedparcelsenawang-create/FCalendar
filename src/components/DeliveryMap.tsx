@@ -22,9 +22,10 @@ interface DeliveryPoint {
 
 interface DeliveryMapProps {
   deliveryPoints: DeliveryPoint[]
+  scrollZoom?: boolean
 }
 
-export function DeliveryMap({ deliveryPoints }: DeliveryMapProps) {
+export function DeliveryMap({ deliveryPoints, scrollZoom = false }: DeliveryMapProps) {
   const validPoints = useMemo(
     () => deliveryPoints.filter((p) => p.latitude !== 0 && p.longitude !== 0),
     [deliveryPoints]
@@ -57,10 +58,10 @@ export function DeliveryMap({ deliveryPoints }: DeliveryMapProps) {
   const createCustomIcon = (delivery: string) => {
     const color = getMarkerColor(delivery)
     return L.divIcon({
-      className: "custom-marker",
-      html: `<div style="background-color: ${color}; width: 25px; height: 25px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"><div style="width: 8px; height: 8px; background: white; border-radius: 50%; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(45deg);"></div></div>`,
-      iconSize: [25, 25],
-      iconAnchor: [12, 25],
+      className: "",
+      html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.35);"></div>`,
+      iconSize: [14, 14],
+      iconAnchor: [7, 7],
     })
   }
 
@@ -94,7 +95,7 @@ export function DeliveryMap({ deliveryPoints }: DeliveryMapProps) {
       center={[center.lat, center.lng]}
       zoom={13}
       style={{ width: "100%", height: "100%", borderRadius: "0" }}
-      scrollWheelZoom={false}
+      scrollWheelZoom={scrollZoom}
     >
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'

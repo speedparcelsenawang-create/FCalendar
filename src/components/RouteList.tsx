@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react"
-import { List, Maximize2, LocateFixed, Info, Plus, Check, X, Edit2, Trash2, Search, Settings, Map, MapPin, Save, ArrowUp, ArrowDown, RotateCcw } from "lucide-react"
+import { List, Info, Plus, Check, X, Edit2, Trash2, Search, Settings, Map, MapPin, Save, ArrowUp, ArrowDown, RotateCcw, EyeOff, Expand } from "lucide-react"
 import { RowInfoModal } from "./RowInfoModal"
 import { useEditMode } from "@/contexts/EditModeContext"
 import {
@@ -91,7 +91,17 @@ export function RouteList() {
   const [routeToDelete, setRouteToDelete] = useState<Route | null>(null)
   const [newRoute, setNewRoute] = useState({ name: "", code: "", shift: "AM" })
   const [searchQuery, setSearchQuery] = useState("")
-  const [showMaps, setShowMaps] = useState(false)
+  const [showMapCards, setShowMapCards] = useState<Set<string>>(new Set())
+  const [fullscreenRouteId, setFullscreenRouteId] = useState<string | null>(null)
+
+  const toggleCardMap = (routeId: string) => {
+    setShowMapCards(prev => {
+      const next = new Set(prev)
+      if (next.has(routeId)) next.delete(routeId)
+      else next.add(routeId)
+      return next
+    })
+  }
 
   // Fetch routes from database
   const fetchRoutes = useCallback(async (preserveCurrentId?: string) => {
@@ -509,14 +519,7 @@ export function RouteList() {
                 </button>
               )}
             </div>
-            <Button
-              variant={showMaps ? "default" : "outline"}
-              size="icon"
-              onClick={() => setShowMaps(!showMaps)}
-              title={showMaps ? "Hide maps" : "Show maps"}
-            >
-              <Map className="size-4" />
-            </Button>
+
           </div>
         </div>
 
@@ -1054,7 +1057,7 @@ export function RouteList() {
               
               {/* Map Section */}
               <div className="flex-1 relative bg-muted/30 rounded-none">
-                {showMaps ? (
+                {showMapCards.has(route.id) ? (
                   <div className="absolute inset-0 rounded-none">
                     <DeliveryMap deliveryPoints={route.deliveryPoints} />
                   </div>
@@ -1065,13 +1068,14 @@ export function RouteList() {
                 )}
                 
                 {/* Map Controls */}
-                {showMaps && (
+                {showMapCards.has(route.id) && (
                   <div className="absolute top-3 right-3 flex flex-col gap-2 z-[100]">
-                    <button className="p-2 bg-background/90 backdrop-blur-sm border border-border rounded-md hover:bg-primary/10 hover:border-primary/50 transition-all shadow-sm">
-                      <Maximize2 className="size-3.5" />
-                    </button>
-                    <button className="p-2 bg-background/90 backdrop-blur-sm border border-border rounded-md hover:bg-primary/10 hover:border-primary/50 transition-all shadow-sm">
-                      <LocateFixed className="size-3.5" />
+                    <button
+                      onClick={() => setFullscreenRouteId(route.id)}
+                      className="p-2 bg-background/90 backdrop-blur-sm border border-border rounded-md hover:bg-primary/10 hover:border-primary/50 transition-all shadow-sm"
+                      title="Fullscreen"
+                    >
+                      <Expand className="size-3.5" />
                     </button>
                   </div>
                 )}
@@ -1079,17 +1083,30 @@ export function RouteList() {
               
               {/* Footer Section - Route Info */}
               <div className="p-4 border-t border-border bg-gradient-to-br from-primary/5 to-transparent">
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-lg font-bold mb-1.5 truncate group-hover:text-primary transition-colors">{route.name}</h3>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-card border border-border">
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                      {route.code}
-                    </span>
-                    <span className={`px-2.5 py-1 text-xs font-semibold rounded-md border ${route.shift === 'AM' ? 'bg-orange-500/10 text-orange-600 border-orange-500/20 dark:bg-orange-500/15 dark:text-orange-400' : 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:bg-blue-500/15 dark:text-blue-400'}`}>
-                      {route.shift}
-                    </span>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg font-bold mb-1.5 truncate group-hover:text-primary transition-colors">{route.name}</h3>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md bg-card border border-border">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                        {route.code}
+                      </span>
+                      <span className={`px-2.5 py-1 text-xs font-semibold rounded-md border ${route.shift === 'AM' ? 'bg-orange-500/10 text-orange-600 border-orange-500/20 dark:bg-orange-500/15 dark:text-orange-400' : 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:bg-blue-500/15 dark:text-blue-400'}`}>
+                        {route.shift}
+                      </span>
+                    </div>
                   </div>
+                  <button
+                    onClick={() => toggleCardMap(route.id)}
+                    className={`shrink-0 p-2 rounded-lg border transition-all ${
+                      showMapCards.has(route.id)
+                        ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                        : 'bg-card text-muted-foreground border-border hover:text-primary hover:border-primary/50'
+                    }`}
+                    title={showMapCards.has(route.id) ? 'Hide map' : 'Show map'}
+                  >
+                    {showMapCards.has(route.id) ? <EyeOff className="size-4" /> : <Map className="size-4" />}
+                  </button>
                 </div>
               </div>
             </div>
@@ -1204,6 +1221,29 @@ export function RouteList() {
         </div>
         )}
         </div>
+
+        {/* Fullscreen Map Dialog */}
+        <Dialog open={!!fullscreenRouteId} onOpenChange={(open) => { if (!open) setFullscreenRouteId(null) }}>
+          <DialogContent className="max-w-none w-screen h-[100dvh] p-0 rounded-none border-0 flex flex-col">
+            <DialogTitle className="sr-only">Fullscreen Map</DialogTitle>
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-background shrink-0 pr-12">
+              <Map className="size-4 text-muted-foreground" />
+              <span className="font-semibold text-sm">
+                {routes.find(r => r.id === fullscreenRouteId)?.name ?? "Map"}
+              </span>
+            </div>
+            <div className="flex-1 relative h-full min-h-0">
+              {fullscreenRouteId && (
+                <div className="absolute inset-0">
+                  <DeliveryMap
+                    deliveryPoints={routes.find(r => r.id === fullscreenRouteId)?.deliveryPoints ?? []}
+                    scrollZoom
+                  />
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Edit Route Dialog */}
         <Dialog open={editRouteDialogOpen} onOpenChange={setEditRouteDialogOpen}>

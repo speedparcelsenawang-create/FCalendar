@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { Plus, Trash2, ChevronLeft, ChevronRight, Image as ImageIcon, Pencil, MoreVertical, ArrowUp, ArrowDown } from "lucide-react"
+import { Plus, Trash2, ChevronLeft, ChevronRight, Image as ImageIcon, Pencil, MoreVertical, ArrowUp, ArrowDown, Upload, Link, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useEditMode } from "@/contexts/EditModeContext"
@@ -114,6 +114,26 @@ export function PlanoVM() {
   const [editRowTitle, setEditRowTitle] = useState("")
   const [newImage, setNewImage] = useState({ url: "", title: "", description: "" })
   const [editImage, setEditImage] = useState({ url: "", title: "", description: "" })
+  const [addImageTab, setAddImageTab] = useState<"url" | "upload">("url")
+  const [editImageTab, setEditImageTab] = useState<"url" | "upload">("url")
+  const [addUploadPreview, setAddUploadPreview] = useState<string | null>(null)
+  const [editUploadPreview, setEditUploadPreview] = useState<string | null>(null)
+  const [addUploading, setAddUploading] = useState(false)
+  const [editUploading, setEditUploading] = useState(false)
+  const addFileRef = useRef<HTMLInputElement>(null)
+  const editFileRef = useRef<HTMLInputElement>(null)
+
+  const uploadToImgBB = async (file: File): Promise<string> => {
+    const formData = new FormData()
+    formData.append("image", file)
+    const res = await fetch(`https://api.imgbb.com/1/upload?key=4042c537845e8b19b443add46f4a859c`, {
+      method: "POST",
+      body: formData,
+    })
+    if (!res.ok) throw new Error("Upload failed")
+    const data = await res.json()
+    return data.data.display_url as string
+  }
 
   const currentPage = pages.find(p => p.id === activePage)
 
@@ -353,6 +373,8 @@ export function PlanoVM() {
     ))
     
     setNewImage({ url: "", title: "", description: "" })
+    setAddImageTab("url")
+    setAddUploadPreview(null)
     setAddImageDialog({ open: false })
     setHasUnsavedChanges(true)
   }
@@ -382,6 +404,8 @@ export function PlanoVM() {
     ))
     
     setEditImage({ url: "", title: "", description: "" })
+    setEditImageTab("url")
+    setEditUploadPreview(null)
     setEditImageDialog({ open: false })
     setHasUnsavedChanges(true)
   }
@@ -760,21 +784,101 @@ export function PlanoVM() {
       </div>
 
       {/* Add Image Dialog */}
-      <Dialog open={addImageDialog.open} onOpenChange={(open) => setAddImageDialog({ open })}>
-        <DialogContent>
+      <Dialog open={addImageDialog.open} onOpenChange={(open) => {
+        if (!open) { setAddImageTab("url"); setAddUploadPreview(null); setNewImage({ url: "", title: "", description: "" }) }
+        setAddImageDialog({ open })
+      }}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Add Image</DialogTitle>
             <DialogDescription>Add a new product image to the row</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Image URL *</label>
-              <Input
-                placeholder="https://example.com/image.jpg"
-                value={newImage.url}
-                onChange={(e) => setNewImage({ ...newImage, url: e.target.value })}
-              />
-            </div>
+
+          {/* Tabs */}
+          <div className="flex border-b border-border mb-2">
+            {(["url", "upload"] as const).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setAddImageTab(tab)}
+                className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-[1px] transition-colors ${
+                  addImageTab === tab
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {tab === "url" ? <Link className="size-3.5" /> : <Upload className="size-3.5" />}
+                {tab === "url" ? "Paste URL" : "Upload File"}
+              </button>
+            ))}
+          </div>
+
+          <div className="space-y-4 py-2">
+            {addImageTab === "url" ? (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Image URL *</label>
+                <Input
+                  placeholder="https://example.com/image.jpg"
+                  value={newImage.url}
+                  onChange={(e) => setNewImage({ ...newImage, url: e.target.value })}
+                />
+                {newImage.url && (
+                  <img src={newImage.url} alt="preview" className="w-full h-40 object-cover rounded-lg border border-border mt-1" onError={(e) => (e.currentTarget.style.display = "none")} />
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <input ref={addFileRef} type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  const reader = new FileReader()
+                  reader.onload = (ev) => setAddUploadPreview(ev.target?.result as string)
+                  reader.readAsDataURL(file)
+                }} />
+                {addUploadPreview ? (
+                  <div className="relative">
+                    <img src={addUploadPreview} alt="preview" className="w-full h-40 object-cover rounded-lg border border-border" />
+                    <button
+                      onClick={() => { setAddUploadPreview(null); if (addFileRef.current) addFileRef.current.value = "" }}
+                      className="absolute top-2 right-2 bg-background/80 rounded-full p-1 hover:bg-background"
+                    >✕</button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => addFileRef.current?.click()}
+                    className="w-full h-40 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                  >
+                    <Upload className="size-8" />
+                    <span className="text-sm font-medium">Click to choose image</span>
+                    <span className="text-xs">JPG, PNG, WEBP supported</span>
+                  </button>
+                )}
+                {addUploadPreview && !newImage.url && (
+                  <Button
+                    className="w-full"
+                    disabled={addUploading}
+                    onClick={async () => {
+                      const file = addFileRef.current?.files?.[0]
+                      if (!file) return
+                      setAddUploading(true)
+                      try {
+                        const url = await uploadToImgBB(file)
+                        setNewImage(prev => ({ ...prev, url }))
+                      } catch {
+                        alert("Upload failed. Please try again.")
+                      } finally {
+                        setAddUploading(false)
+                      }
+                    }}
+                  >
+                    {addUploading ? <><Loader2 className="size-4 mr-2 animate-spin" />Uploading…</> : <><Upload className="size-4 mr-2" />Upload to ImgBB</>}
+                  </Button>
+                )}
+                {newImage.url && addImageTab === "upload" && (
+                  <p className="text-xs text-green-600 dark:text-green-400 font-medium text-center">✓ Uploaded successfully</p>
+                )}
+              </div>
+            )}
+
             <div className="space-y-2">
               <label className="text-sm font-medium">Title *</label>
               <Input
@@ -804,21 +908,101 @@ export function PlanoVM() {
       </Dialog>
 
       {/* Edit Image Dialog */}
-      <Dialog open={editImageDialog.open} onOpenChange={(open) => setEditImageDialog({ open })}>
-        <DialogContent>
+      <Dialog open={editImageDialog.open} onOpenChange={(open) => {
+        if (!open) { setEditImageTab("url"); setEditUploadPreview(null); setEditImage({ url: "", title: "", description: "" }) }
+        setEditImageDialog({ open })
+      }}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Edit Image</DialogTitle>
             <DialogDescription>Update product image details</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Image URL *</label>
-              <Input
-                placeholder="https://example.com/image.jpg"
-                value={editImage.url}
-                onChange={(e) => setEditImage({ ...editImage, url: e.target.value })}
-              />
-            </div>
+
+          {/* Tabs */}
+          <div className="flex border-b border-border mb-2">
+            {(["url", "upload"] as const).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setEditImageTab(tab)}
+                className={`flex items-center gap-1.5 px-4 py-2 text-sm font-medium border-b-2 -mb-[1px] transition-colors ${
+                  editImageTab === tab
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {tab === "url" ? <Link className="size-3.5" /> : <Upload className="size-3.5" />}
+                {tab === "url" ? "Paste URL" : "Upload File"}
+              </button>
+            ))}
+          </div>
+
+          <div className="space-y-4 py-2">
+            {editImageTab === "url" ? (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Image URL *</label>
+                <Input
+                  placeholder="https://example.com/image.jpg"
+                  value={editImage.url}
+                  onChange={(e) => setEditImage({ ...editImage, url: e.target.value })}
+                />
+                {editImage.url && (
+                  <img src={editImage.url} alt="preview" className="w-full h-40 object-cover rounded-lg border border-border mt-1" onError={(e) => (e.currentTarget.style.display = "none")} />
+                )}
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <input ref={editFileRef} type="file" accept="image/*" className="hidden" onChange={async (e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  const reader = new FileReader()
+                  reader.onload = (ev) => setEditUploadPreview(ev.target?.result as string)
+                  reader.readAsDataURL(file)
+                }} />
+                {editUploadPreview ? (
+                  <div className="relative">
+                    <img src={editUploadPreview} alt="preview" className="w-full h-40 object-cover rounded-lg border border-border" />
+                    <button
+                      onClick={() => { setEditUploadPreview(null); if (editFileRef.current) editFileRef.current.value = "" }}
+                      className="absolute top-2 right-2 bg-background/80 rounded-full p-1 hover:bg-background"
+                    >✕</button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => editFileRef.current?.click()}
+                    className="w-full h-40 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-2 text-muted-foreground hover:border-primary hover:text-primary transition-colors"
+                  >
+                    <Upload className="size-8" />
+                    <span className="text-sm font-medium">Click to choose image</span>
+                    <span className="text-xs">JPG, PNG, WEBP supported</span>
+                  </button>
+                )}
+                {editUploadPreview && !editImage.url && (
+                  <Button
+                    className="w-full"
+                    disabled={editUploading}
+                    onClick={async () => {
+                      const file = editFileRef.current?.files?.[0]
+                      if (!file) return
+                      setEditUploading(true)
+                      try {
+                        const url = await uploadToImgBB(file)
+                        setEditImage(prev => ({ ...prev, url }))
+                      } catch {
+                        alert("Upload failed. Please try again.")
+                      } finally {
+                        setEditUploading(false)
+                      }
+                    }}
+                  >
+                    {editUploading ? <><Loader2 className="size-4 mr-2 animate-spin" />Uploading…</> : <><Upload className="size-4 mr-2" />Upload to ImgBB</>}
+                  </Button>
+                )}
+                {editImage.url && editImageTab === "upload" && (
+                  <p className="text-xs text-green-600 dark:text-green-400 font-medium text-center">✓ Uploaded successfully</p>
+                )}
+              </div>
+            )}
+
             <div className="space-y-2">
               <label className="text-sm font-medium">Title *</label>
               <Input
