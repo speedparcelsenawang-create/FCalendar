@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { Plus, Trash2, QrCode, ExternalLink, Pencil, Link2, ImageUp, X, ScanLine, CheckCircle2 } from "lucide-react"
+import { Plus, Trash2, QrCode, ExternalLink, Pencil, Link2, ImageUp, X, ScanLine, CheckCircle2, Loader2, AlertCircle } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -57,6 +57,30 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
 
   const [pendingUrl, setPendingUrl] = useState<string | null>(null)
   const [scannedUrl, setScannedUrl] = useState<string | null>(null)
+  const [qrDecodeStatus, setQrDecodeStatus] = useState<"idle" | "decoding" | "decoded" | "failed" | "unsupported">("idle")
+
+  // Decode QR code from an HTMLImageElement using BarcodeDetector API
+  const decodeQrFromImage = async (imgEl: HTMLImageElement): Promise<string | null> => {
+    if (!("BarcodeDetector" in window)) {
+      setQrDecodeStatus("unsupported")
+      return null
+    }
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const detector = new (window as any).BarcodeDetector({ formats: ["qr_code"] })
+      const barcodes = await detector.detect(imgEl)
+      if (barcodes.length > 0) {
+        setQrDecodeStatus("decoded")
+        return barcodes[0].rawValue as string
+      } else {
+        setQrDecodeStatus("failed")
+        return null
+      }
+    } catch {
+      setQrDecodeStatus("failed")
+      return null
+    }
+  }
 
   const hasCoords = point.latitude !== 0 && point.longitude !== 0
 
@@ -331,12 +355,38 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
                       <div className="space-y-2">
                         <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Upload Image</label>
                         <div
-                          onClick={() => fileInputRef.current?.click()}
+                          onClick={() => { fileInputRef.current?.click(); setQrDecodeStatus("idle") }}
                           className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border rounded-xl py-5 cursor-pointer hover:bg-muted/40 transition-colors"
                         >
                           <ImageUp className="w-7 h-7 text-muted-foreground" />
                           <p className="text-xs text-muted-foreground">Click to choose image</p>
                         </div>
+
+                        {/* Decode status feedback */}
+                        {qrDecodeStatus === "decoding" && (
+                          <div className="flex items-center gap-2 text-xs text-blue-500">
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>Sedang scan QR code...</span>
+                          </div>
+                        )}
+                        {qrDecodeStatus === "decoded" && (
+                          <div className="flex items-center gap-2 text-xs text-green-600 dark:text-green-400">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>QR berjaya dibaca — URL diisi automatik.</span>
+                          </div>
+                        )}
+                        {qrDecodeStatus === "failed" && (
+                          <div className="flex items-center gap-2 text-xs text-red-500">
+                            <AlertCircle className="w-3.5 h-3.5" />
+                            <span>QR tidak dapat dibaca. Sila isi Destination URL secara manual.</span>
+                          </div>
+                        )}
+                        {qrDecodeStatus === "unsupported" && (
+                          <div className="flex items-center gap-2 text-xs text-yellow-600 dark:text-yellow-400">
+                            <AlertCircle className="w-3.5 h-3.5" />
+                            <span>Browser tidak support auto-scan. Sila isi URL manual.</span>
+                          </div>
+                        )}
                         <input
                           ref={fileInputRef}
                           type="file"
@@ -345,17 +395,35 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
                           onChange={e => {
                             const file = e.target.files?.[0]
                             if (!file) return
+                            setQrDecodeStatus("decoding")
                             const reader = new FileReader()
-                            reader.onloadend = () => setQrCodeImageUrl(reader.result as string)
+                            reader.onloadend = () => {
+                              const dataUrl = reader.result as string
+                              setQrCodeImageUrl(dataUrl)
+                              // Auto-decode QR from uploaded image
+                              const img = new Image()
+                              img.onload = async () => {
+                                const decoded = await decodeQrFromImage(img)
+                                if (decoded) {
+                                  setQrCodeDestinationUrl(decoded)
+                                }
+                              }
+                              img.src = dataUrl
+                            }
                             reader.readAsDataURL(file)
                           }}
                         />
                       </div>
                     )}
 
-                    {/* Destination URL — always visible in edit mode */}
+                    {/* Destination URL — shown always; label hints auto-fill */}
                     <div className="space-y-1">
-                      <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Destination URL</label>
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Destination URL</label>
+                        {qrDecodeStatus === "decoded" && (
+                          <span className="text-[10px] text-green-600 dark:text-green-400 font-medium">Auto-filled ✓</span>
+                        )}
+                      </div>
                       <Input
                         value={qrCodeDestinationUrl}
                         onChange={e => setQrCodeDestinationUrl(e.target.value)}
