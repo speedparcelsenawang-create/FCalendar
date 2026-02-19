@@ -1,74 +1,67 @@
-import { useState, useEffect, useCallback } from "react"
-import { RefreshCw, Loader2, AlertCircle } from "lucide-react"
+import { useState, useEffect, useCallback, useMemo } from "react"
+import { RefreshCw, Loader2, AlertCircle, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-interface Delivery {
-  id: number
-  tracking_no: string
-  recipient_name: string
-  address: string
-  status: "pending" | "delivered" | "failed" | "returned" | string
-  delivery_date: string | null
-  notes: string | null
-  created_at: string
-  updated_at: string
+interface DeliveryPoint {
+  code: string
+  name: string
+  delivery: "Daily" | "Weekday" | "Alt 1" | "Alt 2" | string
+  latitude: number
+  longitude: number
+  descriptions: { key: string; value: string }[]
+  qrCodeImageUrl?: string
+  qrCodeDestinationUrl?: string
 }
 
-// ─── Status Badge ─────────────────────────────────────────────────────────────
-const statusConfig: Record<string, { label: string; className: string }> = {
-  pending:   { label: "Pending",   className: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300" },
-  delivered: { label: "Delivered", className: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300" },
-  failed:    { label: "Failed",    className: "bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300" },
-  returned:  { label: "Returned",  className: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300" },
+interface Route {
+  id: string
+  name: string
+  code: string
+  shift: string
+  deliveryPoints: DeliveryPoint[]
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const cfg = statusConfig[status] ?? { label: status, className: "bg-gray-100 text-gray-700" }
+interface FlatPoint extends DeliveryPoint {
+  routeId: string
+  routeName: string
+  routeCode: string
+  _rowIndex: number
+  _dupCode: boolean
+  _dupName: boolean
+}
+
+// ─── Delivery Badge ───────────────────────────────────────────────────────────
+const deliveryConfig: Record<string, string> = {
+  Daily:   "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300",
+  Weekday: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
+  "Alt 1": "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300",
+  "Alt 2": "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300",
+}
+
+function DeliveryBadge({ value }: { value: string }) {
   return (
-    <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium", cfg.className)}>
-      {cfg.label}
+    <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium", deliveryConfig[value] ?? "bg-gray-100 text-gray-700")}>
+      {value}
     </span>
   )
 }
 
-// ─── Column definition ────────────────────────────────────────────────────────
-const COLUMNS: { field: keyof Delivery; header: string; minWidth: number }[] = [
-  { field: "tracking_no",    header: "Tracking No",   minWidth: 160 },
-  { field: "recipient_name", header: "Recipient",     minWidth: 180 },
-  { field: "address",        header: "Address",       minWidth: 220 },
-  { field: "status",         header: "Status",        minWidth: 110 },
-  { field: "delivery_date",  header: "Delivery Date", minWidth: 130 },
-  { field: "notes",          header: "Notes",         minWidth: 160 },
-]
-
-// ─── Cell renderer ─────────────────────────────────────────────────────────────
-function CellValue({ field, value }: { field: keyof Delivery; value: unknown }) {
-  if (field === "status") return <StatusBadge status={String(value ?? "")} />
-
-  if ((field === "delivery_date" || field === "created_at" || field === "updated_at") && value) {
-    const d = new Date(String(value))
-    return <span>{isNaN(d.getTime()) ? String(value) : d.toLocaleDateString("en-MY")}</span>
-  }
-
-  return <span className="truncate">{value != null ? String(value) : "—"}</span>
-}
-
-// ─── Main Component (inline flex table, no dialog) ───────────────────────────
+// ─── Main Component ───────────────────────────────────────────────────────────
 export function DeliveryTableDialog() {
-  const [deliveries, setDeliveries] = useState<Delivery[]>([])
-  const [loading, setLoading]       = useState(false)
-  const [error, setError]           = useState<string | null>(null)
+  const [routes, setRoutes]   = useState<Route[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError]     = useState<string | null>(null)
 
-  const fetchDeliveries = useCallback(async () => {
+  const fetchRoutes = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch("/api/deliveries")
+      const res = await fetch("/api/routes")
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const json = await res.json()
-      setDeliveries(json.data ?? [])
+      setRoutes(json.data ?? json ?? [])
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load data")
     } finally {
@@ -76,36 +69,74 @@ export function DeliveryTableDialog() {
     }
   }, [])
 
-  useEffect(() => { fetchDeliveries() }, [fetchDeliveries])
+  useEffect(() => { fetchRoutes() }, [fetchRoutes])
+
+  // ── Flatten all points + detect duplicates ───────────────────────────────
+  const { flat, dupCodeCount, dupNameCount } = useMemo(() => {
+    const all: FlatPoint[] = []
+    routes.forEach(route => {
+      (route.deliveryPoints ?? []).forEach((pt, i) => {
+        all.push({ ...pt, routeId: route.id, routeName: route.name, routeCode: route.code, _rowIndex: i, _dupCode: false, _dupName: false })
+      })
+    })
+
+    // Count occurrences
+    const codeCounts: Record<string, number> = {}
+    const nameCounts: Record<string, number> = {}
+    all.forEach(p => {
+      codeCounts[p.code.trim().toLowerCase()] = (codeCounts[p.code.trim().toLowerCase()] ?? 0) + 1
+      nameCounts[p.name.trim().toLowerCase()] = (nameCounts[p.name.trim().toLowerCase()] ?? 0) + 1
+    })
+
+    let dupCodeCount = 0
+    let dupNameCount = 0
+    all.forEach(p => {
+      p._dupCode = codeCounts[p.code.trim().toLowerCase()] > 1
+      p._dupName = nameCounts[p.name.trim().toLowerCase()] > 1
+      if (p._dupCode) dupCodeCount++
+      if (p._dupName) dupNameCount++
+    })
+
+    return { flat: all, dupCodeCount, dupNameCount }
+  }, [routes])
+
+  const totalPoints = flat.length
 
   return (
     <div className="flex flex-col flex-1 min-h-0 border rounded-xl overflow-hidden shadow-sm bg-background">
 
       {/* ── Toolbar ─────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b bg-muted/40 shrink-0">
-        <span className="text-xs text-muted-foreground">
-          {!loading && !error ? `${deliveries.length} record(s)` : ""}
+      <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 border-b bg-muted/40 shrink-0">
+        <span className="text-xs text-muted-foreground mr-auto">
+          {!loading && !error && `${totalPoints} location point(s) across ${routes.length} route(s)`}
         </span>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={fetchDeliveries}
-          disabled={loading}
-          className="h-7 gap-1.5 text-xs"
-        >
+        {!loading && !error && dupCodeCount > 0 && (
+          <span className="flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 px-2 py-1 rounded-full">
+            <AlertTriangle className="w-3 h-3" />
+            {dupCodeCount} duplicate code(s)
+          </span>
+        )}
+        {!loading && !error && dupNameCount > 0 && (
+          <span className="flex items-center gap-1 text-xs font-medium text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-700 px-2 py-1 rounded-full">
+            <AlertTriangle className="w-3 h-3" />
+            {dupNameCount} duplicate name(s)
+          </span>
+        )}
+        <Button size="sm" variant="ghost" onClick={fetchRoutes} disabled={loading} className="h-7 gap-1.5 text-xs">
           <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
           Refresh
         </Button>
       </div>
 
-      {/* ── States ──────────────────────────────────────────────────── */}
-      {loading && !deliveries.length && (
+      {/* ── Loading ──────────────────────────────────────────────────── */}
+      {loading && !flat.length && (
         <div className="flex flex-1 items-center justify-center gap-2 text-muted-foreground">
           <Loader2 className="w-5 h-5 animate-spin" />
-          <span className="text-sm">Loading deliveries…</span>
+          <span className="text-sm">Loading routes…</span>
         </div>
       )}
 
+      {/* ── Error ────────────────────────────────────────────────────── */}
       {error && !loading && (
         <div className="flex flex-1 items-center justify-center gap-2 text-destructive">
           <AlertCircle className="w-5 h-5" />
@@ -113,24 +144,21 @@ export function DeliveryTableDialog() {
         </div>
       )}
 
-      {/* ── Flex-scroll table ───────────────────────────────────────── */}
-      {(!loading || deliveries.length > 0) && !error && (
+      {/* ── Flex-scroll table ────────────────────────────────────────── */}
+      {(!loading || flat.length > 0) && !error && (
         <div className="flex flex-col flex-1 min-h-0">
           {/* Frozen header */}
           <div className="shrink-0 overflow-x-auto border-b">
             <table className="w-full" style={{ minWidth: "860px" }}>
               <thead className="bg-muted/60 text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <th className="px-3 py-2.5 text-left font-medium w-10">#</th>
-                  {COLUMNS.map((col) => (
-                    <th
-                      key={col.field}
-                      className="px-3 py-2.5 text-left font-medium"
-                      style={{ minWidth: col.minWidth }}
-                    >
-                      {col.header}
-                    </th>
-                  ))}
+                  <th className="px-3 py-2.5 text-left font-medium w-8">#</th>
+                  <th className="px-3 py-2.5 text-left font-medium" style={{ minWidth: 120 }}>Route</th>
+                  <th className="px-3 py-2.5 text-left font-medium" style={{ minWidth: 80 }}>Code</th>
+                  <th className="px-3 py-2.5 text-left font-medium" style={{ minWidth: 200 }}>Location Name</th>
+                  <th className="px-3 py-2.5 text-left font-medium" style={{ minWidth: 110 }}>Delivery</th>
+                  <th className="px-3 py-2.5 text-left font-medium" style={{ minWidth: 100 }}>Coordinates</th>
+                  <th className="px-3 py-2.5 text-left font-medium" style={{ minWidth: 80 }}>Descriptions</th>
                 </tr>
               </thead>
             </table>
@@ -140,21 +168,64 @@ export function DeliveryTableDialog() {
           <div className="flex-1 overflow-auto">
             <table className="w-full text-sm" style={{ minWidth: "860px" }}>
               <tbody className="divide-y divide-border">
-                {deliveries.length === 0 ? (
+                {flat.length === 0 ? (
                   <tr>
-                    <td colSpan={COLUMNS.length + 1} className="text-center py-16 text-muted-foreground">
-                      No deliveries found.
+                    <td colSpan={7} className="text-center py-16 text-muted-foreground">
+                      No location points found.
                     </td>
                   </tr>
                 ) : (
-                  deliveries.map((row, idx) => (
-                    <tr key={row.id} className="hover:bg-muted/40 transition-colors">
-                      <td className="px-3 py-2.5 text-muted-foreground w-10 text-xs">{idx + 1}</td>
-                      {COLUMNS.map((col) => (
-                        <td key={col.field} className="px-3 py-2.5" style={{ minWidth: col.minWidth }}>
-                          <CellValue field={col.field} value={row[col.field]} />
-                        </td>
-                      ))}
+                  flat.map((pt, idx) => (
+                    <tr
+                      key={`${pt.routeId}-${pt.code}-${idx}`}
+                      className={cn(
+                        "transition-colors",
+                        (pt._dupCode || pt._dupName)
+                          ? "bg-amber-50/60 dark:bg-amber-900/10 hover:bg-amber-100/60 dark:hover:bg-amber-900/20"
+                          : "hover:bg-muted/40"
+                      )}
+                    >
+                      <td className="px-3 py-2.5 text-muted-foreground w-8 text-xs">{idx + 1}</td>
+
+                      {/* Route */}
+                      <td className="px-3 py-2.5" style={{ minWidth: 120 }}>
+                        <div className="text-xs font-medium leading-tight">{pt.routeName}</div>
+                        <div className="text-xs text-muted-foreground">{pt.routeCode}</div>
+                      </td>
+
+                      {/* Code */}
+                      <td className="px-3 py-2.5" style={{ minWidth: 80 }}>
+                        <span className={cn("font-mono text-xs", pt._dupCode && "text-amber-600 dark:text-amber-400 font-bold")}>
+                          {pt.code}
+                        </span>
+                        {pt._dupCode && <AlertTriangle className="inline w-3 h-3 ml-1 text-amber-500" />}
+                      </td>
+
+                      {/* Name */}
+                      <td className="px-3 py-2.5" style={{ minWidth: 200 }}>
+                        <span className={cn(pt._dupName && "text-rose-600 dark:text-rose-400 font-semibold")}>
+                          {pt.name}
+                        </span>
+                        {pt._dupName && <AlertTriangle className="inline w-3 h-3 ml-1 text-rose-500" />}
+                      </td>
+
+                      {/* Delivery */}
+                      <td className="px-3 py-2.5" style={{ minWidth: 110 }}>
+                        <DeliveryBadge value={pt.delivery} />
+                      </td>
+
+                      {/* Coordinates */}
+                      <td className="px-3 py-2.5 text-xs text-muted-foreground font-mono" style={{ minWidth: 100 }}>
+                        {pt.latitude !== 0 || pt.longitude !== 0
+                          ? `${pt.latitude.toFixed(4)}, ${pt.longitude.toFixed(4)}`
+                          : "—"
+                        }
+                      </td>
+
+                      {/* Descriptions count */}
+                      <td className="px-3 py-2.5 text-xs text-muted-foreground" style={{ minWidth: 80 }}>
+                        {pt.descriptions?.length > 0 ? `${pt.descriptions.length} item(s)` : "—"}
+                      </td>
                     </tr>
                   ))
                 )}
