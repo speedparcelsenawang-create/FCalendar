@@ -611,11 +611,11 @@ export function RouteList() {
                         </DialogHeader>
                         
                         <div className="flex-1 overflow-auto">
-                          <table className="w-full border-collapse table-auto">
+                          <table className="w-full border-collapse">
                             <thead className="bg-muted/50 sticky top-0">
                               <tr>
                                 {isEditMode && (
-                                  <th className="p-2 text-center font-semibold text-xs w-10">
+                                  <th className="p-3 text-center font-semibold text-sm w-12">
                                     <input
                                       type="checkbox"
                                       checked={selectedRows.length === deliveryPoints.length && deliveryPoints.length > 0}
@@ -625,18 +625,10 @@ export function RouteList() {
                                   </th>
                                 )}
                                 {columns.filter(c => c.visible).map(col => (
-                                  <th
-                                    key={col.key}
-                                    className={`p-2 text-center font-semibold text-xs whitespace-nowrap ${
-                                      col.key === 'no' ? 'w-10' :
-                                      col.key === 'code' ? 'w-20' :
-                                      col.key === 'delivery' ? 'w-28' :
-                                      col.key === 'action' ? 'w-10' : ''
-                                    }`}
-                                  >{col.label}</th>
+                                  <th key={col.key} className="p-3 text-center font-semibold text-sm">{col.label}</th>
                                 ))}
-                                {isEditMode && <th className="p-2 text-center font-semibold text-xs whitespace-nowrap">Latitude</th>}
-                                {isEditMode && <th className="p-2 text-center font-semibold text-xs whitespace-nowrap">Longitude</th>}
+                                {isEditMode && <th className="p-3 text-center font-semibold text-sm">Latitude</th>}
+                                {isEditMode && <th className="p-3 text-center font-semibold text-sm">Longitude</th>}
                           </tr>
                         </thead>
                         <tbody>
@@ -650,7 +642,7 @@ export function RouteList() {
                                   : 'bg-muted/40 opacity-50 hover:opacity-60'
                               }`}>
                                 {isEditMode && (
-                                  <td className="p-2 text-center">
+                                  <td className="p-3 text-center">
                                     <input
                                       type="checkbox"
                                       checked={selectedRows.includes(point.code)}
@@ -661,10 +653,10 @@ export function RouteList() {
                                 )}
                                 {columns.filter(c => c.visible).map(col => {
                                   if (col.key === 'no') return (
-                                    <td key="no" className="p-2 text-xs text-center whitespace-nowrap">{index + 1}</td>
+                                    <td key="no" className="p-3 text-sm text-center">{index + 1}</td>
                                   )
                                   if (col.key === 'code') return (
-                                    <td key="code" className="p-2 text-xs text-center whitespace-nowrap">
+                                    <td key="code" className="p-3 text-sm text-center">
                                       {isEditMode ? (
                                       <Popover
                                         open={isEditMode && !!popoverOpen[`${point.code}-code`]}
@@ -697,7 +689,7 @@ export function RouteList() {
                                     </td>
                                   )
                                   if (col.key === 'name') return (
-                                    <td key="name" className="p-2 text-xs text-left overflow-hidden max-w-0">
+                                    <td key="name" className="p-3 text-sm text-center">
                                       {isEditMode ? (
                                       <Popover
                                         open={isEditMode && !!popoverOpen[`${point.code}-name`]}
@@ -726,11 +718,11 @@ export function RouteList() {
                                           </div>
                                         </PopoverContent>
                                       </Popover>
-                                      ) : (<span className="block truncate whitespace-nowrap">{point.name}</span>)}
+                                      ) : (<span className="px-3 py-1">{point.name}</span>)}
                                     </td>
                                   )
                                   if (col.key === 'delivery') return (
-                                    <td key="delivery" className="p-2 text-center whitespace-nowrap">
+                                    <td key="delivery" className="p-3 text-center">
                                       {isEditMode ? (
                                         <button
                                           className="group inline-flex items-center gap-1.5 hover:scale-105 transition-transform mx-auto"
@@ -749,7 +741,7 @@ export function RouteList() {
                                     </td>
                                   )
                                   if (col.key === 'action') return (
-                                    <td key="action" className="p-2 text-center">
+                                    <td key="action" className="p-3 text-center">
                                       <button
                                         className="p-1.5 rounded-md hover:bg-accent transition-colors"
                                         onClick={() => { setSelectedPoint(point); setInfoModalOpen(true) }}
@@ -761,7 +753,7 @@ export function RouteList() {
                                   return null
                                 })}
                                 {isEditMode && (
-                                  <td className="p-2 text-xs font-mono text-center whitespace-nowrap">
+                                  <td className="p-3 text-sm font-mono text-center">
                                     <Popover open={isEditMode && !!popoverOpen[`${point.code}-latitude`]} onOpenChange={(open) => { if (!isEditMode) return; if (!open) cancelEdit(); setPopoverOpen({ [`${point.code}-latitude`]: open }) }}>
                                       <PopoverTrigger asChild>
                                         <button className="hover:bg-accent px-3 py-1 rounded flex items-center justify-center gap-1.5 group font-mono mx-auto" onClick={() => startEdit(point.code, 'latitude', point.latitude.toFixed(4))}>
@@ -773,7 +765,7 @@ export function RouteList() {
                                   </td>
                                 )}
                                 {isEditMode && (
-                                  <td className="p-2 text-xs font-mono text-center whitespace-nowrap">
+                                  <td className="p-3 text-sm font-mono text-center">
                                     <Popover open={isEditMode && !!popoverOpen[`${point.code}-longitude`]} onOpenChange={(open) => { if (!isEditMode) return; if (!open) cancelEdit(); setPopoverOpen({ [`${point.code}-longitude`]: open }) }}>
                                       <PopoverTrigger asChild>
                                         <button className="hover:bg-accent px-3 py-1 rounded flex items-center justify-center gap-1.5 group font-mono mx-auto" onClick={() => startEdit(point.code, 'longitude', point.longitude.toFixed(4))}>
