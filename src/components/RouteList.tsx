@@ -182,7 +182,6 @@ export function RouteList() {
   const [pendingSelectedRows, setPendingSelectedRows] = useState<string[]>([])
   const [deliveryModalOpen, setDeliveryModalOpen] = useState(false)
   const [deliveryModalCode, setDeliveryModalCode] = useState<string | null>(null)
-  const [deliveryModalShowBadge, setDeliveryModalShowBadge] = useState(true)
 
   // ── Settings Modal ────────────────────────────────────────────────
   type ColumnKey = 'no' | 'code' | 'name' | 'delivery' | 'action'
@@ -304,8 +303,10 @@ export function RouteList() {
       const field = fieldMap[key]
       if (!field) return sortByActive(deliveryPoints)
       const sorted = [...deliveryPoints].sort((a, b) => {
-        if (a[field] < b[field]) return dir === 'asc' ? -1 : 1
-        if (a[field] > b[field]) return dir === 'asc' ? 1 : -1
+        const av = a[field!] ?? ''
+        const bv = b[field!] ?? ''
+        if (av < bv) return dir === 'asc' ? -1 : 1
+        if (av > bv) return dir === 'asc' ? 1 : -1
         return 0
       })
       return sortByActive(sorted)
@@ -728,7 +729,6 @@ export function RouteList() {
                                           className="group flex items-center justify-center gap-1.5 hover:scale-105 transition-transform mx-auto"
                                           onClick={() => {
                                             setDeliveryModalCode(point.code)
-                                            setDeliveryModalShowBadge(true)
                                             setDeliveryModalOpen(true)
                                           }}
                                         >
