@@ -1,4 +1,4 @@
-import { MapPin, Github, Heart } from "lucide-react"
+import { MapPin, Heart } from "lucide-react"
 
 export function Footer() {
   const year = new Date().getFullYear()
