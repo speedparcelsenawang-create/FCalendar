@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react"
-import { Plus, Trash2, Navigation, MapPin } from "lucide-react"
+import { Plus, Trash2 } from "lucide-react"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -44,6 +46,8 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
     }
   }, [open, point])
 
+  const [pendingUrl, setPendingUrl] = useState<string | null>(null)
+
   const hasCoords = point.latitude !== 0 && point.longitude !== 0
 
   const handleAdd = () => setDrafts(prev => [...prev, { key: "", value: "" }])
@@ -61,10 +65,17 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
     setIsEditing(false)
   }
 
-  const openGoogleMaps = () =>
-    window.open(`https://maps.google.com/?q=${point.latitude},${point.longitude}`, "_blank")
-  const openWaze = () =>
-    window.open(`https://waze.com/ul?ll=${point.latitude},${point.longitude}&navigate=yes`, "_blank")
+  const gmapsUrl = `https://maps.google.com/?q=${point.latitude},${point.longitude}`
+  const wazeUrl = `https://waze.com/ul?ll=${point.latitude},${point.longitude}&navigate=yes`
+  const familyMartUrl = `https://fmvending.web.app/refill-service/M${String(point.code).padStart(4, "0")}`
+
+  const openUrl = (url: string) => setPendingUrl(url)
+  const confirmOpen = () => {
+    if (pendingUrl) {
+      window.open(pendingUrl, "_blank")
+      setPendingUrl(null)
+    }
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -164,23 +175,59 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
 
           {/* Navigation buttons — only if coords set */}
           {hasCoords && !isEditing && (
-            <div className="flex gap-2">
+            <div className="flex gap-3 justify-center">
               <button
-                onClick={openGoogleMaps}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-sm font-medium rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all shadow hover:shadow-md"
+                onClick={() => openUrl(gmapsUrl)}
+                title="Google Maps"
+                className="flex flex-col items-center gap-1 group"
               >
-                <Navigation className="size-4" />
-                Google Maps
+                <div className="w-12 h-12 rounded-2xl overflow-hidden shadow hover:shadow-md transition-all group-hover:scale-105">
+                  <img src="/Gmaps.png" alt="Google Maps" className="w-full h-full object-cover" />
+                </div>
+                <span className="text-[10px] text-gray-500 dark:text-gray-400">Google Maps</span>
               </button>
               <button
-                onClick={openWaze}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-gradient-to-r from-cyan-400 to-blue-500 text-white text-sm font-medium rounded-xl hover:from-cyan-500 hover:to-blue-600 transition-all shadow hover:shadow-md"
+                onClick={() => openUrl(wazeUrl)}
+                title="Waze"
+                className="flex flex-col items-center gap-1 group"
               >
-                <MapPin className="size-4" />
-                Waze
+                <div className="w-12 h-12 rounded-2xl overflow-hidden shadow hover:shadow-md transition-all group-hover:scale-105">
+                  <img src="/waze.png" alt="Waze" className="w-full h-full object-cover" />
+                </div>
+                <span className="text-[10px] text-gray-500 dark:text-gray-400">Waze</span>
+              </button>
+              <button
+                onClick={() => openUrl(familyMartUrl)}
+                title="FamilyMart"
+                className="flex flex-col items-center gap-1 group"
+              >
+                <div className="w-12 h-12 rounded-2xl overflow-hidden shadow hover:shadow-md transition-all group-hover:scale-105">
+                  <img src="/FamilyMart.png" alt="FamilyMart" className="w-full h-full object-cover" />
+                </div>
+                <span className="text-[10px] text-gray-500 dark:text-gray-400">FamilyMart</span>
               </button>
             </div>
           )}
+
+          {/* Confirmation dialog */}
+          <Dialog open={!!pendingUrl} onOpenChange={(o) => { if (!o) setPendingUrl(null) }}>
+            <DialogContent className="max-w-xs rounded-2xl">
+              <DialogHeader>
+                <DialogTitle className="text-base">Buka Pautan?</DialogTitle>
+                <DialogDescription className="text-sm text-gray-500">
+                  Anda akan dibawa ke aplikasi atau laman web luar.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="flex gap-2 justify-end">
+                <Button variant="outline" size="sm" onClick={() => setPendingUrl(null)}>
+                  Batal
+                </Button>
+                <Button size="sm" onClick={confirmOpen}>
+                  Buka
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
 
         {/* Footer — only in edit mode */}
