@@ -72,90 +72,127 @@ body {
     --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
+    --color-card-border: var(--card-border);
 }
 
 :root {
-    --radius: 0.625rem;
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.708 0 0);
+    --radius: 0.5rem;
+    --background: hsl(0 0% 100%);
+    --foreground: hsl(240 10% 10%);
+    --card: hsl(240 5% 96%);
+    --card-foreground: hsl(240 10% 10%);
+    --card-border: hsl(240 6% 88%);
+    --popover: hsl(0 0% 100%);
+    --popover-foreground: hsl(240 10% 10%);
+    --primary: hsl(217 91% 60%);
+    --primary-foreground: hsl(0 0% 100%);
+    --secondary: hsl(240 5% 88%);
+    --secondary-foreground: hsl(240 10% 10%);
+    --muted: hsl(240 6% 90%);
+    --muted-foreground: hsl(240 5% 40%);
+    --accent: hsl(240 5% 88%);
+    --accent-foreground: hsl(240 10% 10%);
+    --destructive: hsl(0 72% 51%);
+    --border: hsl(240 6% 90%);
+    --input: hsl(240 6% 90%);
+    --ring: hsl(217 91% 60%);
     --chart-1: oklch(0.646 0.222 41.116);
     --chart-2: oklch(0.6 0.118 184.704);
     --chart-3: oklch(0.398 0.07 227.392);
     --chart-4: oklch(0.828 0.189 84.429);
     --chart-5: oklch(0.769 0.188 70.08);
-    --sidebar: hsl(0 0% 98%);
+    --button-outline: rgba(0, 0, 0, 0.1);
+    --elevate-1: rgba(0, 0, 0, 0.03);
+    --elevate-2: rgba(0, 0, 0, 0.08);
+    --sidebar: hsl(240 5% 94%);
     --sidebar-foreground: hsl(240 5.3% 26.1%);
-    --sidebar-primary: hsl(240 5.9% 10%);
-    --sidebar-primary-foreground: hsl(0 0% 98%);
-    --sidebar-accent: hsl(240 4.8% 95.9%);
+    --sidebar-primary: hsl(217 91% 60%);
+    --sidebar-primary-foreground: hsl(0 0% 100%);
+    --sidebar-accent: hsl(240 4.8% 89%);
     --sidebar-accent-foreground: hsl(240 5.9% 10%);
-    --sidebar-border: hsl(220 13% 91%);
-    --sidebar-ring: hsl(217.2 91.2% 59.8%);
+    --sidebar-border: hsl(240 6% 88%);
+    --sidebar-ring: hsl(217 91% 60%);
 }
 
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.205 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.205 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.922 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(1 0 0 / 10%);
-    --input: oklch(1 0 0 / 15%);
-    --ring: oklch(0.556 0 0);
+    --background: hsl(240 10% 8%);
+    --foreground: hsl(240 5% 95%);
+    --card: hsl(240 8% 12%);
+    --card-foreground: hsl(240 5% 95%);
+    --card-border: hsl(240 6% 20%);
+    --popover: hsl(240 8% 12%);
+    --popover-foreground: hsl(240 5% 95%);
+    --primary: hsl(217 91% 60%);
+    --primary-foreground: hsl(0 0% 100%);
+    --secondary: hsl(240 6% 20%);
+    --secondary-foreground: hsl(240 5% 95%);
+    --muted: hsl(240 6% 18%);
+    --muted-foreground: hsl(240 5% 65%);
+    --accent: hsl(240 6% 20%);
+    --accent-foreground: hsl(240 5% 95%);
+    --destructive: hsl(0 72% 51%);
+    --border: hsl(240 6% 18%);
+    --input: hsl(240 6% 18%);
+    --ring: hsl(217 91% 60%);
     --chart-1: oklch(0.488 0.243 264.376);
     --chart-2: oklch(0.696 0.17 162.48);
     --chart-3: oklch(0.769 0.188 70.08);
     --chart-4: oklch(0.627 0.265 303.9);
     --chart-5: oklch(0.645 0.246 16.439);
-    --sidebar: hsl(240 5.9% 10%);
-    --sidebar-foreground: hsl(240 4.8% 95.9%);
-    --sidebar-primary: hsl(224.3 76.3% 48%);
+    --button-outline: rgba(255, 255, 255, 0.1);
+    --elevate-1: rgba(255, 255, 255, 0.04);
+    --elevate-2: rgba(255, 255, 255, 0.09);
+    --sidebar: hsl(240 8% 10%);
+    --sidebar-foreground: hsl(240 4.8% 90%);
+    --sidebar-primary: hsl(217 91% 60%);
     --sidebar-primary-foreground: hsl(0 0% 100%);
-    --sidebar-accent: hsl(240 3.7% 15.9%);
-    --sidebar-accent-foreground: hsl(240 4.8% 95.9%);
-    --sidebar-border: hsl(240 3.7% 15.9%);
-    --sidebar-ring: hsl(217.2 91.2% 59.8%);
+    --sidebar-accent: hsl(240 6% 16%);
+    --sidebar-accent-foreground: hsl(240 4.8% 90%);
+    --sidebar-border: hsl(240 6% 18%);
+    --sidebar-ring: hsl(217 91% 60%);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
-    }
+    transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  }
   body {
-    @apply bg-background text-foreground;
-    }
+    @apply bg-background text-foreground font-sans antialiased;
+  }
+  button, a, input, select, textarea {
+    transition: all 0.2s ease;
+  }
   dt {
     font-weight: bold;
   }
   dd {
     margin-left: 0;
     margin-bottom: 0.5rem;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply backdrop-blur-xl bg-card/80 border border-card-border/50;
+  }
+  .glass-header {
+    @apply backdrop-blur-md bg-background/90 border-b border-border/50;
+  }
+}
+
+@layer utilities {
+  .hover-elevate {
+    @apply transition-all duration-200;
+  }
+  .hover-elevate:hover {
+    background-color: var(--elevate-1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px);
+  }
+  .active-elevate-2:active {
+    background-color: var(--elevate-2);
+    transform: translateY(0);
   }
 }
 
@@ -178,6 +215,17 @@ body {
   }
 }
 
+@keyframes slideInFromBottom {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .page-fade-in {
   animation: fadeIn 0.3s ease-in forwards;
 }
@@ -185,6 +233,18 @@ body {
 .page-fade-out {
   animation: fadeOut 0.3s ease-out forwards;
   pointer-events: none;
+}
+
+.animate-in {
+  animation-fill-mode: both;
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.slide-in-from-bottom-4 {
+  animation: slideInFromBottom 0.5s ease-out;
 }
 
 /* ── Scrollbar styling (Webkit) ───────────────────────────── */
