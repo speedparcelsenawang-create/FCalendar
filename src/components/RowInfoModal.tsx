@@ -173,35 +173,39 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
             )}
           </div>
 
-          {/* Navigation buttons — only if coords set */}
-          {hasCoords && !isEditing && (
+          {/* Navigation buttons */}
+          {!isEditing && (
             <div className="flex gap-3 justify-center">
-              <button
-                onClick={() => openUrl(gmapsUrl)}
-                title="Google Maps"
-                className="flex flex-col items-center gap-1 group"
-              >
-                <div className="w-12 h-12 rounded-2xl overflow-hidden shadow hover:shadow-md transition-all group-hover:scale-105">
-                  <img src="/Gmaps.png" alt="Google Maps" className="w-full h-full object-cover" />
-                </div>
-                <span className="text-[10px] text-gray-500 dark:text-gray-400">Google Maps</span>
-              </button>
-              <button
-                onClick={() => openUrl(wazeUrl)}
-                title="Waze"
-                className="flex flex-col items-center gap-1 group"
-              >
-                <div className="w-12 h-12 rounded-2xl overflow-hidden shadow hover:shadow-md transition-all group-hover:scale-105">
-                  <img src="/waze.png" alt="Waze" className="w-full h-full object-cover" />
-                </div>
-                <span className="text-[10px] text-gray-500 dark:text-gray-400">Waze</span>
-              </button>
+              {hasCoords && (
+                <>
+                  <button
+                    onClick={() => openUrl(gmapsUrl)}
+                    title="Google Maps"
+                    className="flex flex-col items-center gap-1 group"
+                  >
+                    <div className="w-9 h-9 rounded-xl overflow-hidden shadow hover:shadow-md transition-all group-hover:scale-105">
+                      <img src="/Gmaps.png" alt="Google Maps" className="w-full h-full object-cover" />
+                    </div>
+                    <span className="text-[10px] text-gray-500 dark:text-gray-400">Google Maps</span>
+                  </button>
+                  <button
+                    onClick={() => openUrl(wazeUrl)}
+                    title="Waze"
+                    className="flex flex-col items-center gap-1 group"
+                  >
+                    <div className="w-9 h-9 rounded-xl overflow-hidden shadow hover:shadow-md transition-all group-hover:scale-105">
+                      <img src="/waze.png" alt="Waze" className="w-full h-full object-cover" />
+                    </div>
+                    <span className="text-[10px] text-gray-500 dark:text-gray-400">Waze</span>
+                  </button>
+                </>
+              )}
               <button
                 onClick={() => openUrl(familyMartUrl)}
                 title="FamilyMart"
                 className="flex flex-col items-center gap-1 group"
               >
-                <div className="w-12 h-12 rounded-2xl overflow-hidden shadow hover:shadow-md transition-all group-hover:scale-105">
+                <div className="w-9 h-9 rounded-xl overflow-hidden shadow hover:shadow-md transition-all group-hover:scale-105">
                   <img src="/FamilyMart.png" alt="FamilyMart" className="w-full h-full object-cover" />
                 </div>
                 <span className="text-[10px] text-gray-500 dark:text-gray-400">FamilyMart</span>
@@ -213,17 +217,22 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
           <Dialog open={!!pendingUrl} onOpenChange={(o) => { if (!o) setPendingUrl(null) }}>
             <DialogContent className="max-w-xs rounded-2xl">
               <DialogHeader>
-                <DialogTitle className="text-base">Buka Pautan?</DialogTitle>
-                <DialogDescription className="text-sm text-gray-500">
-                  Anda akan dibawa ke aplikasi atau laman web luar.
+                <DialogTitle className="text-base">Open Link?</DialogTitle>
+                <DialogDescription asChild>
+                  <div className="space-y-1.5">
+                    <p className="text-sm text-gray-500">You will be taken to an external app or website.</p>
+                    <p className="text-xs font-mono break-all bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-gray-300 rounded-lg px-2.5 py-1.5">
+                      {pendingUrl}
+                    </p>
+                  </div>
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter className="flex gap-2 justify-end">
                 <Button variant="outline" size="sm" onClick={() => setPendingUrl(null)}>
-                  Batal
+                  Cancel
                 </Button>
                 <Button size="sm" onClick={confirmOpen}>
-                  Buka
+                  Open
                 </Button>
               </DialogFooter>
             </DialogContent>
