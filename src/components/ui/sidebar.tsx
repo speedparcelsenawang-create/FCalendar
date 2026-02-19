@@ -189,6 +189,10 @@ function Sidebar({
           style={
             {
               "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
+              top: "env(safe-area-inset-top)",
+              bottom: "env(safe-area-inset-bottom)",
+              height:
+                "calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom))",
             } as React.CSSProperties
           }
           side={side}
