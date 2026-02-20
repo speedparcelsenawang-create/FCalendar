@@ -3,10 +3,7 @@
 import * as React from "react"
 import {
   Calendar,
-  CalendarCheck,
   CalendarDays,
-  CalendarClock,
-  Users,
   Settings2,
   LifeBuoy,
   Send,
@@ -59,61 +56,10 @@ const data = {
       ],
     },
     {
-      title: "Events",
-      url: "#",
-      icon: CalendarCheck,
-      items: [
-        {
-          title: "All Events",
-          url: "#",
-        },
-        {
-          title: "Upcoming",
-          url: "#",
-        },
-        {
-          title: "Past Events",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Schedule",
-      url: "#",
-      icon: CalendarClock,
-      items: [
-        {
-          title: "My Schedule",
-          url: "#",
-        },
-        {
-          title: "Team Schedule",
-          url: "#",
-        },
-        {
-          title: "Availability",
-          url: "#",
-        },
-      ],
-    },
-    {
       title: "Settings",
       url: "#",
       icon: Settings2,
-      items: [
-        {
-          title: "General",
-          url: "#",
-        },
-        {
-          title: "Notifications",
-          url: "#",
-        },
-        {
-          title: "Preferences",
-          url: "#",
-        },
-      ],
+      items: [],
     },
   ],
   navSecondary: [
@@ -143,11 +89,6 @@ const data = {
       name: "Deliveries",
       url: "#",
       icon: Truck,
-    },
-    {
-      name: "Team Meetings",
-      url: "#",
-      icon: Users,
     },
   ],
 }

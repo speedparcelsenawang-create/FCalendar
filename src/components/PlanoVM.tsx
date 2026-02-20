@@ -130,16 +130,12 @@ export function PlanoVM() {
   useEffect(() => {
     const initLightGallery = async () => {
       if (!isEditMode && currentPage && currentPage.rows.length > 0) {
-        console.log('=== Starting LightGallery initialization ===')
-        console.log('Current page rows:', currentPage.rows.length)
         
         try {
           // Dynamic import - use proper destructuring for default exports
           const { default: lightGallery } = await import('lightgallery')
           const { default: lgThumbnail } = await import('lightgallery/plugins/thumbnail')
           const { default: lgZoom } = await import('lightgallery/plugins/zoom')
-          
-          console.log('LightGallery modules loaded successfully')
 
           // Wait for DOM
           await new Promise(resolve => setTimeout(resolve, 300))
@@ -156,11 +152,9 @@ export function PlanoVM() {
           currentPage.rows.forEach((row) => {
             if (row.images.length > 0) {
               const element = document.getElementById(`lightgallery-${row.id}`)
-              console.log(`Looking for element: lightgallery-${row.id}`, element)
               
               if (element) {
                 const links = element.querySelectorAll('a')
-                console.log(`Found ${links.length} image links in row ${row.id}`)
                 
                 if (links.length > 0) {
                   const instance = lightGallery(element, {
@@ -172,10 +166,7 @@ export function PlanoVM() {
                     toggleThumb: true,
                   })
                   lightGalleryRefs.current.set(row.id, instance)
-                  console.log(`✅ LightGallery initialized successfully for row: ${row.id}`)
                 }
-              } else {
-                console.warn(`❌ Element not found: lightgallery-${row.id}`)
               }
             }
           })
@@ -183,7 +174,6 @@ export function PlanoVM() {
           console.error('❌ LightGallery initialization error:', error)
         }
       } else {
-        console.log('Skipping LightGallery init:', { isEditMode, hasPage: !!currentPage })
         // Cleanup when switching to edit mode
         lightGalleryRefs.current.forEach((instance) => {
           if (instance && instance.destroy) {

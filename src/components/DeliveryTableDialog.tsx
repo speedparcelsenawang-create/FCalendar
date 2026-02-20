@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { RefreshCw, Loader2, AlertCircle, AlertTriangle } from "lucide-react"
+import { RefreshCw, Loader2, AlertCircle, AlertTriangle, Info } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 
@@ -27,9 +27,22 @@ interface FlatPoint extends DeliveryPoint {
   routeId: string
   routeName: string
   routeCode: string
+  routeShift: string
   _rowIndex: number
   _dupCode: boolean
   _dupName: boolean
+}
+
+const KNOWN_DELIVERY = new Set(["Daily", "Weekday", "Alt 1", "Alt 2"])
+
+function ShiftBadge({ shift }: { shift: string }) {
+  const upper = shift?.toUpperCase()
+  if (upper === "AM")
+    return <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-900 text-blue-50">AM</span>
+  if (upper === "PM")
+    return <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-orange-200 text-orange-700">PM</span>
+  if (!shift) return null
+  return <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-muted text-muted-foreground">{shift}</span>
 }
 
 // ─── Delivery Badge ───────────────────────────────────────────────────────────
@@ -76,7 +89,7 @@ export function DeliveryTableDialog() {
     const all: FlatPoint[] = []
     routes.forEach(route => {
       (route.deliveryPoints ?? []).forEach((pt, i) => {
-        all.push({ ...pt, routeId: route.id, routeName: route.name, routeCode: route.code, _rowIndex: i, _dupCode: false, _dupName: false })
+        all.push({ ...pt, routeId: route.id, routeName: route.name, routeCode: route.code, routeShift: route.shift ?? "", _rowIndex: i, _dupCode: false, _dupName: false })
       })
     })
 
@@ -159,6 +172,7 @@ export function DeliveryTableDialog() {
                   <th className="px-3 py-2.5 text-left font-medium" style={{ minWidth: 110 }}>Delivery</th>
                   <th className="px-3 py-2.5 text-left font-medium" style={{ minWidth: 100 }}>Coordinates</th>
                   <th className="px-3 py-2.5 text-left font-medium" style={{ minWidth: 80 }}>Descriptions</th>
+                  <th className="px-3 py-2.5 text-center font-medium" style={{ minWidth: 60 }}>Action</th>
                 </tr>
               </thead>
             </table>
@@ -170,7 +184,7 @@ export function DeliveryTableDialog() {
               <tbody className="divide-y divide-border">
                 {flat.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-16 text-muted-foreground">
+                    <td colSpan={8} className="text-center py-16 text-muted-foreground">
                       No location points found.
                     </td>
                   </tr>
@@ -189,8 +203,10 @@ export function DeliveryTableDialog() {
 
                       {/* Route */}
                       <td className="px-3 py-2.5" style={{ minWidth: 120 }}>
-                        <div className="text-xs font-medium leading-tight">{pt.routeName}</div>
-                        <div className="text-xs text-muted-foreground">{pt.routeCode}</div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-medium leading-tight">{pt.routeName}</span>
+                          <ShiftBadge shift={pt.routeShift} />
+                        </div>
                       </td>
 
                       {/* Code */}
@@ -225,6 +241,18 @@ export function DeliveryTableDialog() {
                       {/* Descriptions count */}
                       <td className="px-3 py-2.5 text-xs text-muted-foreground" style={{ minWidth: 80 }}>
                         {pt.descriptions?.length > 0 ? `${pt.descriptions.length} item(s)` : "—"}
+                      </td>
+
+                      {/* Action */}
+                      <td className="px-3 py-2.5 text-center" style={{ minWidth: 60 }}>
+                        <Info
+                          className={cn(
+                            "w-4 h-4 mx-auto",
+                            KNOWN_DELIVERY.has(pt.delivery)
+                              ? "text-green-700 dark:text-green-500"
+                              : "text-red-600 dark:text-red-400"
+                          )}
+                          />
                       </td>
                     </tr>
                   ))
