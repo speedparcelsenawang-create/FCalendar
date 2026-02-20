@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react"
-import { List, Info, Plus, Check, X, Edit2, Trash2, Search, Settings, Map, MapPin, Save, ArrowUp, ArrowDown, RotateCcw, EyeOff, Expand } from "lucide-react"
+import { List, Info, Plus, Check, X, Edit2, Trash2, Search, Settings, Map, MapPin, Save, ArrowUp, ArrowDown, RotateCcw, EyeOff, Expand, Truck } from "lucide-react"
 import { RowInfoModal } from "./RowInfoModal"
 import { useEditMode } from "@/contexts/EditModeContext"
 import {
@@ -583,29 +583,41 @@ export function RouteList() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
+        <div className="grid grid-cols-1 gap-2">
         {filteredRoutes.map((route) => (
           <div key={route.id} className="w-full">
             {/* Card */}
             <div 
-              className="bg-card rounded-2xl border border-border shadow-sm hover:shadow-lg hover:border-primary/40 transition-all duration-300 overflow-hidden h-[400px] flex flex-col group"
+              className="bg-card rounded-xl border border-border shadow-sm hover:shadow-md hover:border-primary/40 transition-all duration-300 overflow-hidden group"
             >
-              {/* Header Section - Point Count & Buttons */}
-              <div className="px-4 py-3 border-b border-border/60 bg-card">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                    <MapPin className="size-3.5" />
-                    <span>{route.deliveryPoints.length} lokasi</span>
+              {/* Card Row - Yuhu style */}
+              <div className="flex items-center gap-3 px-4 py-3">
+                {/* Icon */}
+                <div className="shrink-0 w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Truck className="size-5 text-primary" />
+                </div>
+                {/* Route Info */}
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-[13px] font-semibold truncate group-hover:text-primary transition-colors">{route.name}</h3>
+                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                    <span className="font-mono text-[11px] text-muted-foreground">{route.code}</span>
+                    <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded ${route.shift === 'AM' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>{route.shift}</span>
+                    <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground">
+                      <MapPin className="size-3" />{route.deliveryPoints.length} lokasi
+                    </span>
                   </div>
-                  <div className="flex gap-1.5">
-                    <button 
-                      className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/8 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                </div>
+                {/* Action Buttons */}
+                <div className="shrink-0 flex items-center gap-1">
+                  {isEditMode && (
+                    <button
+                      className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/8 transition-colors"
                       onClick={() => handleEditRoute(route)}
                       title="Edit Route"
-                      disabled={!isEditMode}
                     >
                       <Settings className="size-4" />
                     </button>
+                  )}
                     <Dialog open={dialogOpen && currentRouteId === route.id} onOpenChange={(open) => {
                       setDialogOpen(open)
                       if (open) setCurrentRouteId(route.id)
@@ -856,6 +868,17 @@ export function RouteList() {
                     )}
                   </DialogContent>
                 </Dialog>
+                  <button
+                    onClick={() => toggleCardMap(route.id)}
+                    className={`p-1.5 rounded-lg transition-colors ${
+                      showMapCards.has(route.id)
+                        ? 'bg-primary/15 text-primary'
+                        : 'text-muted-foreground hover:text-primary hover:bg-primary/8'
+                    }`}
+                    title={showMapCards.has(route.id) ? 'Sorok peta' : 'Tunjuk peta'}
+                  >
+                    {showMapCards.has(route.id) ? <EyeOff className="size-4" /> : <Map className="size-4" />}
+                  </button>
                   </div>
                 
                 {/* Action Modal - After Done is clicked */}
@@ -1171,64 +1194,23 @@ export function RouteList() {
                     }}
                   />
                 )}
-                </div>
               </div>
-              
-              {/* Map Section */}
-              <div className="flex-1 relative bg-muted/20 rounded-none">
-                {showMapCards.has(route.id) ? (
-                  <div className="absolute inset-0 rounded-none">
-                    <DeliveryMap deliveryPoints={route.deliveryPoints} />
-                  </div>
-                ) : (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-none">
-                    <MapPin className="size-10 text-muted-foreground/15" />
-                    <span className="text-[11px] text-muted-foreground/40 font-medium">Tekan ikon peta untuk lihat</span>
-                  </div>
-                )}
-                
-                {/* Map Controls */}
-                {showMapCards.has(route.id) && (
-                  <div className="absolute top-3 right-3 flex flex-col gap-2 z-[100]">
+
+              {/* Map Section - Collapsible */}
+              {showMapCards.has(route.id) && (
+                <div className="h-48 border-t border-border/60 relative">
+                  <DeliveryMap deliveryPoints={route.deliveryPoints} />
+                  <div className="absolute top-2 right-2 z-[100]">
                     <button
                       onClick={() => setFullscreenRouteId(route.id)}
-                      className="p-2 bg-background/90 backdrop-blur-sm border border-border rounded-md hover:bg-primary/10 hover:border-primary/50 transition-all shadow-sm"
+                      className="p-1.5 bg-background/90 backdrop-blur-sm border border-border rounded-lg hover:bg-primary/10 hover:border-primary/50 transition-all shadow-sm"
                       title="Fullscreen"
                     >
                       <Expand className="size-3.5" />
                     </button>
                   </div>
-                )}
-              </div>
-              
-              {/* Footer Section - Route Info */}
-              <div className="px-4 py-3 border-t border-border/60 bg-card">
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-bold truncate group-hover:text-primary transition-colors leading-tight">{route.name}</h3>
-                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[11px] font-semibold rounded-md bg-muted/70 border border-border text-muted-foreground">
-                        <span className="w-1.5 h-1.5 rounded-full bg-primary/70" />
-                        {route.code}
-                      </span>
-                      <span className={`px-2 py-0.5 text-[11px] font-semibold rounded-md border ${route.shift === 'AM' ? 'bg-orange-500/10 text-orange-600 border-orange-500/20 dark:bg-orange-500/15 dark:text-orange-400' : 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:bg-blue-500/15 dark:text-blue-400'}`}>
-                        {route.shift}
-                      </span>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => toggleCardMap(route.id)}
-                    className={`shrink-0 p-2 rounded-xl border transition-all ${
-                      showMapCards.has(route.id)
-                        ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                        : 'bg-muted/50 text-muted-foreground border-border/60 hover:text-primary hover:border-primary/40 hover:bg-primary/5'
-                    }`}
-                    title={showMapCards.has(route.id) ? 'Sorok peta' : 'Tunjuk peta'}
-                  >
-                    {showMapCards.has(route.id) ? <EyeOff className="size-4" /> : <Map className="size-4" />}
-                  </button>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         ))}
@@ -1254,19 +1236,11 @@ export function RouteList() {
         <div className="w-full">
           <Dialog open={addRouteDialogOpen} onOpenChange={setAddRouteDialogOpen}>
             <DialogTrigger asChild>
-              <button className="w-full h-[400px] rounded-xl border-2 border-dashed border-border hover:border-primary hover:bg-gradient-to-br hover:from-primary/5 hover:via-purple-500/5 hover:to-pink-500/5 transition-all duration-300 flex flex-col items-center justify-center gap-6 group relative overflow-hidden">
-                {/* Animated Background Effect */}
-                <div className="absolute inset-0 bg-gradient-to-br from-transparent via-primary/0 to-transparent group-hover:via-primary/5 transition-all duration-500" />
-                
-                <div className="relative z-10 flex flex-col items-center gap-6">
-                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5 border-2 border-primary/20 group-hover:border-primary/50 group-hover:shadow-xl group-hover:shadow-primary/20 flex items-center justify-center transition-all duration-300 group-hover:scale-110">
-                    <Plus className="size-10 text-primary transition-transform group-hover:rotate-90 duration-300" />
-                  </div>
-                  <div className="text-center">
-                    <h3 className="text-xl font-bold mb-2 group-hover:text-primary transition-colors">Add New Route</h3>
-                    <p className="text-sm text-muted-foreground">Create a new delivery route</p>
-                  </div>
+              <button className="w-full h-14 rounded-xl border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 transition-all duration-300 flex items-center justify-center gap-2 group">
+                <div className="w-7 h-7 rounded-lg bg-primary/10 group-hover:bg-primary/20 flex items-center justify-center transition-colors">
+                  <Plus className="size-4 text-primary" />
                 </div>
+                <span className="text-sm font-medium text-muted-foreground group-hover:text-primary transition-colors">Add New Route</span>
               </button>
             </DialogTrigger>
             <DialogContent>

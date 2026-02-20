@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { RefreshCw, Loader2, AlertCircle, AlertTriangle, Info } from "lucide-react"
+import { RefreshCw, Loader2, AlertCircle, AlertTriangle, Search, X, ChevronUp, ChevronDown, ChevronsUpDown, Filter } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface DeliveryPoint {
@@ -35,37 +36,23 @@ interface FlatPoint extends DeliveryPoint {
 
 const KNOWN_DELIVERY = new Set(["Daily", "Weekday", "Alt 1", "Alt 2"])
 
-function ShiftBadge({ shift }: { shift: string }) {
-  const upper = shift?.toUpperCase()
-  if (upper === "AM")
-    return <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-900 text-blue-50">AM</span>
-  if (upper === "PM")
-    return <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-orange-200 text-orange-700">PM</span>
-  if (!shift) return null
-  return <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-muted text-muted-foreground">{shift}</span>
-}
-
-// ─── Delivery Badge ───────────────────────────────────────────────────────────
-const deliveryConfig: Record<string, string> = {
-  Daily:   "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300",
-  Weekday: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
-  "Alt 1": "bg-orange-100 text-orange-800 dark:bg-orange-900/40 dark:text-orange-300",
-  "Alt 2": "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300",
-}
-
-function DeliveryBadge({ value }: { value: string }) {
-  return (
-    <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium", deliveryConfig[value] ?? "bg-gray-100 text-gray-700")}>
-      {value}
-    </span>
-  )
-}
+type SortKey = "code" | "name" | "delivery" | "route"
+type SortDir = "asc" | "desc"
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export function DeliveryTableDialog() {
   const [routes, setRoutes]   = useState<Route[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError]     = useState<string | null>(null)
+
+  // Search & Filter
+  const [search, setSearch]           = useState("")
+  const [filterRoute, setFilterRoute] = useState("")
+  const [filterDelivery, setFilterDelivery] = useState("")
+
+  // Sort — default: code asc
+  const [sortKey, setSortKey] = useState<SortKey>("code")
+  const [sortDir, setSortDir] = useState<SortDir>("asc")
 
   const fetchRoutes = useCallback(async () => {
     setLoading(true)
@@ -92,15 +79,12 @@ export function DeliveryTableDialog() {
         all.push({ ...pt, routeId: route.id, routeName: route.name, routeCode: route.code, routeShift: route.shift ?? "", _rowIndex: i, _dupCode: false, _dupName: false })
       })
     })
-
-    // Count occurrences
     const codeCounts: Record<string, number> = {}
     const nameCounts: Record<string, number> = {}
     all.forEach(p => {
       codeCounts[p.code.trim().toLowerCase()] = (codeCounts[p.code.trim().toLowerCase()] ?? 0) + 1
       nameCounts[p.name.trim().toLowerCase()] = (nameCounts[p.name.trim().toLowerCase()] ?? 0) + 1
     })
-
     let dupCodeCount = 0
     let dupNameCount = 0
     all.forEach(p => {
@@ -109,9 +93,55 @@ export function DeliveryTableDialog() {
       if (p._dupCode) dupCodeCount++
       if (p._dupName) dupNameCount++
     })
-
     return { flat: all, dupCodeCount, dupNameCount }
   }, [routes])
+
+  // ── Unique options for filters ─────────────────────────────────────────
+  const routeOptions = useMemo(() =>
+    [...new Map(routes.map(r => [r.id, `${r.name} (${r.code})`])).entries()],
+  [routes])
+  const deliveryOptions = useMemo(() =>
+    [...new Set(flat.map(p => p.delivery))].sort(),
+  [flat])
+
+  // ── Filter + Sort ──────────────────────────────────────────────────────
+  const displayed = useMemo(() => {
+    let list = flat
+    if (search.trim()) {
+      const q = search.trim().toLowerCase()
+      list = list.filter(p =>
+        p.code.toLowerCase().includes(q) ||
+        p.name.toLowerCase().includes(q) ||
+        p.routeName.toLowerCase().includes(q) ||
+        p.routeCode.toLowerCase().includes(q) ||
+        p.delivery.toLowerCase().includes(q)
+      )
+    }
+    if (filterRoute)    list = list.filter(p => p.routeId === filterRoute)
+    if (filterDelivery) list = list.filter(p => p.delivery === filterDelivery)
+
+    return [...list].sort((a, b) => {
+      let av = "", bv = ""
+      if (sortKey === "code")     { av = a.code;      bv = b.code }
+      if (sortKey === "name")     { av = a.name;      bv = b.name }
+      if (sortKey === "delivery") { av = a.delivery;  bv = b.delivery }
+      if (sortKey === "route")    { av = a.routeName; bv = b.routeName }
+      const cmp = av.localeCompare(bv, undefined, { numeric: true, sensitivity: "base" })
+      return sortDir === "asc" ? cmp : -cmp
+    })
+  }, [flat, search, filterRoute, filterDelivery, sortKey, sortDir])
+
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) setSortDir(d => d === "asc" ? "desc" : "asc")
+    else { setSortKey(key); setSortDir("asc") }
+  }
+
+  function SortIcon({ col }: { col: SortKey }) {
+    if (sortKey !== col) return <ChevronsUpDown className="inline w-3 h-3 ml-0.5 text-muted-foreground/40" />
+    return sortDir === "asc"
+      ? <ChevronUp className="inline w-3 h-3 ml-0.5 text-primary" />
+      : <ChevronDown className="inline w-3 h-3 ml-0.5 text-primary" />
+  }
 
   const totalPoints = flat.length
 
@@ -120,25 +150,68 @@ export function DeliveryTableDialog() {
 
       {/* ── Toolbar ─────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 border-b bg-muted/40 shrink-0">
-        <span className="text-xs text-muted-foreground mr-auto">
-          {!loading && !error && `${totalPoints} location point(s) across ${routes.length} route(s)`}
+        <span className="text-xs text-muted-foreground">
+          {!loading && !error && `${displayed.length} / ${totalPoints} point(s) · ${routes.length} route(s)`}
         </span>
         {!loading && !error && dupCodeCount > 0 && (
           <span className="flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 px-2 py-1 rounded-full">
-            <AlertTriangle className="w-3 h-3" />
-            {dupCodeCount} duplicate code(s)
+            <AlertTriangle className="w-3 h-3" />{dupCodeCount} dup code
           </span>
         )}
         {!loading && !error && dupNameCount > 0 && (
           <span className="flex items-center gap-1 text-xs font-medium text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/30 border border-rose-200 dark:border-rose-700 px-2 py-1 rounded-full">
-            <AlertTriangle className="w-3 h-3" />
-            {dupNameCount} duplicate name(s)
+            <AlertTriangle className="w-3 h-3" />{dupNameCount} dup name
           </span>
         )}
-        <Button size="sm" variant="ghost" onClick={fetchRoutes} disabled={loading} className="h-7 gap-1.5 text-xs">
+        <Button size="sm" variant="ghost" onClick={fetchRoutes} disabled={loading} className="ml-auto h-7 gap-1.5 text-xs">
           <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
           Refresh
         </Button>
+      </div>
+
+      {/* ── Search + Filter Bar ─────────────────────────────────────── */}
+      <div className="flex flex-wrap items-center gap-2 px-4 py-2 border-b bg-muted/20 shrink-0">
+        <div className="relative flex-1 min-w-[140px]">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground/60" />
+          <Input
+            placeholder="Search code, name, route…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-8 pr-8 h-8 text-xs rounded-lg"
+          />
+          {search && (
+            <button onClick={() => setSearch("")} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Filter className="w-3.5 h-3.5 text-muted-foreground/60 shrink-0" />
+          <select
+            value={filterRoute}
+            onChange={e => setFilterRoute(e.target.value)}
+            className="h-8 rounded-lg border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+          >
+            <option value="">All Routes</option>
+            {routeOptions.map(([id, label]) => (
+              <option key={id} value={id}>{label}</option>
+            ))}
+          </select>
+        </div>
+        <select
+          value={filterDelivery}
+          onChange={e => setFilterDelivery(e.target.value)}
+          className="h-8 rounded-lg border border-input bg-background px-2 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+        >
+          <option value="">All Delivery</option>
+          {deliveryOptions.map(d => <option key={d} value={d}>{d}</option>)}
+        </select>
+        {(search || filterRoute || filterDelivery) && (
+          <button
+            onClick={() => { setSearch(""); setFilterRoute(""); setFilterDelivery("") }}
+            className="text-xs text-muted-foreground hover:text-foreground underline"
+          >Clear</button>
+        )}
       </div>
 
       {/* ── Loading ──────────────────────────────────────────────────── */}
@@ -157,22 +230,30 @@ export function DeliveryTableDialog() {
         </div>
       )}
 
-      {/* ── Flex-scroll table ────────────────────────────────────────── */}
+      {/* ── Virtual-scroll table ─────────────────────────────────────── */}
       {(!loading || flat.length > 0) && !error && (
         <div className="flex flex-col flex-1 min-h-0">
           {/* Frozen header */}
           <div className="shrink-0 overflow-x-auto border-b">
-            <table className="w-full" style={{ minWidth: "860px" }}>
+            <table className="w-full" style={{ minWidth: 720 }}>
               <thead className="bg-muted/60 text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <th className="px-3 py-2.5 text-left font-medium w-8">#</th>
-                  <th className="px-3 py-2.5 text-left font-medium" style={{ minWidth: 120 }}>Route</th>
-                  <th className="px-3 py-2.5 text-left font-medium" style={{ minWidth: 80 }}>Code</th>
-                  <th className="px-3 py-2.5 text-left font-medium" style={{ minWidth: 200 }}>Location Name</th>
-                  <th className="px-3 py-2.5 text-left font-medium" style={{ minWidth: 110 }}>Delivery</th>
-                  <th className="px-3 py-2.5 text-left font-medium" style={{ minWidth: 100 }}>Coordinates</th>
-                  <th className="px-3 py-2.5 text-left font-medium" style={{ minWidth: 80 }}>Descriptions</th>
-                  <th className="px-3 py-2.5 text-center font-medium" style={{ minWidth: 60 }}>Action</th>
+                  <th className="px-3 py-2.5 text-center font-medium w-10">#</th>
+                  <th className="px-3 py-2.5 text-center font-medium cursor-pointer select-none hover:text-foreground" style={{ minWidth: 130 }} onClick={() => handleSort("route")}>
+                    Route <SortIcon col="route" />
+                  </th>
+                  <th className="px-3 py-2.5 text-center font-medium cursor-pointer select-none hover:text-foreground" style={{ minWidth: 80 }} onClick={() => handleSort("code")}>
+                    Code <SortIcon col="code" />
+                  </th>
+                  <th className="px-3 py-2.5 text-center font-medium cursor-pointer select-none hover:text-foreground" style={{ minWidth: 200 }} onClick={() => handleSort("name")}>
+                    Location Name <SortIcon col="name" />
+                  </th>
+                  <th className="px-3 py-2.5 text-center font-medium cursor-pointer select-none hover:text-foreground" style={{ minWidth: 100 }} onClick={() => handleSort("delivery")}>
+                    Delivery <SortIcon col="delivery" />
+                  </th>
+                  <th className="px-3 py-2.5 text-center font-medium" style={{ minWidth: 110 }}>Coordinates</th>
+                  <th className="px-3 py-2.5 text-center font-medium" style={{ minWidth: 70 }}>Notes</th>
+                  <th className="px-3 py-2.5 text-center font-medium" style={{ minWidth: 55 }}>Status</th>
                 </tr>
               </thead>
             </table>
@@ -180,16 +261,16 @@ export function DeliveryTableDialog() {
 
           {/* Scrollable body */}
           <div className="flex-1 overflow-auto">
-            <table className="w-full text-sm" style={{ minWidth: "860px" }}>
+            <table className="w-full text-sm" style={{ minWidth: 720 }}>
               <tbody className="divide-y divide-border">
-                {flat.length === 0 ? (
+                {displayed.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="text-center py-16 text-muted-foreground">
-                      No location points found.
+                      No results found.
                     </td>
                   </tr>
                 ) : (
-                  flat.map((pt, idx) => (
+                  displayed.map((pt, idx) => (
                     <tr
                       key={`${pt.routeId}-${pt.code}-${idx}`}
                       className={cn(
@@ -199,18 +280,16 @@ export function DeliveryTableDialog() {
                           : "hover:bg-muted/40"
                       )}
                     >
-                      <td className="px-3 py-2.5 text-muted-foreground w-8 text-xs">{idx + 1}</td>
+                      {/* # */}
+                      <td className="px-3 py-2 text-center text-muted-foreground w-10 text-xs">{idx + 1}</td>
 
-                      {/* Route */}
-                      <td className="px-3 py-2.5" style={{ minWidth: 120 }}>
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs font-medium leading-tight">{pt.routeName}</span>
-                          <ShiftBadge shift={pt.routeShift} />
-                        </div>
+                      {/* Route — plain text, no badge */}
+                      <td className="px-3 py-2 text-center" style={{ minWidth: 130 }}>
+                        <span className="text-xs font-medium">{pt.routeName}</span>
                       </td>
 
                       {/* Code */}
-                      <td className="px-3 py-2.5" style={{ minWidth: 80 }}>
+                      <td className="px-3 py-2 text-center" style={{ minWidth: 80 }}>
                         <span className={cn("font-mono text-xs", pt._dupCode && "text-amber-600 dark:text-amber-400 font-bold")}>
                           {pt.code}
                         </span>
@@ -218,41 +297,34 @@ export function DeliveryTableDialog() {
                       </td>
 
                       {/* Name */}
-                      <td className="px-3 py-2.5" style={{ minWidth: 200 }}>
-                        <span className={cn(pt._dupName && "text-rose-600 dark:text-rose-400 font-semibold")}>
+                      <td className="px-3 py-2 text-center" style={{ minWidth: 200 }}>
+                        <span className={cn("text-xs", pt._dupName && "text-rose-600 dark:text-rose-400 font-semibold")}>
                           {pt.name}
                         </span>
                         {pt._dupName && <AlertTriangle className="inline w-3 h-3 ml-1 text-rose-500" />}
                       </td>
 
-                      {/* Delivery */}
-                      <td className="px-3 py-2.5" style={{ minWidth: 110 }}>
-                        <DeliveryBadge value={pt.delivery} />
-                      </td>
+                      {/* Delivery — plain text, no badge */}
+                      <td className="px-3 py-2 text-center text-xs" style={{ minWidth: 100 }}>{pt.delivery}</td>
 
                       {/* Coordinates */}
-                      <td className="px-3 py-2.5 text-xs text-muted-foreground font-mono" style={{ minWidth: 100 }}>
+                      <td className="px-3 py-2 text-center text-xs text-muted-foreground font-mono" style={{ minWidth: 110 }}>
                         {pt.latitude !== 0 || pt.longitude !== 0
                           ? `${pt.latitude.toFixed(4)}, ${pt.longitude.toFixed(4)}`
-                          : "—"
-                        }
+                          : "—"}
                       </td>
 
-                      {/* Descriptions count */}
-                      <td className="px-3 py-2.5 text-xs text-muted-foreground" style={{ minWidth: 80 }}>
-                        {pt.descriptions?.length > 0 ? `${pt.descriptions.length} item(s)` : "—"}
+                      {/* Notes count */}
+                      <td className="px-3 py-2 text-center text-xs text-muted-foreground" style={{ minWidth: 70 }}>
+                        {pt.descriptions?.length > 0 ? pt.descriptions.length : "—"}
                       </td>
 
-                      {/* Action */}
-                      <td className="px-3 py-2.5 text-center" style={{ minWidth: 60 }}>
-                        <Info
-                          className={cn(
-                            "w-4 h-4 mx-auto",
-                            KNOWN_DELIVERY.has(pt.delivery)
-                              ? "text-green-700 dark:text-green-500"
-                              : "text-red-600 dark:text-red-400"
-                          )}
-                          />
+                      {/* Status dot */}
+                      <td className="px-3 py-2 text-center" style={{ minWidth: 55 }}>
+                        <span className={cn(
+                          "inline-block w-2 h-2 rounded-full mx-auto",
+                          KNOWN_DELIVERY.has(pt.delivery) ? "bg-green-500" : "bg-red-500"
+                        )} />
                       </td>
                     </tr>
                   ))
