@@ -329,12 +329,14 @@ function SidebarInput({
   )
 }
 
-function SidebarHeader({ className, ...props }: React.ComponentProps<"div">) {
+function SidebarHeader({ className, style, ...props }: React.ComponentProps<"div">) {
+  const { isMobile } = useSidebar()
   return (
     <div
       data-slot="sidebar-header"
       data-sidebar="header"
       className={cn("flex flex-col gap-2 p-2", className)}
+      style={isMobile ? style : { paddingTop: 'calc(0.5rem + env(safe-area-inset-top))', ...style }}
       {...props}
     />
   )

@@ -30,6 +30,7 @@ import { Separator } from "@/components/ui/separator"
 import {
   SidebarProvider,
   SidebarTrigger,
+  SidebarInset,
   useSidebar,
 } from "@/components/ui/sidebar"
 
@@ -234,7 +235,7 @@ function AppContent() {
         />
       )}
       
-      <main className={`relative flex w-full flex-1 flex-col min-h-0 overflow-y-auto bg-background transition-all duration-500 ease-in-out ${(isMobile && openMobile) || (!isMobile && open) ? 'scale-95 opacity-90' : 'scale-100 opacity-100'}`} style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      <SidebarInset className={`relative flex w-full flex-1 flex-col min-h-0 overflow-y-auto bg-background transition-all duration-500 ease-in-out ${(isMobile && openMobile) || (!isMobile && open) ? 'scale-95 opacity-90' : 'scale-100 opacity-100'}`} style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <header className="glass-header sticky top-0 z-30 flex shrink-0 items-center gap-2 px-3 md:px-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.25)] transition-colors duration-300" style={{ paddingTop: 'calc(env(safe-area-inset-top) + 0.625rem)', paddingBottom: '0.5rem', minHeight: 'calc(4rem + env(safe-area-inset-top))' }}>
           <SidebarTrigger className="-ml-1 shrink-0" disabled={isEditMode} />
           <Separator orientation="vertical" className="mr-1 md:mr-2 h-4 shrink-0" />
@@ -294,7 +295,7 @@ function AppContent() {
             {renderContent()}
           </div>
         </Suspense>
-      </main>
+      </SidebarInset>
 
       {/* Edit Mode Shutdown Transition Overlay */}
       {isEditTransitioning && (
