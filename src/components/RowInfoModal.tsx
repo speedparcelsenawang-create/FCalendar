@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react"
 import QrScanner from "qr-scanner"
-import { Plus, Trash2, QrCode, ExternalLink, Pencil, Link2, ImageUp, X, ScanLine, CheckCircle2, Loader2, AlertCircle } from "lucide-react"
+import { Plus, Trash2, QrCode, ExternalLink, Pencil, Link2, ImageUp, X, ScanLine, CheckCircle2, Loader2, AlertCircle, Check } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -131,22 +131,22 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm rounded-2xl p-0 overflow-hidden gap-0">
+      <DialogContent className="max-w-sm rounded-2xl p-0 overflow-hidden gap-0 border-border">
         {/* Header */}
-        <DialogHeader className="px-5 pt-5 pb-4 border-b border-gray-300 dark:border-neutral-700 bg-white dark:bg-neutral-900">
+        <DialogHeader className="px-5 pt-5 pb-4 border-b border-border bg-background">
           <div className="flex items-center gap-3">
             <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shrink-0 shadow">
               {point.name.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <DialogTitle className="text-base font-bold text-gray-900 dark:text-white truncate">
+              <DialogTitle className="text-base font-bold text-foreground truncate">
                 {point.name}
               </DialogTitle>
               <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                <span className={`px-2 py-0.5 text-xs font-semibold rounded-md border shadow-sm ${DELIVERY_COLORS[point.delivery] ?? ""}`}>
+                <span className={`px-2 py-0.5 text-xs font-semibold rounded-md border ${DELIVERY_COLORS[point.delivery] ?? ""}`}>
                   {point.delivery}
                 </span>
-                <span className="text-xs font-mono text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-neutral-800 px-1.5 py-0.5 rounded">
+                <span className="text-xs font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
                   {point.code}
                 </span>
               </div>
@@ -155,15 +155,15 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
         </DialogHeader>
 
         {/* Body */}
-        <div className="px-5 py-4 space-y-4 bg-white dark:bg-neutral-900">
+        <div className="px-5 py-4 space-y-4 bg-background">
           {/* Information section */}
           <div>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-semibold uppercase tracking-widest text-gray-600 dark:text-gray-400">Information</p>
+            <div className="flex items-center justify-between mb-2.5">
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Information</p>
               {isEditMode && !isEditing && (
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="text-xs text-blue-500 hover:text-blue-600 font-medium"
+                  className="text-xs text-primary hover:text-primary/80 font-medium px-2 py-0.5 rounded-md hover:bg-primary/10 transition-colors"
                 >
                   Edit
                 </button>
@@ -203,23 +203,23 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
                 </button>
               </div>
             ) : (
-              <div className="rounded-xl border border-gray-300 dark:border-neutral-700 overflow-hidden shadow-sm">
+              <div className="rounded-xl border border-border overflow-hidden">
                 {point.descriptions && point.descriptions.length > 0 ? (
                   point.descriptions.map((d, i) => (
                     <div
                       key={i}
-                      className="flex items-center gap-3 px-3 py-2.5 border-b border-gray-200 dark:border-neutral-800 last:border-0 bg-gray-50 dark:bg-neutral-800/50"
+                      className="flex items-center gap-0 border-b border-border last:border-0"
                     >
-                        <span className="w-24 shrink-0 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide truncate">
+                      <span className="w-[90px] shrink-0 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide px-3 py-2.5 bg-muted/50 border-r border-border truncate">
                         {d.key}
                       </span>
-                        <span className="flex-1 text-sm font-medium text-gray-900 dark:text-gray-100">
+                      <span className="flex-1 text-sm text-foreground px-3 py-2.5">
                         {d.value}
                       </span>
                     </div>
                   ))
                 ) : (
-                  <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No Information</p>
+                  <p className="text-sm text-muted-foreground text-center py-5">No information added</p>
                 )}
               </div>
             )}
@@ -227,75 +227,78 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
 
           {/* Navigation buttons */}
           {!isEditing && (
-            <div className="flex gap-3 justify-center">
-              {hasCoords && (
-                <>
-                  <button
-                    onClick={() => openUrl(gmapsUrl)}
-                    title="Google Maps"
-                    className="flex flex-col items-center gap-1 group"
-                  >
-                    <div className="w-9 h-9 rounded-xl overflow-hidden shadow hover:shadow-md transition-all group-hover:scale-105">
-                      <img src="/Gmaps.png" alt="Google Maps" className="w-full h-full object-cover" />
-                    </div>
-                    <span className="text-[10px] text-gray-600 dark:text-gray-400">Google Maps</span>
-                  </button>
-                  <button
-                    onClick={() => openUrl(wazeUrl)}
-                    title="Waze"
-                    className="flex flex-col items-center gap-1 group"
-                  >
-                    <div className="w-9 h-9 rounded-xl overflow-hidden shadow hover:shadow-md transition-all group-hover:scale-105">
-                      <img src="/waze.png" alt="Waze" className="w-full h-full object-cover" />
-                    </div>
-                    <span className="text-[10px] text-gray-600 dark:text-gray-400">Waze</span>
-                  </button>
-                </>
-              )}
-              <button
-                onClick={() => openUrl(familyMartUrl)}
-                title="FamilyMart"
-                className="flex flex-col items-center gap-1 group"
-              >
-                <div className="w-9 h-9 rounded-xl overflow-hidden shadow hover:shadow-md transition-all group-hover:scale-105">
-                  <img src="/FamilyMart.png" alt="FamilyMart" className="w-full h-full object-cover" />
-                </div>
-                <span className="text-[10px] text-gray-600 dark:text-gray-400">FamilyMart</span>
-              </button>
-
-              {/* QR Code Button — shown if QR exists or in edit mode */}
-              {(qrCodeImageUrl || isEditMode) && (
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-2.5">Open With</p>
+              <div className="flex gap-2 flex-wrap">
+                {hasCoords && (
+                  <>
+                    <button
+                      onClick={() => openUrl(gmapsUrl)}
+                      title="Google Maps"
+                      className="flex flex-col items-center gap-1.5 group flex-1 min-w-[60px]"
+                    >
+                      <div className="w-11 h-11 rounded-2xl overflow-hidden shadow-sm group-hover:shadow-md transition-all group-hover:scale-105 border border-border/40">
+                        <img src="/Gmaps.png" alt="Google Maps" className="w-full h-full object-cover" />
+                      </div>
+                      <span className="text-[10px] text-muted-foreground font-medium">Maps</span>
+                    </button>
+                    <button
+                      onClick={() => openUrl(wazeUrl)}
+                      title="Waze"
+                      className="flex flex-col items-center gap-1.5 group flex-1 min-w-[60px]"
+                    >
+                      <div className="w-11 h-11 rounded-2xl overflow-hidden shadow-sm group-hover:shadow-md transition-all group-hover:scale-105 border border-border/40">
+                        <img src="/waze.png" alt="Waze" className="w-full h-full object-cover" />
+                      </div>
+                      <span className="text-[10px] text-muted-foreground font-medium">Waze</span>
+                    </button>
+                  </>
+                )}
                 <button
-                  onClick={() => {
-                    if (isEditMode) {
-                      setShowQRDialog(true)
-                    } else {
-                      handleScanQr()
-                    }
-                  }}
-                  disabled={isScanning}
-                  title={isEditMode ? (qrCodeImageUrl ? "Edit QR Code" : "Add QR Code") : "Scan QR Code"}
-                  className="flex flex-col items-center gap-1 group disabled:opacity-70 disabled:cursor-not-allowed"
+                  onClick={() => openUrl(familyMartUrl)}
+                  title="FamilyMart"
+                  className="flex flex-col items-center gap-1.5 group flex-1 min-w-[60px]"
                 >
-                  <div className="relative w-9 h-9 rounded-xl bg-orange-500 hover:bg-orange-600 flex items-center justify-center shadow hover:shadow-md transition-all group-hover:scale-105 overflow-hidden">
-                    {isScanning ? (
-                      <Loader2 className="w-5 h-5 text-white animate-spin" />
-                    ) : (
-                      <QrCode className="w-5 h-5 text-white" />
-                    )}
-                    {isEditMode && !isScanning && (
-                      <span className="absolute -top-1 -right-1 bg-background rounded-full p-0.5">
-                        {qrCodeImageUrl
-                          ? <Pencil className="w-2.5 h-2.5" />
-                          : <Plus className="w-2.5 h-2.5" />}
-                      </span>
-                    )}
+                  <div className="w-11 h-11 rounded-2xl overflow-hidden shadow-sm group-hover:shadow-md transition-all group-hover:scale-105 border border-border/40">
+                    <img src="/FamilyMart.png" alt="FamilyMart" className="w-full h-full object-cover" />
                   </div>
-                  <span className="text-[10px] text-gray-600 dark:text-gray-400">
-                    {isScanning ? "Scanning..." : "QR Scan"}
-                  </span>
+                  <span className="text-[10px] text-muted-foreground font-medium">FM</span>
                 </button>
-              )}
+
+                {/* QR Code Button */}
+                {(qrCodeImageUrl || isEditMode) && (
+                  <button
+                    onClick={() => {
+                      if (isEditMode) {
+                        setShowQRDialog(true)
+                      } else {
+                        handleScanQr()
+                      }
+                    }}
+                    disabled={isScanning}
+                    title={isEditMode ? (qrCodeImageUrl ? "Edit QR Code" : "Add QR Code") : "Scan QR Code"}
+                    className="flex flex-col items-center gap-1.5 group flex-1 min-w-[60px] disabled:opacity-70 disabled:cursor-not-allowed"
+                  >
+                    <div className="relative w-11 h-11 rounded-2xl bg-orange-500 hover:bg-orange-600 flex items-center justify-center shadow-sm group-hover:shadow-md transition-all group-hover:scale-105">
+                      {isScanning ? (
+                        <Loader2 className="w-5 h-5 text-white animate-spin" />
+                      ) : (
+                        <QrCode className="w-5 h-5 text-white" />
+                      )}
+                      {isEditMode && !isScanning && (
+                        <span className="absolute -top-1 -right-1 bg-background rounded-full p-0.5">
+                          {qrCodeImageUrl
+                            ? <Pencil className="w-2.5 h-2.5" />
+                            : <Plus className="w-2.5 h-2.5" />}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground font-medium">
+                      {isScanning ? "Scanning…" : "QR"}
+                    </span>
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -550,13 +553,9 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
 
         {/* Footer — only in edit mode */}
         {isEditing && (
-          <div className="px-5 pb-5 flex gap-2 justify-end bg-white dark:bg-neutral-900">
-            <Button variant="outline" size="sm" onClick={handleCancel}>
-              Cancel
-            </Button>
-            <Button size="sm" onClick={handleSave}>
-              Save
-            </Button>
+          <div className="px-5 pb-5 flex gap-2 justify-end bg-background border-t border-border pt-3">
+            <Button variant="outline" size="sm" onClick={handleCancel}>Cancel</Button>
+            <Button size="sm" onClick={handleSave}><Check className="size-3.5 mr-1" />Save</Button>
           </div>
         )}
       </DialogContent>

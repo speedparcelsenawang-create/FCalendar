@@ -34,8 +34,6 @@ interface FlatPoint extends DeliveryPoint {
   _dupName: boolean
 }
 
-const KNOWN_DELIVERY = new Set(["Daily", "Weekday", "Alt 1", "Alt 2"])
-
 type SortKey = "code" | "name" | "delivery" | "route"
 type SortDir = "asc" | "desc"
 
@@ -235,7 +233,7 @@ export function DeliveryTableDialog() {
         <div className="flex flex-col flex-1 min-h-0">
           {/* Frozen header */}
           <div className="shrink-0 overflow-x-auto border-b">
-            <table className="w-full" style={{ minWidth: 720 }}>
+            <table className="w-full" style={{ minWidth: 480 }}>
               <thead className="bg-muted/60 text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-3 py-2.5 text-center font-medium w-10">#</th>
@@ -251,9 +249,6 @@ export function DeliveryTableDialog() {
                   <th className="px-3 py-2.5 text-center font-medium cursor-pointer select-none hover:text-foreground" style={{ minWidth: 100 }} onClick={() => handleSort("delivery")}>
                     Delivery <SortIcon col="delivery" />
                   </th>
-                  <th className="px-3 py-2.5 text-center font-medium" style={{ minWidth: 110 }}>Coordinates</th>
-                  <th className="px-3 py-2.5 text-center font-medium" style={{ minWidth: 70 }}>Notes</th>
-                  <th className="px-3 py-2.5 text-center font-medium" style={{ minWidth: 55 }}>Status</th>
                 </tr>
               </thead>
             </table>
@@ -261,11 +256,11 @@ export function DeliveryTableDialog() {
 
           {/* Scrollable body */}
           <div className="flex-1 overflow-auto">
-            <table className="w-full text-sm" style={{ minWidth: 720 }}>
+            <table className="w-full text-sm" style={{ minWidth: 480 }}>
               <tbody className="divide-y divide-border">
                 {displayed.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-16 text-muted-foreground">
+                    <td colSpan={5} className="text-center py-16 text-muted-foreground">
                       No results found.
                     </td>
                   </tr>
@@ -306,26 +301,6 @@ export function DeliveryTableDialog() {
 
                       {/* Delivery — plain text, no badge */}
                       <td className="px-3 py-2 text-center text-xs" style={{ minWidth: 100 }}>{pt.delivery}</td>
-
-                      {/* Coordinates */}
-                      <td className="px-3 py-2 text-center text-xs text-muted-foreground font-mono" style={{ minWidth: 110 }}>
-                        {pt.latitude !== 0 || pt.longitude !== 0
-                          ? `${pt.latitude.toFixed(4)}, ${pt.longitude.toFixed(4)}`
-                          : "—"}
-                      </td>
-
-                      {/* Notes count */}
-                      <td className="px-3 py-2 text-center text-xs text-muted-foreground" style={{ minWidth: 70 }}>
-                        {pt.descriptions?.length > 0 ? pt.descriptions.length : "—"}
-                      </td>
-
-                      {/* Status dot */}
-                      <td className="px-3 py-2 text-center" style={{ minWidth: 55 }}>
-                        <span className={cn(
-                          "inline-block w-2 h-2 rounded-full mx-auto",
-                          KNOWN_DELIVERY.has(pt.delivery) ? "bg-green-500" : "bg-red-500"
-                        )} />
-                      </td>
                     </tr>
                   ))
                 )}

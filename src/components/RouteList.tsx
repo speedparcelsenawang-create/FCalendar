@@ -631,14 +631,23 @@ export function RouteList() {
                           <List className="size-4" />
                         </button>
                       </DialogTrigger>
-                      <DialogContent className="max-w-6xl max-h-[80vh] overflow-hidden flex flex-col">
-                        <DialogHeader>
+                      <DialogContent className="max-w-5xl max-h-[85vh] overflow-hidden flex flex-col gap-0 p-0 rounded-2xl">
+                        <DialogHeader className="px-5 pt-5 pb-4 border-b border-border shrink-0">
                           <div className="flex items-center justify-between pr-6">
-                            <div>
-                              <DialogTitle>Delivery Points - {route.name}</DialogTitle>
-                              <DialogDescription>
-                                Manage delivery locations and schedules
-                              </DialogDescription>
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                                <Truck className="size-5 text-primary" />
+                              </div>
+                              <div>
+                                <DialogTitle className="text-base font-bold leading-tight">{route.name}</DialogTitle>
+                                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                  <span className="font-mono text-[11px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{route.code}</span>
+                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${route.shift === 'AM' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>{route.shift}</span>
+                                  <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                                    <MapPin className="size-3" />{route.deliveryPoints.length} lokasi
+                                  </span>
+                                </div>
+                              </div>
                             </div>
                             <Button
                               variant="outline"
@@ -647,9 +656,9 @@ export function RouteList() {
                                 setDialogOpen(false)
                                 openSettings(route.id)
                               }}
-                              className="flex items-center gap-2"
+                              className="flex items-center gap-2 rounded-lg h-8"
                             >
-                              <Settings className="size-4" />
+                              <Settings className="size-3.5" />
                               Settings
                             </Button>
                           </div>
@@ -657,23 +666,23 @@ export function RouteList() {
                         
                         <div className="flex-1 overflow-auto">
                           <table className="w-full border-collapse">
-                            <thead className="bg-muted/50 sticky top-0">
-                              <tr>
+                            <thead className="bg-muted/40 sticky top-0 z-10">
+                              <tr className="border-b border-border">
                                 {isEditMode && (
-                                  <th className="p-3 text-center font-semibold text-sm w-12">
+                                  <th className="px-3 py-2.5 text-center w-10">
                                     <input
                                       type="checkbox"
                                       checked={selectedRows.length === deliveryPoints.length && deliveryPoints.length > 0}
                                       onChange={toggleSelectAll}
-                                      className="w-4 h-4 rounded border-border cursor-pointer"
+                                      className="w-4 h-4 rounded border-border cursor-pointer accent-primary"
                                     />
                                   </th>
                                 )}
                                 {columns.filter(c => c.visible).map(col => (
-                                  <th key={col.key} className="p-3 text-center font-semibold text-sm">{col.label}</th>
+                                  <th key={col.key} className="px-3 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{col.label}</th>
                                 ))}
-                                {isEditMode && <th className="p-3 text-center font-semibold text-sm">Latitude</th>}
-                                {isEditMode && <th className="p-3 text-center font-semibold text-sm">Longitude</th>}
+                                {isEditMode && <th className="px-3 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Latitude</th>}
+                                {isEditMode && <th className="px-3 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Longitude</th>}
                           </tr>
                         </thead>
                         <tbody>
@@ -786,12 +795,13 @@ export function RouteList() {
                                     </td>
                                   )
                                   if (col.key === 'action') return (
-                                    <td key="action" className="p-3 text-center">
+                                    <td key="action" className="px-3 py-2 text-center">
                                       <button
-                                        className="p-1.5 rounded-md hover:bg-accent transition-colors"
+                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-muted hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors"
                                         onClick={() => { setSelectedPoint(point); setInfoModalOpen(true) }}
                                       >
-                                        <Info className="size-4" />
+                                        <Info className="size-3.5" />
+                                        Detail
                                       </button>
                                     </td>
                                   )
@@ -852,18 +862,18 @@ export function RouteList() {
                     
                     {/* Action Buttons - Show when rows are selected in Edit Mode */}
                     {selectedRows.length > 0 && isEditMode && (
-                      <div className="border-t border-border p-4 flex justify-end gap-2 bg-muted/30">
-                        <Button
-                          variant="outline"
-                          onClick={() => setSelectedRows([])}
-                        >
-                          Deselect All
-                        </Button>
-                        <Button
-                          onClick={handleDoneClick}
-                        >
-                          Done
-                        </Button>
+                      <div className="border-t border-border px-5 py-3 flex items-center justify-between bg-primary/5 shrink-0">
+                        <span className="text-sm font-medium text-primary">
+                          {selectedRows.length} row{selectedRows.length > 1 ? 's' : ''} selected
+                        </span>
+                        <div className="flex gap-2">
+                          <Button variant="ghost" size="sm" className="h-8" onClick={() => setSelectedRows([])}>
+                            <X className="size-3.5 mr-1" />Deselect
+                          </Button>
+                          <Button size="sm" className="h-8" onClick={handleDoneClick}>
+                            <Check className="size-3.5 mr-1" />Action
+                          </Button>
+                        </div>
                       </div>
                     )}
                   </DialogContent>
@@ -883,53 +893,49 @@ export function RouteList() {
                 
                 {/* Action Modal - After Done is clicked */}
                 <Dialog open={actionModalOpen} onOpenChange={setActionModalOpen}>
-                  <DialogContent className="max-w-md">
-                    <DialogHeader>
-                      <DialogTitle>Manage Selected Rows</DialogTitle>
-                      <DialogDescription>
-                        {pendingSelectedRows.length} row(s) selected. Choose an action:
-                      </DialogDescription>
+                  <DialogContent className="max-w-sm rounded-2xl p-0 overflow-hidden gap-0">
+                    <DialogHeader className="px-5 pt-5 pb-4 border-b border-border">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                          <Edit2 className="size-4 text-primary" />
+                        </div>
+                        <div>
+                          <DialogTitle className="text-base font-bold">Manage Rows</DialogTitle>
+                          <DialogDescription className="text-xs mt-0.5">
+                            {pendingSelectedRows.length} row{pendingSelectedRows.length > 1 ? 's' : ''} selected
+                          </DialogDescription>
+                        </div>
+                      </div>
                     </DialogHeader>
-                    
-                    <div className="space-y-3 py-4">
-                      <Button
-                        className="w-full"
-                        variant="outline"
-                        onClick={() => {
-                          setActionModalOpen(false)
-                          setMoveDialogOpen(true)
-                        }}
+                    <div className="px-5 py-4 space-y-2.5">
+                      <button
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-background hover:bg-muted/60 transition-colors text-left disabled:opacity-40 disabled:cursor-not-allowed"
+                        onClick={() => { setActionModalOpen(false); setMoveDialogOpen(true) }}
                         disabled={routes.length <= 1}
                       >
-                        Move Rows to Another Route
-                      </Button>
-                      {routes.length <= 1 && (
-                        <p className="text-xs text-muted-foreground text-center">
-                          Create another route first to enable moving
-                        </p>
-                      )}
-                      
-                      <Button
-                        className="w-full"
-                        variant="destructive"
-                        onClick={() => {
-                          setActionModalOpen(false)
-                          setDeleteConfirmOpen(true)
-                        }}
+                        <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                          <ArrowUp className="size-4 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold">Move to Route</p>
+                          <p className="text-xs text-muted-foreground">{routes.length <= 1 ? 'Create another route first' : 'Transfer to another route'}</p>
+                        </div>
+                      </button>
+                      <button
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-destructive/30 bg-destructive/5 hover:bg-destructive/10 transition-colors text-left"
+                        onClick={() => { setActionModalOpen(false); setDeleteConfirmOpen(true) }}
                       >
-                        Delete Rows
-                      </Button>
+                        <div className="w-8 h-8 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
+                          <Trash2 className="size-4 text-destructive" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-destructive">Delete Rows</p>
+                          <p className="text-xs text-muted-foreground">Permanently remove selected rows</p>
+                        </div>
+                      </button>
                     </div>
-                    
-                    <div className="flex justify-end">
-                      <Button
-                        variant="ghost"
-                        onClick={() => {
-                          setActionModalOpen(false)
-                          setPendingSelectedRows([])
-                          setSelectedRows([])
-                        }}
-                      >
+                    <div className="px-5 pb-5 flex justify-end">
+                      <Button variant="ghost" size="sm" onClick={() => { setActionModalOpen(false); setPendingSelectedRows([]); setSelectedRows([]) }}>
                         Cancel
                       </Button>
                     </div>
@@ -938,49 +944,41 @@ export function RouteList() {
                 
                 {/* Move Dialog */}
                 <Dialog open={moveDialogOpen} onOpenChange={setMoveDialogOpen}>
-                  <DialogContent className="max-w-md">
-                    <DialogHeader>
-                      <DialogTitle>Move to Route</DialogTitle>
-                      <DialogDescription>
-                        Select the destination route for {pendingSelectedRows.length} delivery point(s)
-                      </DialogDescription>
-                    </DialogHeader>
-                    
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium">Select Route</label>
-                        <select
-                          className="w-full p-2 rounded border border-border bg-background text-sm"
-                          value={selectedTargetRoute}
-                          onChange={(e) => setSelectedTargetRoute(e.target.value)}
-                        >
-                          <option value="">Choose a route...</option>
-                          {routes
-                            .filter(route => route.id !== currentRouteId)
-                            .map(route => (
-                              <option key={route.id} value={route.id}>
-                                {route.name} ({route.code} - {route.shift})
-                              </option>
-                            ))}
-                        </select>
+                  <DialogContent className="max-w-sm rounded-2xl p-0 overflow-hidden gap-0">
+                    <DialogHeader className="px-5 pt-5 pb-4 border-b border-border">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                          <ArrowUp className="size-4 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <div>
+                          <DialogTitle className="text-base font-bold">Move to Route</DialogTitle>
+                          <DialogDescription className="text-xs mt-0.5">
+                            {pendingSelectedRows.length} point{pendingSelectedRows.length > 1 ? 's' : ''} will be moved
+                          </DialogDescription>
+                        </div>
                       </div>
+                    </DialogHeader>
+                    <div className="px-5 py-4 space-y-3">
+                      <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Destination Route</label>
+                      <select
+                        className="w-full h-10 px-3 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        value={selectedTargetRoute}
+                        onChange={(e) => setSelectedTargetRoute(e.target.value)}
+                      >
+                        <option value="">Choose a route…</option>
+                        {routes
+                          .filter(route => route.id !== currentRouteId)
+                          .map(route => (
+                            <option key={route.id} value={route.id}>
+                              {route.name} ({route.code} · {route.shift})
+                            </option>
+                          ))}
+                      </select>
                     </div>
-                    
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setMoveDialogOpen(false)
-                          setActionModalOpen(true)
-                        }}
-                      >
-                        Back
-                      </Button>
-                      <Button
-                        onClick={handleMoveRows}
-                        disabled={!selectedTargetRoute}
-                      >
-                        Move
+                    <div className="px-5 pb-5 flex justify-end gap-2">
+                      <Button variant="outline" size="sm" onClick={() => { setMoveDialogOpen(false); setActionModalOpen(true) }}>Back</Button>
+                      <Button size="sm" onClick={handleMoveRows} disabled={!selectedTargetRoute}>
+                        <ArrowUp className="size-3.5 mr-1" />Move
                       </Button>
                     </div>
                   </DialogContent>
@@ -988,29 +986,27 @@ export function RouteList() {
                 
                 {/* Delete Confirmation Dialog */}
                 <Dialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
-                  <DialogContent className="max-w-md">
-                    <DialogHeader>
-                      <DialogTitle>Confirm Deletion</DialogTitle>
-                      <DialogDescription>
-                        Are you sure you want to delete {pendingSelectedRows.length} delivery point(s)? This action cannot be undone.
-                      </DialogDescription>
+                  <DialogContent className="max-w-sm rounded-2xl p-0 overflow-hidden gap-0">
+                    <DialogHeader className="px-5 pt-5 pb-4 border-b border-border">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center shrink-0">
+                          <Trash2 className="size-4 text-destructive" />
+                        </div>
+                        <div>
+                          <DialogTitle className="text-base font-bold">Delete Rows?</DialogTitle>
+                          <DialogDescription className="text-xs mt-0.5">
+                            This will permanently remove {pendingSelectedRows.length} point{pendingSelectedRows.length > 1 ? 's' : ''}.
+                          </DialogDescription>
+                        </div>
+                      </div>
                     </DialogHeader>
-                    
-                    <div className="flex justify-end gap-2 pt-4">
-                      <Button
-                        variant="outline"
-                        onClick={() => {
-                          setDeleteConfirmOpen(false)
-                          setActionModalOpen(true)
-                        }}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        onClick={handleDeleteRows}
-                      >
-                        Delete
+                    <div className="px-5 py-4">
+                      <p className="text-sm text-muted-foreground">This action <span className="font-semibold text-foreground">cannot be undone</span>. The selected delivery points will be permanently deleted.</p>
+                    </div>
+                    <div className="px-5 pb-5 flex justify-end gap-2">
+                      <Button variant="outline" size="sm" onClick={() => { setDeleteConfirmOpen(false); setActionModalOpen(true) }}>Cancel</Button>
+                      <Button variant="destructive" size="sm" onClick={handleDeleteRows}>
+                        <Trash2 className="size-3.5 mr-1" />Delete
                       </Button>
                     </div>
                   </DialogContent>
