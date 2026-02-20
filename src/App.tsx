@@ -1,6 +1,5 @@
 import { useState, lazy, Suspense, Component, type ErrorInfo, type ReactNode } from "react"
 import { AppSidebar } from "@/components/app-sidebar"
-import { ThemeToggle } from "@/components/theme-toggle"
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt"
 
 const RouteList = lazy(() => import("@/components/RouteList").then(m => ({ default: m.RouteList })))
@@ -326,7 +325,6 @@ function AppContent() {
                 </>
               )}
             </Button>
-            <ThemeToggle />
           </div>
         </header>
         <Suspense fallback={<div className="flex flex-1 items-center justify-center p-8 text-muted-foreground">Loading…</div>}>

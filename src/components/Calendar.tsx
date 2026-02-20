@@ -45,8 +45,6 @@ const TYPE_LABELS: Record<EventType, string> = {
   reminder: "Reminder",
 }
 
-const DEFAULT_NEXT_ID = 100
-
 function toDateInputValue(d: Date) {
   const y = d.getFullYear()
   const m = String(d.getMonth() + 1).padStart(2, "0")
@@ -570,33 +568,80 @@ function DayView({ events, onAdd, onEdit }: ViewProps) {
   )
 }
 
-// ─── STORAGE ─────────────────────────────────────────────────────────────────
+// ─── API HELPERS ─────────────────────────────────────────────────────────────
 
-const STORAGE_KEY = "fcalendar_events"
+type ApiRow = { id: number; title: string; event_date: string; type: EventType }
 
-function loadEvents(): Event[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return SAMPLE_EVENTS
-    const parsed = JSON.parse(raw) as Array<Omit<Event, "date"> & { date: string }>
-    return parsed.map(e => ({ ...e, date: new Date(e.date) }))
-  } catch {
-    return SAMPLE_EVENTS
+function rowToEvent(e: ApiRow): Event {
+  return {
+    id: e.id,
+    title: e.title,
+    // event_date comes back as "YYYY-MM-DD" — parse without timezone shift
+    date: new Date(e.event_date + "T00:00:00"),
+    type: e.type,
+    color: TYPE_COLORS[e.type] ?? "bg-blue-500",
   }
 }
 
-function saveEvents(events: Event[]) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(events))
+async function apiFetchEvents(): Promise<Event[]> {
+  try {
+    const res = await fetch("/api/calendar")
+    const json = await res.json()
+    if (!json.success) return []
+    return (json.data as ApiRow[]).map(rowToEvent)
+  } catch {
+    return []
+  }
+}
+
+async function apiSaveEvent(data: { id?: number; title: string; date: Date; type: EventType }): Promise<Event | null> {
+  try {
+    const body: Record<string, unknown> = {
+      title: data.title,
+      event_date: toDateInputValue(data.date),
+      type: data.type,
+    }
+    if (data.id !== undefined) body.id = data.id
+    const res = await fetch("/api/calendar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    })
+    const json = await res.json()
+    if (!json.success) return null
+    return rowToEvent(json.data as ApiRow)
+  } catch {
+    return null
+  }
+}
+
+async function apiDeleteEvent(id: number): Promise<boolean> {
+  try {
+    const res = await fetch(`/api/calendar?id=${id}`, { method: "DELETE" })
+    const json = await res.json()
+    return json.success === true
+  } catch {
+    return false
+  }
 }
 
 // ─── MAIN EXPORT ─────────────────────────────────────────────────────────────
 
 export function Calendar({ view = "month" }: { view?: "month" | "week" | "day" }) {
-  const [events, setEvents] = useState<Event[]>(() => loadEvents())
+  const [events, setEvents] = useState<Event[]>([])
+  const [loading, setLoading] = useState(true)
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingEvent, setEditingEvent] = useState<Event | null>(null)
   const [addDate, setAddDate] = useState<Date | null>(null)
+
+  // Load events from database on mount
+  useEffect(() => {
+    apiFetchEvents().then(data => {
+      setEvents(data)
+      setLoading(false)
+    })
+  }, [])
 
   function openAdd(date: Date) {
     setEditingEvent(null)
@@ -610,39 +655,30 @@ export function Calendar({ view = "month" }: { view?: "month" | "week" | "day" }
     setDialogOpen(true)
   }
 
-  function handleSave(data: { id?: number; title: string; date: Date; type: EventType }) {
-    setEvents(prev => {
-      let updated: Event[]
-      if (data.id !== undefined) {
-        updated = prev.map(e =>
-          e.id === data.id
-            ? { ...e, title: data.title, date: data.date, type: data.type, color: TYPE_COLORS[data.type] }
-            : e
-        )
-      } else {
-        const maxId = prev.reduce((max, e) => Math.max(max, e.id), DEFAULT_NEXT_ID - 1)
-        updated = [...prev, {
-          id: maxId + 1,
-          title: data.title,
-          date: data.date,
-          type: data.type,
-          color: TYPE_COLORS[data.type],
-        }]
-      }
-      saveEvents(updated)
-      return updated
-    })
+  async function handleSave(data: { id?: number; title: string; date: Date; type: EventType }) {
+    const saved = await apiSaveEvent(data)
+    if (!saved) return
+    setEvents(prev =>
+      data.id !== undefined
+        ? prev.map(e => (e.id === data.id ? saved : e))
+        : [...prev, saved]
+    )
   }
 
-  function handleDelete(id: number) {
-    setEvents(prev => {
-      const updated = prev.filter(e => e.id !== id)
-      saveEvents(updated)
-      return updated
-    })
+  async function handleDelete(id: number) {
+    const ok = await apiDeleteEvent(id)
+    if (ok) setEvents(prev => prev.filter(e => e.id !== id))
   }
 
   const viewProps: ViewProps = { events, onAdd: openAdd, onEdit: openEdit }
+
+  if (loading) {
+    return (
+      <div className="flex flex-1 items-center justify-center p-8 text-muted-foreground text-sm">
+        Loading calendar…
+      </div>
+    )
+  }
 
   return (
     <>
@@ -662,22 +698,7 @@ export function Calendar({ view = "month" }: { view?: "month" | "week" | "day" }
   )
 }
 
-// ─── SAMPLE DATA ─────────────────────────────────────────────────────────────
 
-const SAMPLE_EVENTS: Event[] = [
-  { id: 1,  title: "Team Meeting",        date: new Date(2026, 1, 18), color: "bg-blue-500",   type: "meeting"  },
-  { id: 2,  title: "Project Deadline",    date: new Date(2026, 1, 20), color: "bg-red-500",    type: "deadline" },
-  { id: 3,  title: "Birthday Party",      date: new Date(2026, 1, 22), color: "bg-purple-500", type: "event"    },
-  { id: 4,  title: "Doctor Appointment",  date: new Date(2026, 1, 25), color: "bg-green-500",  type: "reminder" },
-  { id: 5,  title: "Conference Call",     date: new Date(2026, 1, 17), color: "bg-blue-500",   type: "meeting"  },
-  { id: 6,  title: "Client Presentation", date: new Date(2026, 1, 17), color: "bg-blue-500",   type: "meeting"  },
-  { id: 7,  title: "Code Review",         date: new Date(2026, 1, 19), color: "bg-blue-500",   type: "meeting"  },
-  { id: 8,  title: "Sprint Planning",     date: new Date(2026, 1, 23), color: "bg-blue-500",   type: "meeting"  },
-  { id: 9,  title: "Report Submission",   date: new Date(2026, 1, 21), color: "bg-red-500",    type: "deadline" },
-  { id: 10, title: "Workshop",            date: new Date(2026, 1, 24), color: "bg-purple-500", type: "event"    },
-  { id: 11, title: "Lunch with Team",     date: new Date(2026, 1, 20), color: "bg-purple-500", type: "event"    },
-  { id: 12, title: "Follow-up Email",     date: new Date(2026, 1, 18), color: "bg-green-500",  type: "reminder" },
-]
 
 
 

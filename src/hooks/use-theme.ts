@@ -1,37 +1,46 @@
 import { useEffect, useState } from "react"
 
-type Theme = "light" | "dark"
+export type ColorMode = "light" | "dark"
+export type ColorTheme =
+  | "default"
+  | "bubblegum"
+  | "candyland"
+  | "claude"
+  | "cyberpunk"
+  | "northern-lights"
+  | "ocean-breeze"
 
 export function useTheme() {
-  const [theme, setTheme] = useState<Theme>(() => {
-    // Check localStorage first
-    const stored = localStorage.getItem("theme") as Theme | null
-    if (stored) return stored
+  const [mode, setMode] = useState<ColorMode>(() => {
+    const stored = localStorage.getItem("color-mode") as ColorMode | null
+    if (stored === "light" || stored === "dark") return stored
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+  })
 
-    // Check system preference
-    if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-      return "dark"
-    }
-
-    return "light"
+  const [colorTheme, setColorTheme] = useState<ColorTheme>(() => {
+    const stored = localStorage.getItem("color-theme") as ColorTheme | null
+    return stored ?? "default"
   })
 
   useEffect(() => {
     const root = document.documentElement
 
-    // Atomic class swap — toggle avoids the brief no-class gap that causes grey flash
-    root.classList.toggle("dark", theme === "dark")
-    root.classList.toggle("light", theme === "light")
+    // Apply dark/light class
+    root.classList.toggle("dark", mode === "dark")
+    root.classList.toggle("light", mode === "light")
 
-    // Save to localStorage
-    localStorage.setItem("theme", theme)
+    // Apply data-theme attribute
+    if (colorTheme === "default") {
+      root.removeAttribute("data-theme")
+    } else {
+      root.setAttribute("data-theme", colorTheme)
+    }
 
-    // Theme-color values that match the actual CSS --background variable:
-    //   light: oklch(1 0 0)     → #ffffff
-    //   dark:  oklch(0.145 0 0) → #242424
-    const color = theme === "dark" ? "#242424" : "#ffffff"
+    localStorage.setItem("color-mode", mode)
+    localStorage.setItem("color-theme", colorTheme)
 
-    // Update ALL theme-color metas (handles the ones with media query too)
+    // Update theme-color meta
+    const color = mode === "dark" ? "#1a1a2e" : "#ffffff"
     const allMetas = document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')
     if (allMetas.length === 0) {
       const meta = document.createElement("meta")
@@ -41,11 +50,14 @@ export function useTheme() {
     } else {
       allMetas.forEach((meta) => meta.setAttribute("content", color))
     }
-  }, [theme])
+  }, [mode, colorTheme])
 
-  const toggleTheme = () => {
-    setTheme((prev) => (prev === "light" ? "dark" : "light"))
-  }
+  const toggleMode = () => setMode((prev) => (prev === "light" ? "dark" : "light"))
 
-  return { theme, setTheme, toggleTheme }
+  // Backward-compat alias used by old ThemeToggle
+  const theme = mode
+  const setTheme = setMode
+  const toggleTheme = toggleMode
+
+  return { theme, setTheme, toggleTheme, mode, setMode, toggleMode, colorTheme, setColorTheme }
 }
