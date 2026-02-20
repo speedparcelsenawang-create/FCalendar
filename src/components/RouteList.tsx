@@ -184,6 +184,7 @@ export function RouteList() {
   }, [routes, searchQuery])
   const [editingCell, setEditingCell] = useState<{ rowCode: string; field: string } | null>(null)
   const [editValue, setEditValue] = useState<string>("")
+  const [editError, setEditError] = useState<string>("")
   const [popoverOpen, setPopoverOpen] = useState<{ [key: string]: boolean }>({})
   const [selectedRows, setSelectedRows] = useState<string[]>([])
   const [addPointDialogOpen, setAddPointDialogOpen] = useState(false)
@@ -365,6 +366,16 @@ export function RouteList() {
 
   const saveEdit = () => {
     if (!editingCell) return
+
+    // Cross-route duplicate check when editing code
+    if (editingCell.field === 'code' && editValue !== editingCell.rowCode) {
+      const dupMsg = findDuplicateRoute(editValue)
+      if (dupMsg) {
+        setEditError(dupMsg)
+        return
+      }
+    }
+    setEditError("")
     
     setDeliveryPoints(prev => prev.map(point => {
       if (point.code === editingCell.rowCode) {
@@ -386,6 +397,7 @@ export function RouteList() {
   const cancelEdit = () => {
     setEditingCell(null)
     setEditValue("")
+    setEditError("")
     setPopoverOpen({})
   }
 
@@ -403,12 +415,21 @@ export function RouteList() {
     }
   }
 
+  const findDuplicateRoute = (code: string): string | null => {
+    for (const route of routes) {
+      const exists = route.deliveryPoints.some(p => p.code === code)
+      if (exists) {
+        if (route.id === currentRouteId) return "Code already exists in this route"
+        return `Code already exists in "${route.name}"`
+      }
+    }
+    return null
+  }
+
   const handleAddNewPoint = () => {
-    // Check for duplicate code
-    const isDuplicate = deliveryPoints.some(point => point.code === newPoint.code)
-    
-    if (isDuplicate) {
-      setCodeError("Code already exists")
+    const dupMsg = findDuplicateRoute(newPoint.code)
+    if (dupMsg) {
+      setCodeError(dupMsg)
       return
     }
     
@@ -429,10 +450,9 @@ export function RouteList() {
 
   const handleCodeChange = (value: string) => {
     setNewPoint({ ...newPoint, code: value })
-    // Check for duplicate as user types
-    const isDuplicate = deliveryPoints.some(point => point.code === value)
-    if (isDuplicate && value) {
-      setCodeError("Code already exists")
+    if (value) {
+      const dupMsg = findDuplicateRoute(value)
+      setCodeError(dupMsg ?? "")
     } else {
       setCodeError("")
     }
@@ -631,7 +651,7 @@ export function RouteList() {
                           <List className="size-4" />
                         </button>
                       </DialogTrigger>
-                      <DialogContent className="max-w-5xl max-h-[85vh] overflow-hidden flex flex-col gap-0 p-0 rounded-2xl">
+                      <DialogContent overlayClassName="backdrop-blur-sm" className="max-w-5xl max-h-[85vh] overflow-hidden flex flex-col gap-0 p-0 rounded-2xl">
                         <DialogHeader className="px-5 pt-5 pb-4 border-b border-border shrink-0">
                           <div className="flex items-center justify-between pr-6">
                             <div className="flex items-center gap-3">
@@ -726,14 +746,31 @@ export function RouteList() {
                                             <Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
                                           </button>
                                         </PopoverTrigger>
-                                        <PopoverContent className="w-64">
+                                        <PopoverContent className="w-72">
                                           <div className="space-y-3">
                                             <div className="space-y-2">
                                               <label className="text-sm font-medium">Code</label>
-                                              <Input className="text-center" value={editValue} onChange={(e) => setEditValue(e.target.value)} placeholder="Enter code" autoFocus onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit() }} />
+                                              <Input
+                                                className={`text-center ${editError ? 'border-red-500 focus-visible:ring-red-500/30' : ''}`}
+                                                value={editValue}
+                                                onChange={(e) => {
+                                                  const v = e.target.value
+                                                  setEditValue(v)
+                                                  if (v && v !== editingCell?.rowCode) {
+                                                    const msg = findDuplicateRoute(v)
+                                                    setEditError(msg ?? "")
+                                                  } else {
+                                                    setEditError("")
+                                                  }
+                                                }}
+                                                placeholder="Enter code"
+                                                autoFocus
+                                                onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit() }}
+                                              />
+                                              {editError && <p className="text-xs text-red-500">{editError}</p>}
                                             </div>
                                             <div className="flex gap-2">
-                                              <Button size="sm" onClick={saveEdit} className="flex-1"><Check className="size-4 mr-1" /> Save</Button>
+                                              <Button size="sm" onClick={saveEdit} disabled={!!editError} className="flex-1"><Check className="size-4 mr-1" /> Save</Button>
                                               <Button size="sm" variant="outline" onClick={cancelEdit} className="flex-1"><X className="size-4 mr-1" /> Cancel</Button>
                                             </div>
                                           </div>
