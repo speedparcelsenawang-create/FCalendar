@@ -7,6 +7,7 @@ const Calendar = lazy(() => import("@/components/Calendar").then(m => ({ default
 const Settings = lazy(() => import("@/components/Settings").then(m => ({ default: m.Settings })))
 const PlanoVM = lazy(() => import("@/components/PlanoVM").then(m => ({ default: m.PlanoVM })))
 const DeliveryTableDialog = lazy(() => import("@/components/DeliveryTableDialog").then(m => ({ default: m.DeliveryTableDialog })))
+const MapMarkerPage = lazy(() => import("@/components/MapMarkerPage").then(m => ({ default: m.MapMarkerPage })))
 import { EditModeProvider, useEditMode } from "@/contexts/EditModeContext"
 import { Edit3, Save, X, Loader2, Home, Package, CalendarDays as CalendarDaysIcon, Settings2, Calendar as CalendarIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -180,14 +181,7 @@ function AppContent() {
           </div>
         )
       case "map-marker":
-        return (
-          <div className="flex flex-col flex-1 min-h-0 overflow-y-auto gap-4 p-4 md:p-6">
-            <div className="shrink-0">
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">Map Marker</h1>
-              <p className="text-sm text-muted-foreground mt-1">View and manage map markers.</p>
-            </div>
-          </div>
-        )
+        return <MapMarkerPage />
       case "calendar-month":
         return <Calendar view="month" />
       case "calendar-week":
