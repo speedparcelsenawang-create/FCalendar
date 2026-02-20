@@ -9,7 +9,7 @@ const Settings = lazy(() => import("@/components/Settings").then(m => ({ default
 const PlanoVM = lazy(() => import("@/components/PlanoVM").then(m => ({ default: m.PlanoVM })))
 const DeliveryTableDialog = lazy(() => import("@/components/DeliveryTableDialog").then(m => ({ default: m.DeliveryTableDialog })))
 import { EditModeProvider, useEditMode } from "@/contexts/EditModeContext"
-import { Edit3, Save, X, Loader2 } from "lucide-react"
+import { Edit3, Save, X, Loader2, Home, Package, CalendarDays as CalendarDaysIcon, Settings2, Calendar as CalendarIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -58,7 +58,7 @@ function ColorDot({ color }: { color: string }) {
 
 function HomePage() {
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6 max-w-2xl mx-auto w-full">
+    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6 max-w-2xl mx-auto w-full overflow-y-auto" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
       {/* Welcome */}
       <div>
         <h1 className="text-xl font-bold text-gray-900 dark:text-white">Welcome to FCalendar</h1>
@@ -174,10 +174,19 @@ function AppContent() {
         return (
           <div className="flex flex-col flex-1 min-h-0 gap-4 p-4 md:p-6">
             <div className="shrink-0">
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">Deliveries</h1>
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white">Location</h1>
               <p className="text-sm text-muted-foreground mt-1">View and manage delivery records.</p>
             </div>
             <DeliveryTableDialog />
+          </div>
+        )
+      case "map-marker":
+        return (
+          <div className="flex flex-col flex-1 min-h-0 overflow-y-auto gap-4 p-4 md:p-6">
+            <div className="shrink-0">
+              <h1 className="text-xl font-bold text-gray-900 dark:text-white">Map Marker</h1>
+              <p className="text-sm text-muted-foreground mt-1">View and manage map markers.</p>
+            </div>
           </div>
         )
       case "calendar-month":
@@ -198,27 +207,29 @@ function AppContent() {
     }
   }
 
-  const getPageTitle = () => {
+  const getPageBreadcrumbs = (): { parent?: { label: string; icon: React.ElementType }; current: string } => {
     switch (currentPage) {
       case "route-list":
-        return "Route List"
-      case "calendar-month":
-        return "Calendar — Month View"
-      case "calendar-week":
-        return "Calendar — Week View"
-      case "calendar-day":
-        return "Calendar — Day View"
-      case "calendar":
-        return "Calendar"
-      case "settings":
-        return "Settings"
-      case "plano-vm":
-        return "Plano VM"
+        return { parent: { label: "Vending Machine", icon: Package }, current: "Route List" }
       case "deliveries":
-        return "Deliveries"
+        return { parent: { label: "Vending Machine", icon: Package }, current: "Location" }
+      case "map-marker":
+        return { parent: { label: "Vending Machine", icon: Package }, current: "Map Marker" }
+      case "calendar-month":
+        return { parent: { label: "Calendar", icon: CalendarIcon }, current: "Month View" }
+      case "calendar-week":
+        return { parent: { label: "Calendar", icon: CalendarIcon }, current: "Week View" }
+      case "calendar-day":
+        return { parent: { label: "Calendar", icon: CalendarIcon }, current: "Day View" }
+      case "calendar":
+        return { parent: { label: "Calendar", icon: CalendarIcon }, current: "Month View" }
+      case "settings":
+        return { parent: { label: "Settings", icon: Settings2 }, current: "Settings" }
+      case "plano-vm":
+        return { parent: { label: "Plano VM", icon: CalendarDaysIcon }, current: "Plano VM" }
       case "dashboard":
       default:
-        return "Home"
+        return { current: "Home" }
     }
   }
 
@@ -234,21 +245,50 @@ function AppContent() {
         />
       )}
       
-      <main className={`relative flex w-full flex-1 flex-col min-h-0 overflow-y-auto bg-background transition-all duration-500 ease-in-out ${(isMobile && openMobile) || (!isMobile && open) ? 'scale-95 opacity-90' : 'scale-100 opacity-100'}`} style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+      <main className={`relative flex w-full flex-1 flex-col min-h-0 overflow-hidden bg-background transition-all duration-500 ease-in-out ${(isMobile && openMobile) || (!isMobile && open) ? 'scale-95 opacity-90' : 'scale-100 opacity-100'}`} style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         <header className="glass-header sticky top-0 z-30 flex shrink-0 items-center gap-2 px-3 md:px-4 shadow-[0_1px_3px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.25)] transition-colors duration-300" style={{ paddingTop: 'max(env(safe-area-inset-top), 12px)', paddingBottom: '0.625rem', minHeight: 'calc(3.5rem + max(env(safe-area-inset-top), 12px))' }}>
           <SidebarTrigger className="-ml-1 shrink-0 size-10 md:size-7" disabled={isEditMode} />
           <Separator orientation="vertical" className="mr-1 md:mr-2 h-4 shrink-0" />
           <Breadcrumb className="min-w-0 flex-1">
             <BreadcrumbList>
-              <BreadcrumbItem className="hidden md:block">
-                <BreadcrumbLink href="#" onClick={() => handlePageChange("dashboard")}>
-                  FCalendar
+              <BreadcrumbItem className="shrink-0">
+                <BreadcrumbLink
+                  href="#"
+                  onClick={() => handlePageChange("dashboard")}
+                  className="flex items-center gap-1.5 font-semibold text-foreground hover:text-foreground/80 transition-colors"
+                >
+                  <Home className="size-3.5 shrink-0" />
+                  <span className="hidden sm:inline">FCalendar</span>
                 </BreadcrumbLink>
               </BreadcrumbItem>
-              <BreadcrumbSeparator className="hidden md:block" />
-              <BreadcrumbItem className="min-w-0">
-                <BreadcrumbPage className="truncate max-w-[160px] md:max-w-none">{getPageTitle()}</BreadcrumbPage>
-              </BreadcrumbItem>
+              {(() => {
+                const { parent, current } = getPageBreadcrumbs()
+                return (
+                  <>
+                    {parent && (
+                      <>
+                        <BreadcrumbSeparator />
+                        <BreadcrumbItem
+                          key={`parent-${currentPage}`}
+                          className="hidden md:flex items-center gap-1 text-muted-foreground animate-in fade-in slide-in-from-left-2 duration-200"
+                        >
+                          <parent.icon className="size-3.5 shrink-0" />
+                          <span>{parent.label}</span>
+                        </BreadcrumbItem>
+                      </>
+                    )}
+                    <BreadcrumbSeparator className={parent ? undefined : "hidden md:block"} />
+                    <BreadcrumbItem
+                      key={`current-${currentPage}`}
+                      className="min-w-0 animate-in fade-in slide-in-from-left-2 duration-300"
+                    >
+                      <BreadcrumbPage className="truncate max-w-[120px] sm:max-w-[200px] md:max-w-none font-medium">
+                        {current}
+                      </BreadcrumbPage>
+                    </BreadcrumbItem>
+                  </>
+                )
+              })()}
             </BreadcrumbList>
           </Breadcrumb>
           <div className="ml-auto flex items-center gap-1.5 md:gap-2 shrink-0">
@@ -290,7 +330,7 @@ function AppContent() {
           </div>
         </header>
         <Suspense fallback={<div className="flex flex-1 items-center justify-center p-8 text-muted-foreground">Loading…</div>}>
-          <div className={isTransitioning ? "page-fade-out" : "page-fade-in animate-in slide-in-from-bottom-4"}>
+          <div className={`flex flex-col flex-1 min-h-0 ${isTransitioning ? "page-fade-out" : "page-fade-in animate-in slide-in-from-bottom-4"}`}>
             {renderContent()}
           </div>
         </Suspense>

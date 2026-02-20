@@ -555,7 +555,7 @@ export function RouteList() {
   }
 
   return (
-    <div className="relative font-light">
+    <div className="relative font-light flex-1 overflow-y-auto">
       {/* Route List */}
       <div className="mt-4 px-4 max-w-5xl mx-auto" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
         {/* Search Field */}

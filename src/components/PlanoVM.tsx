@@ -441,7 +441,7 @@ export function PlanoVM() {
   }
 
   return (
-    <div className="flex-1 bg-background min-h-screen">
+    <div className="flex-1 bg-background overflow-y-auto">
       {/* Content */}
       <div className="px-8 py-6">
         {/* Title and Add Page Button */}

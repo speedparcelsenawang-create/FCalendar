@@ -7,8 +7,7 @@ import {
   Settings2,
   LifeBuoy,
   Send,
-  Route,
-  Truck,
+  Package,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -56,6 +55,29 @@ const data = {
       ],
     },
     {
+      title: "Vending Machine",
+      url: "#",
+      icon: Package,
+      isActive: false,
+      items: [
+        {
+          title: "Route List",
+          url: "#",
+          page: "route-list",
+        },
+        {
+          title: "Location",
+          url: "#",
+          page: "deliveries",
+        },
+        {
+          title: "Map Marker",
+          url: "#",
+          page: "map-marker",
+        },
+      ],
+    },
+    {
       title: "Settings",
       url: "#",
       icon: Settings2,
@@ -76,19 +98,9 @@ const data = {
   ],
   projects: [
     {
-      name: "Route List",
-      url: "#",
-      icon: Route,
-    },
-    {
       name: "Plano Vm",
       url: "#",
       icon: CalendarDays,
-    },
-    {
-      name: "Deliveries",
-      url: "#",
-      icon: Truck,
     },
   ],
 }
@@ -113,12 +125,8 @@ export function AppSidebar({
 
   const handleProjectClick = (projectName: string) => {
     if (onNavigate) {
-      if (projectName === "Route List") {
-        onNavigate("route-list")
-      } else if (projectName === "Plano Vm") {
+      if (projectName === "Plano Vm") {
         onNavigate("plano-vm")
-      } else if (projectName === "Deliveries") {
-        onNavigate("deliveries")
       }
     }
   }
