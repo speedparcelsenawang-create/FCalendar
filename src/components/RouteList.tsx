@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react"
-import { List, Info, Plus, Check, X, Edit2, Trash2, Search, Settings, Map, MapPin, Save, ArrowUp, ArrowDown, RotateCcw, EyeOff, Expand, Truck } from "lucide-react"
+import { List, Info, Plus, Check, X, Edit2, Trash2, Search, Settings, Map, MapPin, Save, ArrowUp, ArrowDown, RotateCcw, Truck } from "lucide-react"
 import { RowInfoModal } from "./RowInfoModal"
 import { useEditMode } from "@/contexts/EditModeContext"
 import {
@@ -108,17 +108,7 @@ export function RouteList() {
   const [routeToDelete, setRouteToDelete] = useState<Route | null>(null)
   const [newRoute, setNewRoute] = useState({ name: "", code: "", shift: "AM" })
   const [searchQuery, setSearchQuery] = useState("")
-  const [showMapCards, setShowMapCards] = useState<Set<string>>(new Set())
   const [fullscreenRouteId, setFullscreenRouteId] = useState<string | null>(null)
-
-  const toggleCardMap = (routeId: string) => {
-    setShowMapCards(prev => {
-      const next = new Set(prev)
-      if (next.has(routeId)) next.delete(routeId)
-      else next.add(routeId)
-      return next
-    })
-  }
 
   // Fetch routes from database
   const fetchRoutes = useCallback(async (preserveCurrentId?: string) => {
@@ -1220,22 +1210,6 @@ export function RouteList() {
                   />
                 )}
               </div>
-
-              {/* Map Section - Collapsible */}
-              {showMapCards.has(route.id) && (
-                <div className="h-48 border-t border-border/60 relative">
-                  <DeliveryMap deliveryPoints={route.deliveryPoints} />
-                  <div className="absolute top-2 right-2 z-[100]">
-                    <button
-                      onClick={() => setFullscreenRouteId(route.id)}
-                      className="p-1.5 bg-background/90 backdrop-blur-sm border border-border rounded-lg hover:bg-primary/10 hover:border-primary/50 transition-all shadow-sm"
-                      title="Fullscreen"
-                    >
-                      <Expand className="size-3.5" />
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
         ))}
