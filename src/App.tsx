@@ -8,16 +8,8 @@ const Settings = lazy(() => import("@/components/Settings").then(m => ({ default
 const PlanoVM = lazy(() => import("@/components/PlanoVM").then(m => ({ default: m.PlanoVM })))
 const DeliveryTableDialog = lazy(() => import("@/components/DeliveryTableDialog").then(m => ({ default: m.DeliveryTableDialog })))
 const MapMarkerPage = lazy(() => import("@/components/MapMarkerPage").then(m => ({ default: m.MapMarkerPage })))
-import { EditModeProvider, useEditMode } from "@/contexts/EditModeContext"
-import { Edit3, Save, X, Loader2, Home, Package, CalendarDays as CalendarDaysIcon, Settings2, Calendar as CalendarIcon } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { EditModeProvider } from "@/contexts/EditModeContext"
+import { Home, Package, CalendarDays as CalendarDaysIcon, Settings2, Calendar as CalendarIcon } from "lucide-react"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -121,49 +113,15 @@ function HomePage() {
 function AppContent() {
   const [currentPage, setCurrentPage] = useState("dashboard")
   const [isTransitioning, setIsTransitioning] = useState(false)
-  const [isEditTransitioning, setIsEditTransitioning] = useState(false)
-  const [editTransitionPhase, setEditTransitionPhase] = useState<"idle" | "closing" | "opening">("idle")
   const { open, openMobile, isMobile, toggleSidebar } = useSidebar()
-  const { isEditMode, hasUnsavedChanges, isSaving, setIsEditMode, setHasUnsavedChanges, saveChanges } = useEditMode()
-  const [showExitDialog, setShowExitDialog] = useState(false)
 
   const handlePageChange = (page: string) => {
     if (page === currentPage) return
-    
     setIsTransitioning(true)
     setTimeout(() => {
       setCurrentPage(page)
       setIsTransitioning(false)
-    }, 300) // Match animation duration
-  }
-
-  const handleToggleEditMode = () => {
-    if (isEditMode && hasUnsavedChanges) {
-      setShowExitDialog(true)
-      return
-    }
-    // Shutdown transition
-    setIsEditTransitioning(true)
-    setEditTransitionPhase("closing")
-    setTimeout(() => {
-      setIsEditMode(!isEditMode)
-      setEditTransitionPhase("opening")
-      setTimeout(() => {
-        setIsEditTransitioning(false)
-        setEditTransitionPhase("idle")
-      }, 600)
-    }, 600)
-  }
-
-  const handleDiscardChanges = () => {
-    setHasUnsavedChanges(false)
-    setIsEditMode(false)
-    setShowExitDialog(false)
-  }
-
-  const handleSaveChanges = () => {
-    saveChanges()
-    // Keep edit mode on after saving
+    }, 300)
   }
 
   const renderContent = () => {
@@ -309,42 +267,6 @@ function AppContent() {
               })()}
             </BreadcrumbList>
           </Breadcrumb>
-          <div className="ml-auto flex items-center gap-1.5 md:gap-2 shrink-0">
-            {hasUnsavedChanges && isEditMode && (
-              <Button 
-                onClick={handleSaveChanges}
-                size="sm"
-                disabled={isSaving}
-                className="bg-green-600 hover:bg-green-700 h-8 px-2.5 md:px-3"
-              >
-                <Save className="size-4" />
-                <span className="hidden sm:inline ml-1.5">{isSaving ? 'Saving...' : 'Save'}</span>
-              </Button>
-            )}
-            <Button 
-              onClick={handleToggleEditMode}
-              variant="default"
-              size="sm"
-              disabled={isEditTransitioning}
-              className={`h-8 px-2.5 md:px-3 transition-colors duration-300 ${
-                isEditMode
-                  ? "bg-red-600 hover:bg-red-700 text-white"
-                  : "bg-orange-600 hover:bg-orange-700 text-white"
-              }`}
-            >
-              {isEditMode ? (
-                <>
-                  <X className="size-4" />
-                  <span className="hidden sm:inline ml-1.5">Exit</span>
-                </>
-              ) : (
-                <>
-                  <Edit3 className="size-4" />
-                  <span className="hidden sm:inline ml-1.5">Edit</span>
-                </>
-              )}
-            </Button>
-          </div>
         </header>
         <Suspense fallback={<div className="flex flex-1 items-center justify-center p-8 text-muted-foreground">Loading…</div>}>
           <div className={`flex flex-col flex-1 min-h-0 ${isTransitioning ? "page-fade-out" : "page-fade-in animate-in slide-in-from-bottom-4"}`}>
@@ -353,58 +275,7 @@ function AppContent() {
         </Suspense>
       </main>
 
-      {/* Edit Mode Shutdown Transition Overlay */}
-      {isEditTransitioning && (
-        <div
-          className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-4 bg-black transition-opacity duration-500 ${
-            editTransitionPhase === "closing" ? "opacity-100" : "opacity-0 pointer-events-none"
-          }`}
-        >
-          <Loader2 className="size-10 animate-spin text-white/80" />
-          <p className="text-white/60 text-sm tracking-widest uppercase">
-            {editTransitionPhase === "closing"
-              ? (isEditMode ? "Exiting Edit Mode..." : "Entering Edit Mode...")
-              : ""}
-          </p>
-        </div>
-      )}
-
-      {/* Exit Edit Mode Confirmation Dialog */}
-      <Dialog open={showExitDialog} onOpenChange={setShowExitDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Unsaved Changes</DialogTitle>
-            <DialogDescription>
-              You have unsaved changes. Do you want to save them before exiting edit mode?
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end gap-2 pt-4">
-            <Button 
-              variant="outline" 
-              onClick={() => setShowExitDialog(false)}
-            >
-              Continue Editing
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleDiscardChanges}
-            >
-              Discard Changes
-            </Button>
-            <Button 
-              onClick={() => {
-                saveChanges()
-                setIsEditMode(false)
-                setShowExitDialog(false)
-              }}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              <Save className="size-4 mr-2" />
-              Save & Exit
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Edit Mode controls moved to Settings page */}
     </>
   )
 }

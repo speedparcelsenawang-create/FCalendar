@@ -234,19 +234,19 @@ export function DeliveryTableDialog() {
           {/* Frozen header */}
           <div className="shrink-0 overflow-x-auto border-b">
             <table className="w-full" style={{ minWidth: 480 }}>
-              <thead className="bg-muted/60 text-xs uppercase tracking-wide text-muted-foreground">
+              <thead className="bg-muted/70 text-xs uppercase tracking-wider text-muted-foreground font-semibold">
                 <tr>
-                  <th className="px-3 py-2.5 text-center font-medium w-10">#</th>
-                  <th className="px-3 py-2.5 text-center font-medium cursor-pointer select-none hover:text-foreground" style={{ minWidth: 130 }} onClick={() => handleSort("route")}>
+                  <th className="px-3 py-3 text-center font-semibold w-10">#</th>
+                  <th className="px-3 py-3 text-center font-semibold cursor-pointer select-none hover:text-foreground" style={{ minWidth: 130 }} onClick={() => handleSort("route")}>
                     Route <SortIcon col="route" />
                   </th>
-                  <th className="px-3 py-2.5 text-center font-medium cursor-pointer select-none hover:text-foreground" style={{ minWidth: 80 }} onClick={() => handleSort("code")}>
+                  <th className="px-3 py-3 text-center font-semibold cursor-pointer select-none hover:text-foreground" style={{ minWidth: 80 }} onClick={() => handleSort("code")}>
                     Code <SortIcon col="code" />
                   </th>
-                  <th className="px-3 py-2.5 text-center font-medium cursor-pointer select-none hover:text-foreground" style={{ minWidth: 200 }} onClick={() => handleSort("name")}>
+                  <th className="px-3 py-3 text-left font-semibold cursor-pointer select-none hover:text-foreground" style={{ minWidth: 200 }} onClick={() => handleSort("name")}>
                     Location Name <SortIcon col="name" />
                   </th>
-                  <th className="px-3 py-2.5 text-center font-medium cursor-pointer select-none hover:text-foreground" style={{ minWidth: 100 }} onClick={() => handleSort("delivery")}>
+                  <th className="px-3 py-3 text-center font-semibold cursor-pointer select-none hover:text-foreground" style={{ minWidth: 100 }} onClick={() => handleSort("delivery")}>
                     Delivery <SortIcon col="delivery" />
                   </th>
                 </tr>
@@ -272,35 +272,44 @@ export function DeliveryTableDialog() {
                         "transition-colors",
                         (pt._dupCode || pt._dupName)
                           ? "bg-amber-50/60 dark:bg-amber-900/10 hover:bg-amber-100/60 dark:hover:bg-amber-900/20"
-                          : "hover:bg-muted/40"
+                          : idx % 2 === 0 ? "hover:bg-muted/40" : "bg-muted/20 hover:bg-muted/40"
                       )}
                     >
                       {/* # */}
-                      <td className="px-3 py-2 text-center text-muted-foreground w-10 text-xs">{idx + 1}</td>
+                      <td className="px-3 py-3 text-center text-muted-foreground w-10 text-xs tabular-nums">{idx + 1}</td>
 
-                      {/* Route — plain text, no badge */}
-                      <td className="px-3 py-2 text-center" style={{ minWidth: 130 }}>
-                        <span className="text-xs font-medium">{pt.routeName}</span>
+                      {/* Route — colored badge */}
+                      <td className="px-3 py-3 text-center" style={{ minWidth: 130 }}>
+                        <span className="inline-block text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-primary/10 text-primary truncate max-w-[120px]">{pt.routeName}</span>
                       </td>
 
                       {/* Code */}
-                      <td className="px-3 py-2 text-center" style={{ minWidth: 80 }}>
-                        <span className={cn("font-mono text-xs", pt._dupCode && "text-amber-600 dark:text-amber-400 font-bold")}>
+                      <td className="px-3 py-3 text-center" style={{ minWidth: 80 }}>
+                        <span className={cn("font-mono text-xs font-medium", pt._dupCode && "text-amber-600 dark:text-amber-400 font-bold")}>
                           {pt.code}
                         </span>
                         {pt._dupCode && <AlertTriangle className="inline w-3 h-3 ml-1 text-amber-500" />}
                       </td>
 
-                      {/* Name */}
-                      <td className="px-3 py-2 text-center" style={{ minWidth: 200 }}>
+                      {/* Name — left aligned */}
+                      <td className="px-3 py-3 text-left" style={{ minWidth: 200 }}>
                         <span className={cn("text-xs", pt._dupName && "text-rose-600 dark:text-rose-400 font-semibold")}>
                           {pt.name}
                         </span>
                         {pt._dupName && <AlertTriangle className="inline w-3 h-3 ml-1 text-rose-500" />}
                       </td>
 
-                      {/* Delivery — plain text, no badge */}
-                      <td className="px-3 py-2 text-center text-xs" style={{ minWidth: 100 }}>{pt.delivery}</td>
+                      {/* Delivery — colored pill badge */}
+                      <td className="px-3 py-3 text-center" style={{ minWidth: 100 }}>
+                        <span className={cn(
+                          "inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full",
+                          pt.delivery === 'Daily'   ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
+                          : pt.delivery === 'Weekday' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400'
+                          : pt.delivery === 'Alt 1'  ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400'
+                          : pt.delivery === 'Alt 2'  ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400'
+                          : 'bg-muted text-muted-foreground'
+                        )}>{pt.delivery}</span>
+                      </td>
                     </tr>
                   ))
                 )}
@@ -313,3 +322,4 @@ export function DeliveryTableDialog() {
     </div>
   )
 }
+

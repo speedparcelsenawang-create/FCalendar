@@ -134,6 +134,7 @@ export function RouteList() {
   const [newRoute, setNewRoute] = useState({ name: "", code: "", shift: "AM" })
   const [searchQuery, setSearchQuery] = useState("")
   const [fullscreenRouteId, setFullscreenRouteId] = useState<string | null>(null)
+  const [detailClosing, setDetailClosing] = useState(false)
 
   // Fetch routes from database
   const fetchRoutes = useCallback(async (preserveCurrentId?: string) => {
@@ -648,27 +649,27 @@ export function RouteList() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-2">
+        <div className="grid grid-cols-1 gap-2.5">
         {filteredRoutes.map((route) => (
           <div key={route.id} className="w-full">
             {/* Card */}
             <div 
-              className="bg-card rounded-xl border border-border shadow-sm hover:shadow-md hover:border-primary/40 transition-all duration-300 overflow-hidden group"
+              className="bg-card rounded-xl border border-border shadow-sm hover:shadow-md hover:border-primary/30 transition-all duration-200 overflow-hidden group"
             >
-              {/* Card Row - Yuhu style */}
-              <div className="flex items-center gap-3 px-4 py-3">
+              {/* Card Row */}
+              <div className="flex items-center gap-3 px-4 py-3.5">
                 {/* Icon */}
                 <div className="shrink-0 w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Truck className="size-5 text-primary" />
+                  <Truck className="size-[18px] text-primary" />
                 </div>
                 {/* Route Info */}
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-[13px] font-semibold truncate group-hover:text-primary transition-colors">{route.name}</h3>
-                  <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                    <span className="font-mono text-[11px] text-muted-foreground">{route.code}</span>
-                    <span className={`px-1.5 py-0.5 text-[10px] font-bold rounded ${route.shift === 'AM' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>{route.shift}</span>
+                  <h3 className="text-[13.5px] font-semibold truncate group-hover:text-primary transition-colors leading-tight">{route.name}</h3>
+                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                    <span className="font-mono text-[11px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md">{route.code}</span>
+                    <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${route.shift === 'AM' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>{route.shift}</span>
                     <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground">
-                      <MapPin className="size-3" />{route.deliveryPoints.length} locations
+                      <MapPin className="size-3" />{route.deliveryPoints.length} pts
                     </span>
                   </div>
                 </div>
@@ -676,7 +677,7 @@ export function RouteList() {
                 <div className="shrink-0 flex items-center gap-1">
                   {isEditMode && (
                     <button
-                      className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/8 transition-colors"
+                      className="p-2 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/8 transition-colors"
                       onClick={() => handleEditRoute(route)}
                       title="Edit Route"
                     >
@@ -684,43 +685,53 @@ export function RouteList() {
                     </button>
                   )}
                     <button 
-                      className="p-1.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/8 transition-colors"
+                      className="p-2 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/8 transition-colors"
                       onClick={() => { setCurrentRouteId(route.id); setCurrentView('detail') }}
                       title="View Details"
                     >
                       <List className="size-4" />
                     </button>
                   {route.id === currentRouteId && currentView === 'detail' && (
-                  <div className="absolute inset-0 z-50 bg-background flex flex-col" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+                  <div
+                    className={`absolute inset-0 z-50 bg-background flex flex-col ${
+                      detailClosing
+                        ? 'animate-out slide-out-to-right duration-250 fill-mode-forwards'
+                        : 'animate-in slide-in-from-right duration-300'
+                    }`}
+                    style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+                  >
                     {/* Header */}
                     <div className="px-4 py-3 border-b border-border shrink-0 bg-background flex items-center gap-3">
                       <button
-                        onClick={() => { setCurrentView('list'); setSelectedRows([]) }}
-                        className="p-1.5 rounded-lg hover:bg-muted transition-colors shrink-0"
+                        onClick={() => {
+                          setDetailClosing(true)
+                          setTimeout(() => { setCurrentView('list'); setSelectedRows([]); setDetailClosing(false) }, 250)
+                        }}
+                        className="p-2 rounded-xl hover:bg-muted transition-colors shrink-0"
                       >
                         <ChevronLeft className="size-5" />
                       </button>
                       <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                        <Truck className="size-5 text-primary" />
+                        <Truck className="size-[18px] text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <h1 className="text-[15px] font-bold leading-tight truncate">{route.name}</h1>
                         <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                          <span className="font-mono text-[11px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{route.code}</span>
+                          <span className="font-mono text-[11px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md">{route.code}</span>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${route.shift === 'AM' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>{route.shift}</span>
                           <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                            <MapPin className="size-3" />{deliveryPoints.length} locations
+                            <MapPin className="size-3" />{deliveryPoints.length} pts
                           </span>
                         </div>
                       </div>
-                      <Button variant="outline" size="sm" onClick={() => openSettings(route.id)} className="shrink-0 flex items-center gap-1.5 h-8">
+                      <Button variant="outline" size="sm" onClick={() => openSettings(route.id)} className="shrink-0 flex items-center gap-1.5 h-8 rounded-xl">
                         <Settings className="size-3.5" />Settings
                       </Button>
                     </div>
                     {/* Table */}
                     <div className="flex-1 overflow-auto">
                           <table className="w-full border-collapse">
-                            <thead className="bg-muted/40 sticky top-0 z-10">
+                            <thead className="bg-muted/60 sticky top-0 z-10">
                               <tr className="border-b border-border">
                                 {isEditMode && (
                                   <th className="px-3 py-2.5 text-center w-10">
@@ -748,16 +759,16 @@ export function RouteList() {
                             const isActive = isDeliveryActive(point.delivery)
                             const distInfo = pointDistances[index]
                             const segmentLabel = !isCustomSort
-                              ? `Origin → ${point.name || point.code}: ${distInfo ? formatKm(distInfo.display) : '-'}`
-                              : index === 0
-                                ? `Origin → ${point.name || point.code}: ${distInfo ? formatKm(distInfo.segment) : '-'}`
-                                : `${sortedDeliveryPoints[index - 1].name || sortedDeliveryPoints[index - 1].code} → ${point.name || point.code}: ${distInfo ? formatKm(distInfo.segment) : '-'}`
-                            
+                            ? `Origin → ${point.name || point.code}: ${distInfo ? formatKm(distInfo.display) : '-'}`
+                            : index === 0
+                              ? `Origin → ${point.name || point.code}: ${distInfo ? formatKm(distInfo.segment) : '-'}`
+                              : `${sortedDeliveryPoints[index - 1].name || sortedDeliveryPoints[index - 1].code} → ${point.name || point.code}: ${distInfo ? formatKm(distInfo.segment) : '-'}`
+
                             return (
-                              <tr key={point.code} className={`border-b border-border/50 transition-colors ${
+                              <tr key={point.code} className={`border-b border-border/40 transition-colors ${
                                 isActive
-                                  ? 'hover:bg-muted/30'
-                                  : 'bg-muted/40 opacity-50 hover:opacity-60'
+                                  ? index % 2 === 0 ? 'hover:bg-primary/5' : 'bg-muted/20 hover:bg-primary/5'
+                                  : 'bg-muted/50 opacity-50 hover:opacity-70'
                               }`}>
                                 {isEditMode && (
                                   <td className="p-3 text-center">
@@ -771,10 +782,10 @@ export function RouteList() {
                                 )}
                                 {columns.filter(c => c.visible).map(col => {
                                   if (col.key === 'no') return (
-                                    <td key="no" className="p-3 text-[11px] text-center">{index + 1}</td>
+                                    <td key="no" className="px-3 py-3.5 text-[11px] text-center text-muted-foreground tabular-nums">{index + 1}</td>
                                   )
                                   if (col.key === 'code') return (
-                                    <td key="code" className="p-3 text-[11px] text-center">
+                                    <td key="code" className="px-3 py-3.5 text-[11px] text-center">
                                       {isEditMode ? (
                                       <Popover
                                         open={isEditMode && !!popoverOpen[`${point.code}-code`]}
@@ -824,7 +835,7 @@ export function RouteList() {
                                     </td>
                                   )
                                   if (col.key === 'name') return (
-                                    <td key="name" className="p-3 text-[11px] text-center">
+                                    <td key="name" className="px-3 py-3.5 text-[11px] text-center">
                                       {isEditMode ? (
                                       <Popover
                                         open={isEditMode && !!popoverOpen[`${point.code}-name`]}
@@ -857,7 +868,7 @@ export function RouteList() {
                                     </td>
                                   )
                                   if (col.key === 'delivery') return (
-                                    <td key="delivery" className="p-3 text-center">
+                                    <td key="delivery" className="px-3 py-3.5 text-center">
                                       {isEditMode ? (
                                         <button
                                           className="group inline-flex items-center gap-1.5 hover:scale-105 transition-transform mx-auto"
@@ -866,19 +877,29 @@ export function RouteList() {
                                             setDeliveryModalOpen(true)
                                           }}
                                         >
-                                          <span className="text-[11px]">{point.delivery}</span>
+                                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                                            point.delivery === 'Daily' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
+                                            : point.delivery === 'Weekday' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400'
+                                            : point.delivery === 'Alt 1' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400'
+                                            : 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400'
+                                          }`}>{point.delivery}</span>
                                           <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isActive ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400'}`}>{isActive ? 'ON' : 'OFF'}</span>
                                           <Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
                                         </button>
                                       ) : (
-                                        <span className="text-[11px]">{point.delivery}</span>
+                                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                                          point.delivery === 'Daily' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
+                                          : point.delivery === 'Weekday' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400'
+                                          : point.delivery === 'Alt 1' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400'
+                                          : 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400'
+                                        }`}>{point.delivery}</span>
                                       )}
                                     </td>
                                   )
                                   if (col.key === 'action') return null
                                   return null
                                 })}
-                                <td className="p-3 text-sm text-center">
+                                <td className="px-3 py-3.5 text-sm text-center">
                                   <TooltipProvider delayDuration={100}>
                                     <Tooltip
                                       open={openKmTooltip === point.code}
@@ -898,7 +919,7 @@ export function RouteList() {
                                   </TooltipProvider>
                                 </td>
                                 {isEditMode && (
-                                  <td className="p-3 text-[11px] font-mono text-center">
+                                  <td className="px-3 py-3.5 text-[11px] font-mono text-center">
                                     <Popover open={isEditMode && !!popoverOpen[`${point.code}-latitude`]} onOpenChange={(open) => { if (!isEditMode) return; if (!open) cancelEdit(); setPopoverOpen({ [`${point.code}-latitude`]: open }) }}>
                                       <PopoverTrigger asChild>
                                         <button className="hover:bg-accent px-3 py-1 rounded flex items-center justify-center gap-1.5 group font-mono mx-auto" onClick={() => startEdit(point.code, 'latitude', point.latitude.toFixed(4))}>
@@ -910,7 +931,7 @@ export function RouteList() {
                                   </td>
                                 )}
                                 {isEditMode && (
-                                  <td className="p-3 text-[11px] font-mono text-center">
+                                  <td className="px-3 py-3.5 text-[11px] font-mono text-center">
                                     <Popover open={isEditMode && !!popoverOpen[`${point.code}-longitude`]} onOpenChange={(open) => { if (!isEditMode) return; if (!open) cancelEdit(); setPopoverOpen({ [`${point.code}-longitude`]: open }) }}>
                                       <PopoverTrigger asChild>
                                         <button className="hover:bg-accent px-3 py-1 rounded flex items-center justify-center gap-1.5 group font-mono mx-auto" onClick={() => startEdit(point.code, 'longitude', point.longitude.toFixed(4))}>
@@ -922,7 +943,7 @@ export function RouteList() {
                                   </td>
                                 )}
                                 {columns.find(c => c.key === 'action' && c.visible) && (
-                                  <td className="px-3 py-2 text-center">
+                                  <td className="px-3 py-3.5 text-center">
                                     <button
                                       className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-muted hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors"
                                       onClick={() => { setSelectedPoint(point); setInfoModalOpen(true) }}
