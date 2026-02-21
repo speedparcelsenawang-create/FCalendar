@@ -18,6 +18,12 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { DeliveryMap } from "./DeliveryMap"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface DeliveryPoint {
   code: string
@@ -51,6 +57,25 @@ function isDeliveryActive(delivery: DeliveryPoint['delivery'], date: Date = new 
     case 'Weekday': return dayOfWeek <= 4       // Sun(0) – Thu(4)
     default:        return true
   }
+}
+
+// ── Distance helpers ──────────────────────────────────────────────
+const DEFAULT_MAP_CENTER = { lat: 3.15, lng: 101.65 } // Kuala Lumpur default
+
+function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371
+  const toRad = (d: number) => (d * Math.PI) / 180
+  const dLat = toRad(lat2 - lat1)
+  const dLon = toRad(lon2 - lon1)
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+function formatKm(km: number): string {
+  const rounded = Math.round(km * 10) / 10
+  return `${rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toFixed(1)} Km`
 }
 
 const DEFAULT_ROUTES: Route[] = [
@@ -347,6 +372,34 @@ export function RouteList() {
     }
     return sortByActive(deliveryPoints)
   }, [deliveryPoints, activeSortConfig, savedRowOrders])
+
+  // Compute distances for Km column
+  // Default sort  → direct distance from map origin to each point (not cumulative)
+  // Custom/saved  → cumulative chained: origin → Row1 → Row2 → Row3 …
+  const isCustomSort = activeSortConfig !== null
+  const pointDistances = useMemo(() => {
+    const result: { display: number; segment: number }[] = []
+    if (!isCustomSort) {
+      // Direct distance mode: each row shows straight-line from origin
+      for (const point of sortedDeliveryPoints) {
+        const direct = haversineKm(DEFAULT_MAP_CENTER.lat, DEFAULT_MAP_CENTER.lng, point.latitude, point.longitude)
+        result.push({ display: direct, segment: direct })
+      }
+    } else {
+      // Cumulative chain mode: origin → Row1 → Row2 → Row3 …
+      let cumulative = 0
+      let prevLat = DEFAULT_MAP_CENTER.lat
+      let prevLng = DEFAULT_MAP_CENTER.lng
+      for (const point of sortedDeliveryPoints) {
+        const segment = haversineKm(prevLat, prevLng, point.latitude, point.longitude)
+        cumulative += segment
+        result.push({ display: cumulative, segment })
+        prevLat = point.latitude
+        prevLng = point.longitude
+      }
+    }
+    return result
+  }, [sortedDeliveryPoints, isCustomSort])
 
   const startEdit = (rowCode: string, field: string, currentValue: string | number) => {
     if (!isEditMode) return
@@ -690,16 +743,26 @@ export function RouteList() {
                                     />
                                   </th>
                                 )}
-                                {columns.filter(c => c.visible).map(col => (
+                                {columns.filter(c => c.visible && c.key !== 'action').map(col => (
                                   <th key={col.key} className="px-3 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{col.label}</th>
                                 ))}
+                                <th className="px-3 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Km</th>
                                 {isEditMode && <th className="px-3 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Latitude</th>}
                                 {isEditMode && <th className="px-3 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Longitude</th>}
+                                {columns.find(c => c.key === 'action' && c.visible) && (
+                                  <th className="px-3 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Action</th>
+                                )}
                           </tr>
                         </thead>
                         <tbody>
                           {sortedDeliveryPoints.map((point, index) => {
                             const isActive = isDeliveryActive(point.delivery)
+                            const distInfo = pointDistances[index]
+                            const segmentLabel = !isCustomSort
+                              ? `Titik asal → ${point.name || point.code}: ${distInfo ? formatKm(distInfo.display) : '-'}`
+                              : index === 0
+                                ? `Titik asal → ${point.name || point.code}: ${distInfo ? formatKm(distInfo.segment) : '-'}`
+                                : `${sortedDeliveryPoints[index - 1].name || sortedDeliveryPoints[index - 1].code} → ${point.name || point.code}: ${distInfo ? formatKm(distInfo.segment) : '-'}`
                             
                             return (
                               <tr key={point.code} className={`border-b border-border/50 transition-colors ${
@@ -823,19 +886,23 @@ export function RouteList() {
                                       )}
                                     </td>
                                   )
-                                  if (col.key === 'action') return (
-                                    <td key="action" className="px-3 py-2 text-center">
-                                      <button
-                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-muted hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors"
-                                        onClick={() => { setSelectedPoint(point); setInfoModalOpen(true) }}
-                                      >
-                                        <Info className="size-3.5" />
-                                        Detail
-                                      </button>
-                                    </td>
-                                  )
+                                  if (col.key === 'action') return null
                                   return null
                                 })}
+                                <td className="p-3 text-sm text-center">
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-primary/8 text-primary text-[11px] font-medium cursor-default tabular-nums">
+                                          {distInfo ? formatKm(distInfo.display) : '-'}
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top" className="text-xs max-w-[220px] text-center">
+                                        {segmentLabel}
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                </td>
                                 {isEditMode && (
                                   <td className="p-3 text-sm font-mono text-center">
                                     <Popover open={isEditMode && !!popoverOpen[`${point.code}-latitude`]} onOpenChange={(open) => { if (!isEditMode) return; if (!open) cancelEdit(); setPopoverOpen({ [`${point.code}-latitude`]: open }) }}>
@@ -858,6 +925,17 @@ export function RouteList() {
                                       </PopoverTrigger>
                                       <PopoverContent className="w-64"><div className="space-y-3"><div className="space-y-2"><label className="text-sm font-medium">Longitude</label><Input className="text-center font-mono" type="number" step="0.0001" value={editValue} onChange={(e) => setEditValue(e.target.value)} placeholder="Enter longitude" autoFocus onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit() }} /></div><div className="flex gap-2"><Button size="sm" onClick={saveEdit} className="flex-1"><Check className="size-4 mr-1" /> Save</Button><Button size="sm" variant="outline" onClick={cancelEdit} className="flex-1"><X className="size-4 mr-1" /> Cancel</Button></div></div></PopoverContent>
                                     </Popover>
+                                  </td>
+                                )}
+                                {columns.find(c => c.key === 'action' && c.visible) && (
+                                  <td className="px-3 py-2 text-center">
+                                    <button
+                                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-muted hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors"
+                                      onClick={() => { setSelectedPoint(point); setInfoModalOpen(true) }}
+                                    >
+                                      <Info className="size-3.5" />
+                                      Detail
+                                    </button>
                                   </td>
                                 )}
                               </tr>

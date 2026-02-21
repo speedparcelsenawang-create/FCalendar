@@ -2,8 +2,18 @@ import { useState, useMemo, useEffect, useCallback, useRef } from "react"
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
-import { MapPin, Navigation, Search, X } from "lucide-react"
+import {
+  MapPin, Navigation, Search, X, SlidersHorizontal,
+  Palette, Check, Map as MapIcon, Settings2,
+} from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 // Fix for default marker icons in React-Leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl
@@ -13,6 +23,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
 })
 
+// ─── Types ───────────────────────────────────────────────────────────────────
 interface DeliveryPoint {
   code: string
   name: string
@@ -39,17 +50,58 @@ interface EnrichedPoint extends DeliveryPoint {
 const DELIVERY_TYPES = ["All", "Daily", "Weekday", "Alt 1", "Alt 2"] as const
 type DeliveryFilter = (typeof DELIVERY_TYPES)[number]
 
-const getMarkerColor = (delivery: string) => {
-  switch (delivery) {
-    case "Daily":   return "#22c55e"
-    case "Weekday": return "#3b82f6"
-    case "Alt 1":   return "#eab308"
-    case "Alt 2":   return "#a855f7"
-    default:        return "#6b7280"
-  }
+// ─── Constants ────────────────────────────────────────────────────────────────
+const LS_DEFAULT_VIEW = "mapMarkerDefaultView"
+const LS_ROUTE_COLORS = "mapRouteColors"
+const FALLBACK_CENTER: [number, number] = [3.0695500, 101.5469179]
+const FALLBACK_ZOOM = 12
+
+const DELIVERY_COLORS: Record<string, string> = {
+  Daily:   "#22c55e",
+  Weekday: "#3b82f6",
+  "Alt 1": "#eab308",
+  "Alt 2": "#a855f7",
 }
 
-const getDeliveryBadgeClass = (delivery: string) => {
+const PRESET_COLORS = [
+  "#ef4444","#f97316","#eab308","#22c55e","#14b8a6",
+  "#3b82f6","#8b5cf6","#ec4899","#6b7280","#1d4ed8",
+  "#0284c7","#16a34a","#b45309","#7c3aed","#be185d",
+]
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function loadDefaultView(): { center: [number, number]; zoom: number } {
+  try {
+    const raw = localStorage.getItem(LS_DEFAULT_VIEW)
+    if (raw) return JSON.parse(raw)
+  } catch { /* ignore */ }
+  return { center: FALLBACK_CENTER, zoom: FALLBACK_ZOOM }
+}
+
+function saveDefaultView(center: [number, number], zoom: number) {
+  localStorage.setItem(LS_DEFAULT_VIEW, JSON.stringify({ center, zoom }))
+}
+
+function loadRouteColors(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(LS_ROUTE_COLORS)
+    if (raw) return JSON.parse(raw)
+  } catch { /* ignore */ }
+  return {}
+}
+
+function saveRouteColors(colors: Record<string, string>) {
+  localStorage.setItem(LS_ROUTE_COLORS, JSON.stringify(colors))
+}
+
+function getEffectiveColor(
+  point: EnrichedPoint,
+  routeColors: Record<string, string>,
+): string {
+  return routeColors[point.routeId] ?? DELIVERY_COLORS[point.delivery] ?? "#6b7280"
+}
+
+function getDeliveryBadgeClass(delivery: string) {
   switch (delivery) {
     case "Daily":   return "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400"
     case "Weekday": return "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400"
@@ -59,55 +111,52 @@ const getDeliveryBadgeClass = (delivery: string) => {
   }
 }
 
-const createCustomIcon = (delivery: string, selected: boolean) => {
-  const color = getMarkerColor(delivery)
-  const size = selected ? 20 : 14
-  const border = selected ? "3.5px" : "2.5px"
-  const shadow = selected
-    ? `0 0 0 3px ${color}33, 0 2px 8px rgba(0,0,0,0.4)`
-    : "0 1px 4px rgba(0,0,0,0.35)"
+/**
+ * Standard teardrop / location-pin SVG marker.
+ * selected → slightly larger with glow.
+ */
+function createPinIcon(color: string, selected: boolean) {
+  const w = selected ? 28 : 22
+  const h = selected ? 40 : 32
+  const glow = selected
+    ? `filter:drop-shadow(0 0 5px ${color}99)`
+    : `filter:drop-shadow(0 1px 4px rgba(0,0,0,0.5))`
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="${w}" height="${h}" style="${glow}"><path d="M12 0C5.373 0 0 5.373 0 12c0 9.188 12 24 12 24S24 21.188 24 12C24 5.373 18.627 0 12 0z" fill="${color}" stroke="white" stroke-width="1.5"/><circle cx="12" cy="11.5" r="4.5" fill="white" opacity="0.92"/></svg>`
   return L.divIcon({
     className: "",
-    html: `<div style="width:${size}px;height:${size}px;border-radius:50%;background:${color};border:${border} solid white;box-shadow:${shadow};transition:all 0.2s;"></div>`,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
+    html: svg,
+    iconSize:    [w, h],
+    iconAnchor:  [w / 2, h],
+    popupAnchor: [0, -h],
   })
 }
 
-// Component that flies the map to a chosen point
-function FlyToPoint({ point }: { point: EnrichedPoint | null }) {
-  const map = useMap()
-  const prevCode = useRef<string | null>(null)
+// ─── Map sub-components ───────────────────────────────────────────────────────
+function SetViewOnMount({ center, zoom }: { center: [number, number]; zoom: number }) {
+  const map  = useMap()
+  const done = useRef(false)
+  useEffect(() => {
+    if (done.current) return
+    done.current = true
+    map.setView(center, zoom)
+  }, [map, center, zoom])
+  return null
+}
 
+function FlyToPoint({ point }: { point: EnrichedPoint | null }) {
+  const map     = useMap()
+  const prevKey = useRef<string | null>(null)
   useEffect(() => {
     if (!point) return
-    if (point.code === prevCode.current) return
-    prevCode.current = point.code
+    const key = `${point.routeId}-${point.code}`
+    if (key === prevKey.current) return
+    prevKey.current = key
     map.flyTo([point.latitude, point.longitude], 16, { animate: true, duration: 1.2 })
   }, [map, point])
-
   return null
 }
 
-// Component that fits bounds of all visible points
-function FitBounds({ points }: { points: EnrichedPoint[] }) {
-  const map = useMap()
-  const initialized = useRef(false)
-
-  useEffect(() => {
-    if (initialized.current || points.length === 0) return
-    initialized.current = true
-    if (points.length === 1) {
-      map.setView([points[0].latitude, points[0].longitude], 14)
-    } else {
-      const bounds = L.latLngBounds(points.map(p => [p.latitude, p.longitude] as [number, number]))
-      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 })
-    }
-  }, [map, points])
-
-  return null
-}
-
+// ─── Sample data ──────────────────────────────────────────────────────────────
 const DEFAULT_ROUTES: Route[] = [
   {
     id: "route-1",
@@ -115,160 +164,59 @@ const DEFAULT_ROUTES: Route[] = [
     code: "3PVK04",
     shift: "PM",
     deliveryPoints: [
-      { code: "32", name: "KPJ Klang", delivery: "Daily", latitude: 3.0333, longitude: 101.4500, descriptions: [] },
+      { code: "32", name: "KPJ Klang",            delivery: "Daily",   latitude: 3.0333, longitude: 101.4500, descriptions: [] },
       { code: "45", name: "Sunway Medical Centre", delivery: "Weekday", latitude: 3.0738, longitude: 101.6057, descriptions: [] },
-      { code: "78", name: "Gleneagles KL", delivery: "Alt 1", latitude: 3.1493, longitude: 101.7055, descriptions: [] },
+      { code: "78", name: "Gleneagles KL",         delivery: "Alt 1",   latitude: 3.1493, longitude: 101.7055, descriptions: [] },
     ],
   },
 ]
 
-export function MapMarkerPage() {
-  const [routes, setRoutes] = useState<Route[]>(DEFAULT_ROUTES)
-  const [isLoading, setIsLoading] = useState(true)
-  const [selectedPoint, setSelectedPoint] = useState<EnrichedPoint | null>(null)
-  const [activeFilter, setActiveFilter] = useState<DeliveryFilter>("All")
-  const [searchQuery, setSearchQuery] = useState("")
-  const selectedListRef = useRef<HTMLButtonElement | null>(null)
+// ─── Filter Modal ─────────────────────────────────────────────────────────────
+interface FilterModalProps {
+  open: boolean
+  onClose: () => void
+  searchQuery: string
+  setSearchQuery: (v: string) => void
+  deliveryFilter: DeliveryFilter
+  setDeliveryFilter: (v: DeliveryFilter) => void
+  selectedRouteIds: Set<string>
+  setSelectedRouteIds: (v: Set<string>) => void
+  routes: Route[]
+  counts: Record<string, number>
+}
 
-  // Fetch routes from API
-  const fetchRoutes = useCallback(async () => {
-    try {
-      const res = await fetch("/api/routes")
-      const data = await res.json()
-      if (data.success && data.data.length > 0) {
-        setRoutes(data.data)
-      }
-    } catch {
-      /* fallback to default routes */
-    } finally {
-      setIsLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchRoutes()
-  }, [fetchRoutes])
-
-  // Flatten all delivery points that have lat/long across all routes
-  const allPoints = useMemo<EnrichedPoint[]>(() => {
-    const pts: EnrichedPoint[] = []
-    for (const route of routes) {
-      for (const dp of route.deliveryPoints) {
-        if (dp.latitude !== 0 && dp.longitude !== 0) {
-          pts.push({ ...dp, routeId: route.id, routeName: route.name, routeCode: route.code })
-        }
-      }
-    }
-    return pts
-  }, [routes])
-
-  // Count by delivery type
-  const counts = useMemo(() => {
-    const c: Record<string, number> = { All: allPoints.length }
-    for (const p of allPoints) {
-      c[p.delivery] = (c[p.delivery] || 0) + 1
-    }
-    return c
-  }, [allPoints])
-
-  // Filter by delivery type + search
-  const filteredPoints = useMemo(() => {
-    let pts = activeFilter === "All" ? allPoints : allPoints.filter(p => p.delivery === activeFilter)
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase()
-      pts = pts.filter(p =>
-        p.name.toLowerCase().includes(q) ||
-        p.code.toLowerCase().includes(q) ||
-        p.routeName.toLowerCase().includes(q) ||
-        p.routeCode.toLowerCase().includes(q)
-      )
-    }
-    return pts
-  }, [allPoints, activeFilter, searchQuery])
-
-  // Scroll selected item into view
-  useEffect(() => {
-    if (selectedListRef.current) {
-      selectedListRef.current.scrollIntoView({ behavior: "smooth", block: "nearest" })
-    }
-  }, [selectedPoint])
-
-  if (isLoading) {
-    return (
-      <div className="flex flex-col flex-1 min-h-0 items-center justify-center">
-        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
+function FilterModal({
+  open, onClose,
+  searchQuery, setSearchQuery,
+  deliveryFilter, setDeliveryFilter,
+  selectedRouteIds, setSelectedRouteIds,
+  routes, counts,
+}: FilterModalProps) {
+  const toggleRoute = (id: string) => {
+    const next = new Set(selectedRouteIds)
+    if (next.has(id)) next.delete(id); else next.add(id)
+    setSelectedRouteIds(next)
   }
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 h-full">
-      {/* Header */}
-      <div className="shrink-0 px-4 pt-4 pb-2 md:px-6 md:pt-5">
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white">Map Marker</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          {allPoints.length} location{allPoints.length !== 1 ? "s" : ""} with coordinates across {routes.length} route{routes.length !== 1 ? "s" : ""}
-        </p>
-      </div>
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-sm w-full">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <SlidersHorizontal className="size-4" />
+            Filter Marker
+          </DialogTitle>
+        </DialogHeader>
 
-      {/* Body: split layout */}
-      <div className="flex flex-col md:flex-row flex-1 min-h-0 gap-0">
-        {/* MAP — takes 60% height on mobile, 70% width on desktop */}
-        <div className="relative h-[52vh] md:h-auto md:flex-[7] min-h-0 border-b md:border-b-0 md:border-r border-border">
-          {allPoints.length === 0 ? (
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-muted/20">
-              <MapPin className="size-12 text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground">No locations with coordinates yet.</p>
-              <p className="text-xs text-muted-foreground/70">Add latitude & longitude in Route List to see markers here.</p>
-            </div>
-          ) : (
-            <MapContainer
-              center={[3.15, 101.65]}
-              zoom={11}
-              style={{ width: "100%", height: "100%" }}
-              scrollWheelZoom
-            >
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              <FitBounds points={allPoints} />
-              <FlyToPoint point={selectedPoint} />
-              {filteredPoints.map(point => (
-                <Marker
-                  key={`${point.routeId}-${point.code}`}
-                  position={[point.latitude, point.longitude]}
-                  icon={createCustomIcon(point.delivery, selectedPoint?.code === point.code && selectedPoint?.routeId === point.routeId)}
-                  eventHandlers={{
-                    click: () => setSelectedPoint(point),
-                  }}
-                >
-                  <Popup>
-                    <div className="text-sm min-w-[140px]">
-                      <strong className="block mb-1">{point.name}</strong>
-                      <div className="text-xs text-muted-foreground space-y-0.5">
-                        <div>Code: {point.code}</div>
-                        <div>Route: {point.routeName}</div>
-                        <div>Delivery: {point.delivery}</div>
-                        <div className="font-mono">{point.latitude.toFixed(5)}, {point.longitude.toFixed(5)}</div>
-                      </div>
-                    </div>
-                  </Popup>
-                </Marker>
-              ))}
-            </MapContainer>
-          )}
-        </div>
-
-        {/* LIST PANEL — overflow scrollable */}
-        <div className="flex flex-col md:flex-[3] min-h-0 md:max-w-xs lg:max-w-sm">
+        <div className="space-y-5 pt-1">
           {/* Search */}
-          <div className="shrink-0 px-3 pt-3 pb-2 border-b border-border/60">
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Carian</p>
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
               <Input
-                className="pl-8 h-8 text-sm rounded-lg"
-                placeholder="Cari lokasi, route…"
+                className="pl-8 h-9 text-sm"
+                placeholder="Nama lokasi, code, route…"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
               />
@@ -283,33 +231,520 @@ export function MapMarkerPage() {
             </div>
           </div>
 
-          {/* Tab filter */}
-          <div className="shrink-0 px-3 py-2 flex gap-1.5 overflow-x-auto scrollbar-none border-b border-border/60">
-            {DELIVERY_TYPES.map(type => (
+          {/* Delivery type */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Jenis Penghantaran</p>
+            <div className="flex flex-wrap gap-1.5">
+              {DELIVERY_TYPES.map(type => (
+                <button
+                  key={type}
+                  onClick={() => setDeliveryFilter(type)}
+                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                    deliveryFilter === type
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "border-border bg-muted/40 text-muted-foreground hover:text-foreground hover:bg-muted"
+                  }`}
+                >
+                  {type !== "All" && (
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ background: DELIVERY_COLORS[type] ?? "#6b7280" }}
+                    />
+                  )}
+                  {type}
+                  <span className={`text-[10px] font-bold px-1 py-0.5 rounded ${
+                    deliveryFilter === type ? "bg-white/20" : "bg-background/60"
+                  }`}>
+                    {counts[type] ?? 0}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Route filter */}
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Filter Route</p>
+            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
               <button
-                key={type}
-                onClick={() => setActiveFilter(type)}
-                className={`shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-colors ${
-                  activeFilter === type
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80 hover:text-foreground"
+                onClick={() => setSelectedRouteIds(new Set())}
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition-all ${
+                  selectedRouteIds.size === 0
+                    ? "bg-primary/10 border-primary text-primary font-medium"
+                    : "border-transparent bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                 }`}
               >
-                {type !== "All" && (
-                  <span
-                    className="w-2 h-2 rounded-full shrink-0"
-                    style={{ background: getMarkerColor(type) }}
-                  />
-                )}
-                {type}
-                <span className={`ml-0.5 text-[10px] font-bold px-1 py-0.5 rounded-md ${
-                  activeFilter === type ? "bg-primary-foreground/20" : "bg-background/60"
+                <span className={`flex size-4 items-center justify-center rounded border-2 shrink-0 ${
+                  selectedRouteIds.size === 0 ? "border-primary bg-primary" : "border-muted-foreground/40"
                 }`}>
-                  {counts[type] ?? 0}
+                  {selectedRouteIds.size === 0 && <Check className="size-2.5 text-white" />}
                 </span>
+                Semua Route
               </button>
-            ))}
+
+              {routes.map(route => {
+                const sel     = selectedRouteIds.has(route.id)
+                const ptCount = route.deliveryPoints.filter(p => p.latitude !== 0 && p.longitude !== 0).length
+                return (
+                  <button
+                    key={route.id}
+                    onClick={() => toggleRoute(route.id)}
+                    className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition-all ${
+                      sel
+                        ? "bg-primary/10 border-primary text-primary font-medium"
+                        : "border-transparent bg-muted/30 text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                    }`}
+                  >
+                    <span className={`flex size-4 items-center justify-center rounded border-2 shrink-0 ${
+                      sel ? "border-primary bg-primary" : "border-muted-foreground/40"
+                    }`}>
+                      {sel && <Check className="size-2.5 text-white" />}
+                    </span>
+                    <span className="flex-1 text-left truncate">{route.name}</span>
+                    <span className="text-[10px] font-mono text-muted-foreground/60 shrink-0">{route.code}</span>
+                    <span className="text-[10px] font-bold bg-muted px-1.5 py-0.5 rounded shrink-0">{ptCount}</span>
+                  </button>
+                )
+              })}
+            </div>
           </div>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => { setDeliveryFilter("All"); setSelectedRouteIds(new Set()); setSearchQuery("") }}
+            >
+              Reset
+            </Button>
+            <Button size="sm" onClick={onClose}>Guna Filter</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ─── Route Color Modal ────────────────────────────────────────────────────────
+interface RouteColorModalProps {
+  open: boolean
+  onClose: () => void
+  routes: Route[]
+  routeColors: Record<string, string>
+  onChange: (colors: Record<string, string>) => void
+}
+
+function RouteColorModal({ open, onClose, routes, routeColors, onChange }: RouteColorModalProps) {
+  const [local, setLocal] = useState<Record<string, string>>(routeColors)
+
+  useEffect(() => {
+    if (open) setLocal({ ...routeColors })
+  }, [open, routeColors])
+
+  const setColor   = (id: string, color: string) => setLocal(prev => ({ ...prev, [id]: color }))
+  const resetRoute = (id: string) => setLocal(prev => { const n = { ...prev }; delete n[id]; return n })
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-sm w-full">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Palette className="size-4" />
+            Warna Marker per Route
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 pt-1">
+          <p className="text-xs text-muted-foreground">
+            Tetapkan warna marker bagi setiap route. Jika tidak ditetapkan, warna ikut jenis penghantaran.
+          </p>
+
+          <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+            {routes.map(route => {
+              const current = local[route.id]
+              return (
+                <div key={route.id} className="flex items-center gap-3 p-3 rounded-lg border bg-muted/20">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{route.name}</p>
+                    <p className="text-[11px] text-muted-foreground font-mono">{route.code} · {route.shift}</p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {/* Preset swatches */}
+                    <div className="flex flex-wrap gap-1 max-w-[88px]">
+                      {PRESET_COLORS.slice(0, 6).map(color => (
+                        <button
+                          key={color}
+                          title={color}
+                          onClick={() => setColor(route.id, color)}
+                          className={`w-5 h-5 rounded-full border-2 transition-transform hover:scale-110 ${
+                            current === color ? "border-white scale-125 shadow-md" : "border-transparent"
+                          }`}
+                          style={{ background: color }}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Custom colour wheel */}
+                    <div
+                      className="relative size-7 rounded-full border-2 border-dashed border-muted-foreground/40 overflow-hidden hover:border-primary transition-colors cursor-pointer"
+                      style={{ background: current ?? "conic-gradient(red,yellow,lime,aqua,blue,magenta,red)" }}
+                      title="Warna custom"
+                    >
+                      <input
+                        type="color"
+                        value={current ?? "#3b82f6"}
+                        onChange={e => setColor(route.id, e.target.value)}
+                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                      />
+                    </div>
+
+                    {current && (
+                      <button
+                        onClick={() => resetRoute(route.id)}
+                        title="Reset ke warna delivery"
+                        className="text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Legend */}
+          <div className="rounded-lg bg-muted/40 p-3 space-y-2">
+            <p className="text-xs font-semibold text-muted-foreground">Warna lalai (jenis penghantaran)</p>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(DELIVERY_COLORS).map(([type, color]) => (
+                <span key={type} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <span className="w-3 h-3 rounded-full border border-white/50" style={{ background: color }} />
+                  {type}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="outline" size="sm" onClick={onClose}>Batal</Button>
+            <Button size="sm" onClick={() => { onChange(local); onClose() }}>Simpan Warna</Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ─── Map Settings Modal ───────────────────────────────────────────────────────
+interface MapSettingsModalProps {
+  open: boolean
+  onClose: () => void
+  defaultView: { center: [number, number]; zoom: number }
+  onSave: (view: { center: [number, number]; zoom: number }) => void
+}
+
+function MapSettingsModal({ open, onClose, defaultView, onSave }: MapSettingsModalProps) {
+  const [lat,  setLat]  = useState(String(defaultView.center[0]))
+  const [lng,  setLng]  = useState(String(defaultView.center[1]))
+  const [zoom, setZoom] = useState(String(defaultView.zoom))
+
+  useEffect(() => {
+    if (open) {
+      setLat(String(defaultView.center[0]))
+      setLng(String(defaultView.center[1]))
+      setZoom(String(defaultView.zoom))
+    }
+  }, [open, defaultView])
+
+  const handleSave = () => {
+    const latN  = parseFloat(lat)
+    const lngN  = parseFloat(lng)
+    const zoomN = parseInt(zoom, 10)
+    if (isNaN(latN) || isNaN(lngN) || isNaN(zoomN)) return
+    onSave({ center: [latN, lngN], zoom: zoomN })
+    onClose()
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={v => !v && onClose()}>
+      <DialogContent className="max-w-xs w-full">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <MapIcon className="size-4" />
+            Tetapan Default View Peta
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 pt-1">
+          <p className="text-xs text-muted-foreground">
+            Koordinat dan zoom yang dipaparkan pertama kali semasa membuka Map Marker.
+          </p>
+
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Latitud</label>
+              <Input value={lat} onChange={e => setLat(e.target.value)} placeholder="3.0695500" className="h-9 text-sm font-mono" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Longitud</label>
+              <Input value={lng} onChange={e => setLng(e.target.value)} placeholder="101.5469179" className="h-9 text-sm font-mono" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Zoom (1–18)</label>
+              <Input type="number" min={1} max={18} value={zoom} onChange={e => setZoom(e.target.value)} className="h-9 text-sm" />
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center pt-1">
+            <button
+              onClick={() => { setLat(String(FALLBACK_CENTER[0])); setLng(String(FALLBACK_CENTER[1])); setZoom(String(FALLBACK_ZOOM)) }}
+              className="text-xs text-muted-foreground underline hover:text-foreground"
+            >
+              Reset ke lalai
+            </button>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={onClose}>Batal</Button>
+              <Button size="sm" onClick={handleSave}>Simpan</Button>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+export function MapMarkerPage() {
+  const [routes,           setRoutes]           = useState<Route[]>(DEFAULT_ROUTES)
+  const [isLoading,        setIsLoading]        = useState(true)
+  const [selectedPoint,    setSelectedPoint]    = useState<EnrichedPoint | null>(null)
+  const [deliveryFilter,   setDeliveryFilter]   = useState<DeliveryFilter>("All")
+  const [selectedRouteIds, setSelectedRouteIds] = useState<Set<string>>(new Set())
+  const [searchQuery,      setSearchQuery]      = useState("")
+  const [filterOpen,       setFilterOpen]       = useState(false)
+  const [colorOpen,        setColorOpen]        = useState(false)
+  const [mapSettingsOpen,  setMapSettingsOpen]  = useState(false)
+  const [routeColors,      setRouteColors]      = useState<Record<string, string>>(loadRouteColors)
+  const [defaultView,      setDefaultView]      = useState(loadDefaultView)
+  const selectedListRef = useRef<HTMLButtonElement | null>(null)
+
+  // Fetch routes from API
+  const fetchRoutes = useCallback(async () => {
+    try {
+      const res  = await fetch("/api/routes")
+      const data = await res.json()
+      if (data.success && data.data.length > 0) setRoutes(data.data)
+    } catch { /* fallback */ }
+    finally   { setIsLoading(false) }
+  }, [])
+
+  useEffect(() => { fetchRoutes() }, [fetchRoutes])
+
+  const allPoints = useMemo<EnrichedPoint[]>(() => {
+    const pts: EnrichedPoint[] = []
+    for (const route of routes) {
+      for (const dp of route.deliveryPoints) {
+        if (dp.latitude !== 0 && dp.longitude !== 0)
+          pts.push({ ...dp, routeId: route.id, routeName: route.name, routeCode: route.code })
+      }
+    }
+    return pts
+  }, [routes])
+
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { All: allPoints.length }
+    for (const p of allPoints) c[p.delivery] = (c[p.delivery] ?? 0) + 1
+    return c
+  }, [allPoints])
+
+  const filteredPoints = useMemo(() => {
+    let pts = deliveryFilter === "All" ? allPoints : allPoints.filter(p => p.delivery === deliveryFilter)
+    if (selectedRouteIds.size > 0) pts = pts.filter(p => selectedRouteIds.has(p.routeId))
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase()
+      pts = pts.filter(p =>
+        p.name.toLowerCase().includes(q) ||
+        p.code.toLowerCase().includes(q) ||
+        p.routeName.toLowerCase().includes(q) ||
+        p.routeCode.toLowerCase().includes(q)
+      )
+    }
+    return pts
+  }, [allPoints, deliveryFilter, selectedRouteIds, searchQuery])
+
+  useEffect(() => {
+    selectedListRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+  }, [selectedPoint])
+
+  const handleSaveRouteColors = (colors: Record<string, string>) => {
+    setRouteColors(colors)
+    saveRouteColors(colors)
+  }
+
+  const handleSaveDefaultView = (view: { center: [number, number]; zoom: number }) => {
+    setDefaultView(view)
+    saveDefaultView(view.center, view.zoom)
+  }
+
+  const activeFiltersCount =
+    (deliveryFilter !== "All" ? 1 : 0) + selectedRouteIds.size + (searchQuery.trim() ? 1 : 0)
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col flex-1 min-h-0 items-center justify-center">
+        <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col flex-1 min-h-0 h-full">
+      {/* ── Header ───────────────────────────────────────────────────────── */}
+      <div className="shrink-0 px-4 pt-4 pb-2 md:px-6 md:pt-5 flex items-start justify-between gap-2">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Map Marker</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {allPoints.length} lokasi · {routes.length} route
+            {(deliveryFilter !== "All" || selectedRouteIds.size > 0) && (
+              <span className="ml-1 text-primary font-medium">· {filteredPoints.length} ditunjukkan</span>
+            )}
+          </p>
+        </div>
+
+        <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
+          <button
+            onClick={() => setColorOpen(true)}
+            title="Set warna marker per route"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-border bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Palette className="size-3.5" />
+            <span className="hidden sm:inline">Warna Route</span>
+          </button>
+          <button
+            onClick={() => setMapSettingsOpen(true)}
+            title="Tetapan default view peta"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-border bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Settings2 className="size-3.5" />
+            <span className="hidden sm:inline">Tetapan Peta</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ── Body ─────────────────────────────────────────────────────────── */}
+      <div className="flex flex-col md:flex-row flex-1 min-h-0 gap-0">
+        {/* MAP */}
+        <div className="relative h-[52vh] md:h-auto md:flex-[7] min-h-0 border-b md:border-b-0 md:border-r border-border">
+          {allPoints.length === 0 ? (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-muted/20">
+              <MapPin className="size-12 text-muted-foreground/30" />
+              <p className="text-sm text-muted-foreground">Tiada lokasi dengan koordinat.</p>
+              <p className="text-xs text-muted-foreground/70">Tambah lat/lng dalam Route List untuk papar marker.</p>
+            </div>
+          ) : (
+            <MapContainer
+              center={defaultView.center}
+              zoom={defaultView.zoom}
+              style={{ width: "100%", height: "100%" }}
+              scrollWheelZoom
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              />
+              <SetViewOnMount center={defaultView.center} zoom={defaultView.zoom} />
+              <FlyToPoint point={selectedPoint} />
+              {filteredPoints.map(point => {
+                const isSelected = selectedPoint?.code === point.code && selectedPoint?.routeId === point.routeId
+                return (
+                  <Marker
+                    key={`${point.routeId}-${point.code}`}
+                    position={[point.latitude, point.longitude]}
+                    icon={createPinIcon(getEffectiveColor(point, routeColors), isSelected)}
+                    eventHandlers={{ click: () => setSelectedPoint(point) }}
+                  >
+                    <Popup>
+                      <div className="text-sm min-w-[150px]">
+                        <strong className="block mb-1">{point.name}</strong>
+                        <div className="text-xs text-gray-500 space-y-0.5">
+                          <div>Code: {point.code}</div>
+                          <div>Route: {point.routeName} ({point.routeCode})</div>
+                          <div>Jenis: {point.delivery}</div>
+                          <div className="font-mono">{point.latitude.toFixed(6)}, {point.longitude.toFixed(6)}</div>
+                        </div>
+                      </div>
+                    </Popup>
+                  </Marker>
+                )
+              })}
+            </MapContainer>
+          )}
+        </div>
+
+        {/* LIST PANEL */}
+        <div className="flex flex-col md:flex-[3] min-h-0 md:max-w-xs lg:max-w-sm">
+          {/* Filter bar */}
+          <div className="shrink-0 px-3 pt-3 pb-2 border-b border-border/60 flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+              <Input
+                className="pl-8 h-8 text-sm rounded-lg"
+                placeholder="Cari lokasi…"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setSearchQuery("")}
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
+            </div>
+            <button
+              onClick={() => setFilterOpen(true)}
+              className={`relative shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                activeFiltersCount > 0
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              <SlidersHorizontal className="size-3.5" />
+              Filter
+              {activeFiltersCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 size-4 flex items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+                  {activeFiltersCount}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Active filter chips */}
+          {(deliveryFilter !== "All" || selectedRouteIds.size > 0) && (
+            <div className="shrink-0 px-3 py-1.5 flex flex-wrap gap-1.5 border-b border-border/60 bg-muted/10">
+              {deliveryFilter !== "All" && (
+                <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-primary/10 text-primary border border-primary/20">
+                  <span className="w-2 h-2 rounded-full" style={{ background: DELIVERY_COLORS[deliveryFilter] }} />
+                  {deliveryFilter}
+                  <button onClick={() => setDeliveryFilter("All")} className="ml-0.5 hover:text-primary/60"><X className="size-3" /></button>
+                </span>
+              )}
+              {routes.filter(r => selectedRouteIds.has(r.id)).map(r => (
+                <span key={r.id} className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-primary/10 text-primary border border-primary/20">
+                  {r.name}
+                  <button
+                    onClick={() => { const n = new Set(selectedRouteIds); n.delete(r.id); setSelectedRouteIds(n) }}
+                    className="ml-0.5 hover:text-primary/60"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
 
           {/* Scrollable list */}
           <div className="flex-1 overflow-y-auto">
@@ -317,16 +752,20 @@ export function MapMarkerPage() {
               <div className="flex flex-col items-center justify-center py-12 gap-2 text-center px-4">
                 <MapPin className="size-8 text-muted-foreground/30" />
                 <p className="text-sm text-muted-foreground">Tiada lokasi dijumpai.</p>
-                {searchQuery && (
-                  <button className="text-xs text-primary underline" onClick={() => setSearchQuery("")}>
-                    Clear search
+                {(searchQuery || deliveryFilter !== "All" || selectedRouteIds.size > 0) && (
+                  <button
+                    className="text-xs text-primary underline"
+                    onClick={() => { setSearchQuery(""); setDeliveryFilter("All"); setSelectedRouteIds(new Set()) }}
+                  >
+                    Clear semua filter
                   </button>
                 )}
               </div>
             ) : (
               <div className="divide-y divide-border/60">
                 {filteredPoints.map(point => {
-                  const isSelected = selectedPoint?.code === point.code && selectedPoint?.routeId === point.routeId
+                  const isSelected  = selectedPoint?.code === point.code && selectedPoint?.routeId === point.routeId
+                  const markerColor = getEffectiveColor(point, routeColors)
                   return (
                     <button
                       key={`${point.routeId}-${point.code}`}
@@ -338,13 +777,12 @@ export function MapMarkerPage() {
                           : "hover:bg-muted/50 border-l-2 border-transparent"
                       }`}
                     >
-                      {/* Color dot */}
                       <div className="mt-0.5 shrink-0 flex flex-col items-center gap-1">
                         <span
-                          className="w-3 h-3 rounded-full border-2 border-white shrink-0"
+                          className="w-3.5 h-3.5 rounded-full border-2 border-white"
                           style={{
-                            background: getMarkerColor(point.delivery),
-                            boxShadow: isSelected ? `0 0 0 2px ${getMarkerColor(point.delivery)}55` : "0 1px 3px rgba(0,0,0,0.2)",
+                            background: markerColor,
+                            boxShadow: isSelected ? `0 0 0 2px ${markerColor}55` : "0 1px 3px rgba(0,0,0,0.22)",
                           }}
                         />
                         {isSelected && <Navigation className="size-3 text-primary" />}
@@ -375,17 +813,46 @@ export function MapMarkerPage() {
             )}
           </div>
 
-          {/* Footer count */}
+          {/* Footer */}
           <div className="shrink-0 px-3 py-2 border-t border-border/60 bg-muted/20">
             <p className="text-[11px] text-muted-foreground">
-              Showing {filteredPoints.length} of {allPoints.length} marker{allPoints.length !== 1 ? "s" : ""}
+              Tunjuk {filteredPoints.length} / {allPoints.length} marker
               {selectedPoint && (
-                <span className="ml-1.5 text-primary font-medium">· Selected: {selectedPoint.name}</span>
+                <span className="ml-1.5 text-primary font-medium">· {selectedPoint.name}</span>
               )}
             </p>
           </div>
         </div>
       </div>
+
+      {/* ── Modals ───────────────────────────────────────────────────── */}
+      <FilterModal
+        open={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        deliveryFilter={deliveryFilter}
+        setDeliveryFilter={setDeliveryFilter}
+        selectedRouteIds={selectedRouteIds}
+        setSelectedRouteIds={setSelectedRouteIds}
+        routes={routes}
+        counts={counts}
+      />
+
+      <RouteColorModal
+        open={colorOpen}
+        onClose={() => setColorOpen(false)}
+        routes={routes}
+        routeColors={routeColors}
+        onChange={handleSaveRouteColors}
+      />
+
+      <MapSettingsModal
+        open={mapSettingsOpen}
+        onClose={() => setMapSettingsOpen(false)}
+        defaultView={defaultView}
+        onSave={handleSaveDefaultView}
+      />
     </div>
   )
 }

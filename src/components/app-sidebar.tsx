@@ -81,7 +81,33 @@ const data = {
       title: "Settings",
       url: "#",
       icon: Settings2,
-      items: [],
+      items: [
+        {
+          title: "Profile",
+          url: "#",
+          page: "settings-profile",
+        },
+        {
+          title: "Notifications",
+          url: "#",
+          page: "settings-notifications",
+        },
+        {
+          title: "Appearance",
+          url: "#",
+          page: "settings-appearance",
+        },
+        {
+          title: "Map Settings",
+          url: "#",
+          page: "settings-map",
+        },
+        {
+          title: "Security",
+          url: "#",
+          page: "settings-security",
+        },
+      ],
     },
   ],
   navSecondary: [
@@ -111,12 +137,8 @@ export function AppSidebar({
 }: React.ComponentProps<typeof Sidebar> & { 
   onNavigate?: (page: string) => void 
 }) {
-  const handleNavClick = (itemTitle: string) => {
-    if (onNavigate) {
-      if (itemTitle === "Settings") {
-        onNavigate("settings")
-      }
-    }
+  const handleNavClick = (_itemTitle: string) => {
+    // top-level items with children just expand/collapse — no navigation
   }
 
   const handleSubItemClick = (page: string) => {

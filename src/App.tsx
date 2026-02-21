@@ -191,7 +191,16 @@ function AppContent() {
       case "calendar":
         return <Calendar view="month" />
       case "settings":
-        return <Settings />
+      case "settings-profile":
+        return <Settings section="profile" />
+      case "settings-notifications":
+        return <Settings section="notifications" />
+      case "settings-appearance":
+        return <Settings section="appearance-theme" />
+      case "settings-map":
+        return <Settings section="map-defaultview" />
+      case "settings-security":
+        return <Settings section="security" />
       case "plano-vm":
         return <PlanoVM />
       case "dashboard":
@@ -217,7 +226,16 @@ function AppContent() {
       case "calendar":
         return { parent: { label: "Calendar", icon: CalendarIcon }, current: "Month View" }
       case "settings":
-        return { parent: { label: "Settings", icon: Settings2 }, current: "Settings" }
+      case "settings-profile":
+        return { parent: { label: "Settings", icon: Settings2 }, current: "Profile" }
+      case "settings-notifications":
+        return { parent: { label: "Settings", icon: Settings2 }, current: "Notifications" }
+      case "settings-appearance":
+        return { parent: { label: "Settings", icon: Settings2 }, current: "Appearance" }
+      case "settings-map":
+        return { parent: { label: "Settings", icon: Settings2 }, current: "Map Settings" }
+      case "settings-security":
+        return { parent: { label: "Settings", icon: Settings2 }, current: "Security" }
       case "plano-vm":
         return { parent: { label: "Plano VM", icon: CalendarDaysIcon }, current: "Plano VM" }
       case "dashboard":
