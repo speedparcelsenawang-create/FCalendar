@@ -221,6 +221,7 @@ export function RouteList() {
   const [pendingSelectedRows, setPendingSelectedRows] = useState<string[]>([])
   const [deliveryModalOpen, setDeliveryModalOpen] = useState(false)
   const [deliveryModalCode, setDeliveryModalCode] = useState<string | null>(null)
+  const [openKmTooltip, setOpenKmTooltip] = useState<string | null>(null)
 
   // ── Settings Modal ────────────────────────────────────────────────
   type ColumnKey = 'no' | 'code' | 'name' | 'delivery' | 'action'
@@ -890,14 +891,19 @@ export function RouteList() {
                                   return null
                                 })}
                                 <td className="p-3 text-sm text-center">
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-primary/8 text-primary text-[11px] font-medium cursor-default tabular-nums">
-                                          {distInfo ? formatKm(distInfo.display) : '-'}
-                                        </span>
+                                  <TooltipProvider delayDuration={100}>
+                                    <Tooltip
+                                      open={openKmTooltip === point.code}
+                                      onOpenChange={(open) => setOpenKmTooltip(open ? point.code : null)}
+                                    >
+                                      <TooltipTrigger
+                                        type="button"
+                                        className="inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-primary/8 text-primary text-[11px] font-medium cursor-help tabular-nums"
+                                        onClick={() => setOpenKmTooltip(prev => prev === point.code ? null : point.code)}
+                                      >
+                                        {distInfo ? formatKm(distInfo.display) : '-'}
                                       </TooltipTrigger>
-                                      <TooltipContent side="top" className="text-xs max-w-[220px] text-center">
+                                      <TooltipContent side="top" className="text-xs max-w-[220px] text-center z-[9999]">
                                         {segmentLabel}
                                       </TooltipContent>
                                     </Tooltip>
