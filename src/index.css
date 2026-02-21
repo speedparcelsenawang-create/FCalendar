@@ -175,7 +175,7 @@ body {
 
 /* ── Bubblegum Theme ────────────────────────────────────────── */
 :root[data-theme="bubblegum"] {
-    --radius: 0.4rem;
+    --radius: 1rem;
     --background: oklch(0.9399 0.0203 345.6985);
     --foreground: oklch(0.4712 0 0);
     --card: oklch(0.9498 0.0500 86.8891);
@@ -321,7 +321,7 @@ body {
 
 /* ── Claude Theme ───────────────────────────────────────────── */
 :root[data-theme="claude"] {
-    --radius: 0.5rem;
+    --radius: 1rem;
     --background: oklch(0.9800 0.0120 75);
     --foreground: oklch(0.2200 0.0250 45);
     --card: oklch(0.9900 0.0080 65);
@@ -394,7 +394,7 @@ body {
 
 /* ── Cyberpunk Theme ────────────────────────────────────────── */
 :root[data-theme="cyberpunk"] {
-    --radius: 0.25rem;
+    --radius: 1rem;
     --background: oklch(0.9600 0.0100 245);
     --foreground: oklch(0.1500 0.0600 260);
     --card: oklch(0.9900 0.0050 240);
@@ -467,7 +467,7 @@ body {
 
 /* ── Northern Lights Theme ──────────────────────────────────── */
 :root[data-theme="northern-lights"] {
-    --radius: 0.625rem;
+    --radius: 1rem;
     --background: oklch(0.9700 0.0120 215);
     --foreground: oklch(0.2000 0.0500 240);
     --card: oklch(0.9600 0.0200 215);
@@ -540,7 +540,7 @@ body {
 
 /* ── Ocean Breeze Theme ─────────────────────────────────────── */
 :root[data-theme="ocean-breeze"] {
-    --radius: 0.75rem;
+    --radius: 1rem;
     --background: oklch(0.9700 0.0200 210);
     --foreground: oklch(0.2000 0.0500 220);
     --card: oklch(0.9600 0.0200 210);

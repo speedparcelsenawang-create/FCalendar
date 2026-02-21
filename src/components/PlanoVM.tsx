@@ -445,13 +445,14 @@ export function PlanoVM() {
       {/* Content */}
       <div className="px-8 py-6">
         {/* Title and Add Page Button */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Plano VM</h1>
+        <div className="mb-6">
+          <div className="text-center mb-4">
+            <h1 className="font-bold tracking-tight" style={{ fontSize: '25px' }}>Plano VM</h1>
             <p className="text-muted-foreground mt-1">Visual Merchandising Planogram Manager</p>
           </div>
           
           {isEditMode && (
+            <div className="flex justify-end">
             <Dialog open={addPageDialog} onOpenChange={setAddPageDialog}>
               <DialogTrigger asChild>
                 <Button>
@@ -479,6 +480,7 @@ export function PlanoVM() {
                 </div>
               </DialogContent>
             </Dialog>
+            </div>
           )}
         </div>
 
@@ -537,8 +539,6 @@ export function PlanoVM() {
 
         {currentPage ? (
           <>
-            <h2 className="text-2xl font-semibold mb-6">Rows</h2>
-
             {currentPage.rows.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <ImageIcon className="size-16 text-muted-foreground/50 mb-4" />
@@ -657,8 +657,8 @@ export function PlanoVM() {
                               />
                             </div>
                             <div className="mt-3">
-                              <p className="font-medium text-sm truncate">{image.title}</p>
-                              <p className="text-xs text-muted-foreground truncate">{image.description}</p>
+                              <p className="font-medium text-sm truncate text-center">{image.title}</p>
+                              <p className="text-xs text-muted-foreground truncate text-center">{image.description}</p>
                             </div>
                           </a>
                         ) : (
@@ -704,8 +704,8 @@ export function PlanoVM() {
                               )}
                             </div>
                             <div className="mt-3">
-                              <p className="font-medium text-sm truncate">{image.title}</p>
-                              <p className="text-xs text-muted-foreground truncate">{image.description}</p>
+                              <p className="font-medium text-sm truncate text-center">{image.title}</p>
+                              <p className="text-xs text-muted-foreground truncate text-center">{image.description}</p>
                             </div>
                           </div>
                         )

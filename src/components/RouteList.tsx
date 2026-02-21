@@ -28,6 +28,8 @@ interface DeliveryPoint {
   descriptions: { key: string; value: string }[]
   qrCodeImageUrl?: string
   qrCodeDestinationUrl?: string
+  avatarImageUrl?: string
+  avatarImages?: string[]
 }
 
 interface Route {
@@ -915,17 +917,7 @@ export function RouteList() {
                     )}
                   </DialogContent>
                 </Dialog>
-                  <button
-                    onClick={() => toggleCardMap(route.id)}
-                    className={`p-1.5 rounded-lg transition-colors ${
-                      showMapCards.has(route.id)
-                        ? 'bg-primary/15 text-primary'
-                        : 'text-muted-foreground hover:text-primary hover:bg-primary/8'
-                    }`}
-                    title={showMapCards.has(route.id) ? 'Sorok peta' : 'Tunjuk peta'}
-                  >
-                    {showMapCards.has(route.id) ? <EyeOff className="size-4" /> : <Map className="size-4" />}
-                  </button>
+
                   </div>
                 
                 {/* Action Modal - After Done is clicked */}

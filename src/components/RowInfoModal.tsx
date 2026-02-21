@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react"
 import QrScanner from "qr-scanner"
-import { Plus, Trash2, QrCode, ExternalLink, Pencil, Link2, ImageUp, X, ScanLine, CheckCircle2, Loader2, AlertCircle, Check } from "lucide-react"
+import { Plus, Trash2, QrCode, ExternalLink, Pencil, Link2, ImageUp, X, ScanLine, CheckCircle2, Loader2, AlertCircle, Check, CameraOff, Camera } from "lucide-react"
+import "lightgallery/css/lightgallery.css"
+import "lightgallery/css/lg-zoom.css"
 import {
   Dialog,
   DialogContent,
@@ -21,6 +23,8 @@ interface DeliveryPoint {
   descriptions: { key: string; value: string }[]
   qrCodeImageUrl?: string
   qrCodeDestinationUrl?: string
+  avatarImageUrl?: string
+  avatarImages?: string[]
 }
 
 interface RowInfoModalProps {
@@ -47,14 +51,82 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
   const [qrTab, setQrTab] = useState<"url" | "media">("url")
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // Avatar image state
+  const [avatarImageUrl, setAvatarImageUrl] = useState("") // selected display image
+  const [avatarImages, setAvatarImages] = useState<string[]>([]) // all uploaded images
+  const [showAvatarDialog, setShowAvatarDialog] = useState(false)
+  // Dialog draft state
+  const [dialogImages, setDialogImages] = useState<string[]>([])
+  const [dialogSelected, setDialogSelected] = useState("")
+  const [avatarTab, setAvatarTab] = useState<"url" | "upload">("url")
+  const [avatarUrlInput, setAvatarUrlInput] = useState("")
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const avatarFileRef = useRef<HTMLInputElement>(null)
+  const avatarGalleryRef = useRef<HTMLDivElement>(null)
+  const avatarLGInstance = useRef<any>(null)
+
   useEffect(() => {
     if (open) {
       setDrafts(point.descriptions ?? [])
       setQrCodeImageUrl(point.qrCodeImageUrl ?? "")
       setQrCodeDestinationUrl(point.qrCodeDestinationUrl ?? "")
+      const imgs = point.avatarImages ?? (point.avatarImageUrl ? [point.avatarImageUrl] : [])
+      setAvatarImages(imgs)
+      setAvatarImageUrl(point.avatarImageUrl ?? (imgs[0] ?? ""))
       setIsEditing(false)
     }
   }, [open, point])
+
+  // Init lightGallery for avatar (view mode only)
+  useEffect(() => {
+    if (!open || avatarImages.length === 0 || isEditMode) {
+      if (avatarLGInstance.current) {
+        avatarLGInstance.current.destroy()
+        avatarLGInstance.current = null
+      }
+      return
+    }
+    const init = async () => {
+      await new Promise(r => setTimeout(r, 150))
+      if (!avatarGalleryRef.current) return
+      const { default: lightGallery } = await import('lightgallery')
+      const { default: lgZoom } = await import('lightgallery/plugins/zoom')
+      if (avatarLGInstance.current) {
+        avatarLGInstance.current.destroy()
+        avatarLGInstance.current = null
+      }
+      avatarLGInstance.current = lightGallery(avatarGalleryRef.current, {
+        plugins: [lgZoom],
+        speed: 300,
+        download: false,
+      })
+    }
+    init()
+    return () => {
+      if (avatarLGInstance.current) {
+        avatarLGInstance.current.destroy()
+        avatarLGInstance.current = null
+      }
+    }
+  }, [open, avatarImages, isEditMode])
+
+  const openAvatarGallery = () => {
+    if (!avatarLGInstance.current || avatarImages.length === 0) return
+    const idx = avatarImages.indexOf(avatarImageUrl)
+    avatarLGInstance.current.openGallery(idx >= 0 ? idx : 0)
+  }
+
+  const uploadToImgBB = async (file: File): Promise<string> => {
+    const formData = new FormData()
+    formData.append("image", file)
+    const res = await fetch(`https://api.imgbb.com/1/upload?key=4042c537845e8b19b443add46f4a859c`, {
+      method: "POST",
+      body: formData,
+    })
+    const data = await res.json()
+    if (!data.success) throw new Error("Upload failed")
+    return data.data.url as string
+  }
 
   const [pendingUrl, setPendingUrl] = useState<string | null>(null)
   const [scannedUrl, setScannedUrl] = useState<string | null>(null)
@@ -108,7 +180,7 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
     setDrafts(prev => prev.map((d, idx) => idx === i ? { ...d, [field]: val } : d))
 
   const handleSave = () => {
-    onSave?.({ ...point, descriptions: drafts.filter(d => d.key.trim() !== ""), qrCodeImageUrl, qrCodeDestinationUrl })
+    onSave?.({ ...point, descriptions: drafts.filter(d => d.key.trim() !== ""), qrCodeImageUrl, qrCodeDestinationUrl, avatarImageUrl, avatarImages })
     setIsEditing(false)
   }
 
@@ -135,9 +207,53 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
         {/* Header */}
         <DialogHeader className="px-5 pt-5 pb-4 border-b border-border bg-background">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg shrink-0 shadow">
-              {point.name.charAt(0).toUpperCase()}
-            </div>
+            {/* Avatar: multi-image gallery / camera-slash placeholder */}
+            {isEditMode ? (
+              <button
+                onClick={() => {
+                  setDialogImages([...avatarImages])
+                  setDialogSelected(avatarImageUrl)
+                  setAvatarUrlInput("")
+                  setAvatarTab("url")
+                  setShowAvatarDialog(true)
+                }}
+                className="w-11 h-11 rounded-full overflow-hidden shrink-0 shadow relative group focus:outline-none"
+              >
+                {avatarImageUrl ? (
+                  <img src={avatarImageUrl} alt={point.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                    <CameraOff className="size-5 text-white/80" />
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                  <Camera className="size-4 text-white" />
+                </div>
+              </button>
+            ) : (
+              avatarImages.length > 0 ? (
+                <>
+                  {/* Hidden lightgallery container with all images */}
+                  <div ref={avatarGalleryRef} className="hidden">
+                    {avatarImages.map((url, i) => (
+                      <a key={i} href={url} data-sub-html={`<h4>${point.name}</h4>`}>
+                        <img src={url} alt={point.name} />
+                      </a>
+                    ))}
+                  </div>
+                  <button
+                    onClick={openAvatarGallery}
+                    className="w-11 h-11 rounded-full overflow-hidden shrink-0 shadow cursor-zoom-in focus:outline-none"
+                  >
+                    <img src={avatarImageUrl || avatarImages[0]} alt={point.name} className="w-full h-full object-cover" />
+                  </button>
+                </>
+              ) : (
+                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shrink-0 shadow">
+                  <CameraOff className="size-5 text-white/80" />
+                </div>
+              )
+            )}
             <div className="flex-1 min-w-0">
               <DialogTitle className="text-base font-bold text-foreground truncate">
                 {point.name}
@@ -301,6 +417,162 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
               </div>
             </div>
           )}
+
+          {/* Avatar Gallery Dialog */}
+          <Dialog open={showAvatarDialog} onOpenChange={(o) => { if (!o) { setAvatarTab("url"); setAvatarUrlInput("") } setShowAvatarDialog(o) }}>
+            <DialogContent className="max-w-sm rounded-2xl">
+              <DialogHeader>
+                <DialogTitle className="text-base">Avatar Images</DialogTitle>
+                <DialogDescription>Urus gambar avatar. Klik gambar untuk set sebagai paparan.</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                {/* Image grid */}
+                <div className="grid grid-cols-4 gap-2">
+                  {dialogImages.map((url, i) => (
+                    <div key={i} className="relative group">
+                      <button
+                        onClick={() => setDialogSelected(url)}
+                        className={`w-full aspect-square rounded-xl overflow-hidden border-2 transition-all ${
+                          dialogSelected === url
+                            ? "border-primary ring-2 ring-primary/30"
+                            : "border-transparent hover:border-primary/40"
+                        }`}
+                      >
+                        <img src={url} alt={`avatar-${i}`} className="w-full h-full object-cover" />
+                      </button>
+                      {/* Selected badge */}
+                      {dialogSelected === url && (
+                        <div className="absolute -top-1 -right-1 bg-primary rounded-full p-0.5 pointer-events-none">
+                          <Check className="w-2.5 h-2.5 text-primary-foreground" />
+                        </div>
+                      )}
+                      {/* Delete button */}
+                      <button
+                        onClick={() => {
+                          const next = dialogImages.filter((_, idx) => idx !== i)
+                          setDialogImages(next)
+                          if (dialogSelected === url) setDialogSelected(next[0] ?? "")
+                        }}
+                        className="absolute -bottom-1 -right-1 bg-destructive text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+                  ))}
+                  {/* Add slot */}
+                  {dialogImages.length < 8 && (
+                    <div className="w-full aspect-square rounded-xl border-2 border-dashed border-border flex items-center justify-center">
+                      <Plus className="w-5 h-5 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+
+                {dialogImages.length === 0 && (
+                  <p className="text-xs text-center text-muted-foreground py-1">Belum ada gambar. Tambah di bawah.</p>
+                )}
+
+                {/* Add new image */}
+                {dialogImages.length < 8 && (
+                  <div className="border-t border-border pt-3 space-y-2">
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Tambah Gambar</p>
+                    {/* Tabs */}
+                    <div className="flex rounded-lg border overflow-hidden">
+                      {(["url", "upload"] as const).map(tab => (
+                        <button
+                          key={tab}
+                          onClick={() => setAvatarTab(tab)}
+                          className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-xs font-semibold transition-colors ${
+                            avatarTab === tab ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/70"
+                          }`}
+                        >
+                          {tab === "url" ? <><Link2 className="w-3 h-3" />URL</> : <><ImageUp className="w-3 h-3" />Upload</>}
+                        </button>
+                      ))}
+                    </div>
+                    {avatarTab === "url" && (
+                      <div className="flex gap-2">
+                        <Input
+                          value={avatarUrlInput}
+                          onChange={e => setAvatarUrlInput(e.target.value)}
+                          placeholder="https://example.com/image.jpg"
+                          className="h-8 text-sm flex-1"
+                        />
+                        <Button
+                          size="sm"
+                          className="h-8 shrink-0"
+                          disabled={!avatarUrlInput.trim()}
+                          onClick={() => {
+                            const url = avatarUrlInput.trim()
+                            if (!url) return
+                            const next = [...dialogImages, url]
+                            setDialogImages(next)
+                            if (!dialogSelected) setDialogSelected(url)
+                            setAvatarUrlInput("")
+                          }}
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    )}
+                    {avatarTab === "upload" && (
+                      <>
+                        <div
+                          onClick={() => !avatarUploading && avatarFileRef.current?.click()}
+                          className="flex items-center justify-center gap-2 border-2 border-dashed border-border rounded-xl py-3 cursor-pointer hover:bg-muted/40 transition-colors"
+                        >
+                          {avatarUploading ? (
+                            <><Loader2 className="w-4 h-4 text-muted-foreground animate-spin" /><p className="text-xs text-muted-foreground">Uploading…</p></>
+                          ) : (
+                            <><ImageUp className="w-4 h-4 text-muted-foreground" /><p className="text-xs text-muted-foreground">Klik untuk pilih gambar</p></>
+                          )}
+                        </div>
+                        <input
+                          ref={avatarFileRef}
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          onChange={async e => {
+                            const files = Array.from(e.target.files ?? [])
+                            if (!files.length) return
+                            setAvatarUploading(true)
+                            try {
+                              const urls: string[] = []
+                              for (const file of files) {
+                                const url = await uploadToImgBB(file)
+                                urls.push(url)
+                              }
+                              const next = [...dialogImages, ...urls].slice(0, 8)
+                              setDialogImages(next)
+                              if (!dialogSelected && next.length > 0) setDialogSelected(next[0])
+                            } catch {
+                              alert("Upload gagal. Cuba lagi.")
+                            } finally {
+                              setAvatarUploading(false)
+                              if (avatarFileRef.current) avatarFileRef.current.value = ""
+                            }
+                          }}
+                        />
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+              <DialogFooter className="flex gap-2 justify-end pt-2">
+                <Button variant="outline" size="sm" onClick={() => setShowAvatarDialog(false)}>Cancel</Button>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    setAvatarImages(dialogImages)
+                    setAvatarImageUrl(dialogSelected || dialogImages[0] || "")
+                    setShowAvatarDialog(false)
+                  }}
+                >
+                  <Check className="w-3.5 h-3.5 mr-1" />Save
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           {/* QR Code dialog */}
           <Dialog open={showQRDialog} onOpenChange={setShowQRDialog}>

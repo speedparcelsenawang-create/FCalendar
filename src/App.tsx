@@ -251,7 +251,6 @@ function AppContent() {
                   className="flex items-center gap-1.5 font-semibold text-foreground hover:text-foreground/80 transition-colors"
                 >
                   <Home className="size-3.5 shrink-0" />
-                  <span className="hidden sm:inline">FCalendar</span>
                 </BreadcrumbLink>
               </BreadcrumbItem>
               {(() => {
