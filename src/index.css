@@ -2,6 +2,24 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* Sidebar search field */
+.sidebar-search {
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.sidebar-search:focus {
+  border-color: hsl(var(--ring));
+  box-shadow: 0 0 0 1px hsl(var(--ring) / 0.4);
+}
+
+.sidebar-search-wrapper {
+  animation: sidebar-search-in 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes sidebar-search-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* Collapsible slide animations */
 @keyframes collapsible-slide-down {
   from { height: 0; opacity: 0; }

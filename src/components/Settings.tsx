@@ -136,7 +136,7 @@ export function Settings({ section = "profile" }: { section?: SectionId }) {
       case "notifications":
         return (
           <div>
-            <SectionHeader icon={<Bell className="size-5" />} title="Notifications" description="Urus notifikasi yang anda terima." />
+            <SectionHeader icon={<Bell className="size-5" />} title="Notifications" description="Manage the notifications you receive." />
             <div className="bg-card rounded-lg border divide-y divide-border">
               {([
                 { key: "email",        label: "Email Notifications",  desc: "Receive notifications via email" },
@@ -168,10 +168,10 @@ export function Settings({ section = "profile" }: { section?: SectionId }) {
       case "appearance-theme":
         return (
           <div>
-            <SectionHeader icon={<Brush className="size-5" />} title="Tema & Mod" description="Pilih mod terang/gelap dan warna tema aplikasi." />
+            <SectionHeader icon={<Brush className="size-5" />} title="Theme & Mode" description="Choose light/dark mode and app colour theme." />
             <div className="space-y-6">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Mod Paparan</label>
+                <label className="text-sm font-medium">Display Mode</label>
                 <div className="flex gap-2">
                   <button onClick={() => setMode("light")} className={`flex items-center gap-2 flex-1 py-2 px-4 rounded-md border transition-colors ${mode === "light" ? "bg-primary text-primary-foreground border-primary" : "bg-card hover:bg-accent border-border"}`}>
                     <Sun className="size-4" />Light
@@ -211,7 +211,7 @@ export function Settings({ section = "profile" }: { section?: SectionId }) {
       case "appearance-font":
         return (
           <div>
-            <SectionHeader icon={<Type className="size-5" />} title="Jenis Font" description="Pilih jenis font untuk keseluruhan aplikasi." />
+            <SectionHeader icon={<Type className="size-5" />} title="Font Style" description="Choose a font for the entire app." />
             <div className="space-y-4">
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {FONT_OPTIONS.map(opt => {
@@ -229,9 +229,9 @@ export function Settings({ section = "profile" }: { section?: SectionId }) {
                 })}
               </div>
               <div className="mt-2 p-4 rounded-lg bg-muted/40 border">
-                <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider font-semibold">Pratonton</p>
+                <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider font-semibold">Preview</p>
                 <p className="text-base" style={{ fontFamily: FONT_OPTIONS.find(f => f.id === appFont)?.family }}>
-                  Ini adalah pratonton teks menggunakan <strong>{FONT_OPTIONS.find(f => f.id === appFont)?.label}</strong>. The quick brown fox jumps over the lazy dog.
+                  This is a text preview using <strong>{FONT_OPTIONS.find(f => f.id === appFont)?.label}</strong>. The quick brown fox jumps over the lazy dog.
                 </p>
               </div>
             </div>
@@ -242,14 +242,14 @@ export function Settings({ section = "profile" }: { section?: SectionId }) {
       case "appearance-display":
         return (
           <div>
-            <SectionHeader icon={<ZoomIn className="size-5" />} title="Paparan" description="Skala UI dan saiz teks aplikasi." />
+            <SectionHeader icon={<ZoomIn className="size-5" />} title="Display" description="UI scale and app text size." />
             <div className="space-y-8">
               {/* App Zoom */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <label className="text-sm font-medium">Imbasan UI (App Zoom)</label>
-                    <p className="text-xs text-muted-foreground mt-0.5">Skala keseluruhan paparan aplikasi.</p>
+                    <label className="text-sm font-medium">App Zoom</label>
+                    <p className="text-xs text-muted-foreground mt-0.5">Overall application display scale.</p>
                   </div>
                   <span className="text-sm font-mono font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-md">{appZoom}%</span>
                 </div>
@@ -268,8 +268,8 @@ export function Settings({ section = "profile" }: { section?: SectionId }) {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <label className="text-sm font-medium">Saiz Teks</label>
-                    <p className="text-xs text-muted-foreground mt-0.5">Mempengaruhi semua teks dalam aplikasi.</p>
+                    <label className="text-sm font-medium">Text Size</label>
+                    <p className="text-xs text-muted-foreground mt-0.5">Affects all text in the application.</p>
                   </div>
                   <span className="text-sm font-mono font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-md">{textSize}px</span>
                 </div>
@@ -287,8 +287,8 @@ export function Settings({ section = "profile" }: { section?: SectionId }) {
                   ))}
                 </div>
                 <div className="p-4 rounded-lg bg-muted/40 border">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-1">Pratonton Saiz</p>
-                  <p style={{ fontSize: `${textSize}px` }}>Teks saiz semasa ({textSize}px) — The quick brown fox.</p>
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-1">Size Preview</p>
+                  <p style={{ fontSize: `${textSize}px` }}>Current text size ({textSize}px) — The quick brown fox.</p>
                 </div>
               </div>
             </div>
@@ -299,11 +299,11 @@ export function Settings({ section = "profile" }: { section?: SectionId }) {
       case "appearance-language":
         return (
           <div>
-            <SectionHeader icon={<Languages className="size-5" />} title="Bahasa & Zon Waktu" description="Tetapan bahasa paparan dan zon waktu." />
+            <SectionHeader icon={<Languages className="size-5" />} title="Language & Timezone" description="Display language and timezone settings." />
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium flex items-center gap-2"><Globe className="size-4" />Bahasa</label>
+                  <label className="text-sm font-medium flex items-center gap-2"><Globe className="size-4" />Language</label>
                   <select value={language} onChange={e => setLanguage(e.target.value)}
                     className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   >
@@ -313,7 +313,7 @@ export function Settings({ section = "profile" }: { section?: SectionId }) {
                   </select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Zon Waktu</label>
+                  <label className="text-sm font-medium">Timezone</label>
                   <select value={timezone} onChange={e => setTimezone(e.target.value)}
                     className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   >
@@ -335,15 +335,15 @@ export function Settings({ section = "profile" }: { section?: SectionId }) {
       case "map-defaultview":
         return (
           <div>
-            <SectionHeader icon={<Navigation className="size-5" />} title="Default View Peta" description="Koordinat dan zoom yang dipaparkan pertama kali di Map Marker." />
+            <SectionHeader icon={<Navigation className="size-5" />} title="Default Map View" description="Coordinates and zoom shown by default in Map Marker." />
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Latitud</label>
+                  <label className="text-sm font-medium">Latitude</label>
                   <Input value={mapLat} onChange={e => setMapLat(e.target.value)} placeholder="3.0695500" className="font-mono" />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Longitud</label>
+                  <label className="text-sm font-medium">Longitude</label>
                   <Input value={mapLng} onChange={e => setMapLng(e.target.value)} placeholder="101.5469179" className="font-mono" />
                 </div>
                 <div className="space-y-2">
@@ -354,10 +354,10 @@ export function Settings({ section = "profile" }: { section?: SectionId }) {
               <div className="flex items-center justify-between">
                 <button onClick={() => { setMapLat(MAP_FALLBACK.lat); setMapLng(MAP_FALLBACK.lng); setMapZoom(MAP_FALLBACK.zoom) }}
                   className="text-xs text-muted-foreground underline hover:text-foreground"
-                >Reset ke lalai (3.0695500, 101.5469179)</button>
+                >Reset to default (3.0695500, 101.5469179)</button>
                 <Button onClick={handleSaveMap} className="gap-2">
                   {mapSaved ? <Check className="size-4" /> : <Save className="size-4" />}
-                  {mapSaved ? "Tersimpan!" : "Simpan"}
+                  {mapSaved ? "Saved!" : "Save"}
                 </Button>
               </div>
             </div>
@@ -421,7 +421,7 @@ export function Settings({ section = "profile" }: { section?: SectionId }) {
       case "danger":
         return (
           <div>
-            <SectionHeader icon={<AlertTriangle className="size-5 text-destructive" />} title="Danger Zone" description="Tindakan yang tidak boleh dibatalkan." />
+            <SectionHeader icon={<AlertTriangle className="size-5 text-destructive" />} title="Danger Zone" description="Actions that cannot be undone." />
             <div className="bg-destructive/10 rounded-lg border border-destructive/50 p-6">
               <div className="flex items-center justify-between gap-4">
                 <div>

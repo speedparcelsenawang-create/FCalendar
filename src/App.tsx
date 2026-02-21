@@ -197,6 +197,10 @@ function AppContent() {
         return <Settings section="notifications" />
       case "settings-appearance":
         return <Settings section="appearance-theme" />
+      case "settings-appearance-font":
+        return <Settings section="appearance-font" />
+      case "settings-appearance-display":
+        return <Settings section="appearance-display" />
       case "settings-map":
         return <Settings section="map-defaultview" />
       case "settings-security":
@@ -232,6 +236,10 @@ function AppContent() {
         return { parent: { label: "Settings", icon: Settings2 }, current: "Notifications" }
       case "settings-appearance":
         return { parent: { label: "Settings", icon: Settings2 }, current: "Appearance" }
+      case "settings-appearance-font":
+        return { parent: { label: "Settings", icon: Settings2 }, current: "Font" }
+      case "settings-appearance-display":
+        return { parent: { label: "Settings", icon: Settings2 }, current: "Display" }
       case "settings-map":
         return { parent: { label: "Settings", icon: Settings2 }, current: "Map Settings" }
       case "settings-security":
@@ -424,7 +432,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
             className="rounded bg-primary px-4 py-2 text-sm text-primary-foreground"
             onClick={() => this.setState({ error: null })}
           >
-            Cuba semula
+            Try again
           </button>
         </div>
       )

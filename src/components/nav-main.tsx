@@ -22,6 +22,7 @@ export function NavMain({
   items,
   onItemClick,
   onSubItemClick,
+  searchQuery = "",
 }: {
   items: {
     title: string
@@ -36,9 +37,13 @@ export function NavMain({
   }[]
   onItemClick?: (title: string) => void
   onSubItemClick?: (page: string) => void
+  searchQuery?: string
 }) {
   const initialOpen = items.find((i) => i.isActive && i.items?.length)?.title ?? null
   const [openItem, setOpenItem] = useState<string | null>(initialOpen)
+
+  // Auto-expand all groups when searching
+  const isSearching = searchQuery.trim().length > 0
 
   const handleToggle = (title: string, hasChildren: boolean) => {
     if (!hasChildren) {
@@ -53,19 +58,26 @@ export function NavMain({
     <SidebarGroup>
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
       <SidebarMenu>
-        {items.map((item) => {
+        {isSearching && items.length === 0 ? (
+          <div className="flex flex-col items-center gap-1.5 py-6 px-3 text-center animate-in fade-in duration-200">
+            <span className="text-xl">🔍</span>
+            <p className="text-xs font-medium text-muted-foreground">No results found</p>
+            <p className="text-[11px] text-muted-foreground/60">Try a different keyword</p>
+          </div>
+        ) : (
+        items.map((item) => {
           const hasChildren = !!item.items?.length
-          const isOpen = openItem === item.title
+          const isOpen = isSearching ? true : openItem === item.title
 
           return (
             <Collapsible
               key={item.title}
               asChild
               open={hasChildren ? isOpen : undefined}
-              onOpenChange={hasChildren ? (open) => setOpenItem(open ? item.title : null) : undefined}
+              onOpenChange={hasChildren ? (open) => { if (!isSearching) setOpenItem(open ? item.title : null) } : undefined}
             >
               <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip={item.title}>
+                <SidebarMenuButton asChild tooltip={item.title} className="transition-colors duration-150">
                   <a
                     href={item.url}
                     onClick={(e) => {
@@ -91,7 +103,7 @@ export function NavMain({
                       <SidebarMenuSub>
                         {item.items?.map((subItem) => (
                           <SidebarMenuSubItem key={subItem.title}>
-                            <SidebarMenuSubButton asChild>
+                            <SidebarMenuSubButton asChild className="transition-colors duration-150">
                               <a
                                 href={subItem.url}
                                 onClick={(e) => {
@@ -111,7 +123,8 @@ export function NavMain({
               </SidebarMenuItem>
             </Collapsible>
           )
-        })}
+        })
+        )}
       </SidebarMenu>
     </SidebarGroup>
   )

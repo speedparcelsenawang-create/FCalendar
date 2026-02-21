@@ -62,7 +62,7 @@ export function PlanoVM() {
         setPages(loaded)
         if (loaded.length > 0) setActivePage(loaded[0].id)
       } catch (err) {
-        setLoadError(err instanceof Error ? err.message : 'Gagal memuatkan data')
+        setLoadError(err instanceof Error ? err.message : 'Failed to load data')
       } finally {
         setIsLoading(false)
       }
@@ -425,7 +425,7 @@ export function PlanoVM() {
     return (
       <div className="flex flex-1 items-center justify-center min-h-[40vh] gap-3 text-muted-foreground">
         <Loader2 className="size-5 animate-spin" />
-        <span>Memuatkan data...</span>
+        <span>Loading data...</span>
       </div>
     )
   }
@@ -433,9 +433,9 @@ export function PlanoVM() {
   if (loadError) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center min-h-[40vh] gap-3 text-destructive">
-        <p className="font-medium">Gagal memuatkan data</p>
+        <p className="font-medium">Failed to load data</p>
         <p className="text-sm text-muted-foreground">{loadError}</p>
-        <Button variant="outline" onClick={() => window.location.reload()}>Cuba semula</Button>
+        <Button variant="outline" onClick={() => window.location.reload()}>Try again</Button>
       </div>
     )
   }

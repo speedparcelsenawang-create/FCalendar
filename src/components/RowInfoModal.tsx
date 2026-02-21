@@ -423,7 +423,7 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
             <DialogContent className="max-w-sm rounded-2xl">
               <DialogHeader>
                 <DialogTitle className="text-base">Avatar Images</DialogTitle>
-                <DialogDescription>Urus gambar avatar. Klik gambar untuk set sebagai paparan.</DialogDescription>
+                <DialogDescription>Manage avatar images. Click an image to set it as display.</DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 {/* Image grid */}
@@ -468,13 +468,13 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
                 </div>
 
                 {dialogImages.length === 0 && (
-                  <p className="text-xs text-center text-muted-foreground py-1">Belum ada gambar. Tambah di bawah.</p>
+                  <p className="text-xs text-center text-muted-foreground py-1">No images yet. Add one below.</p>
                 )}
 
                 {/* Add new image */}
                 {dialogImages.length < 8 && (
                   <div className="border-t border-border pt-3 space-y-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Tambah Gambar</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Add Image</p>
                     {/* Tabs */}
                     <div className="flex rounded-lg border overflow-hidden">
                       {(["url", "upload"] as const).map(tab => (
@@ -523,7 +523,7 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
                           {avatarUploading ? (
                             <><Loader2 className="w-4 h-4 text-muted-foreground animate-spin" /><p className="text-xs text-muted-foreground">Uploading…</p></>
                           ) : (
-                            <><ImageUp className="w-4 h-4 text-muted-foreground" /><p className="text-xs text-muted-foreground">Klik untuk pilih gambar</p></>
+                            <><ImageUp className="w-4 h-4 text-muted-foreground" /><p className="text-xs text-muted-foreground">Click to select image</p></>
                           )}
                         </div>
                         <input
@@ -546,7 +546,7 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
                               setDialogImages(next)
                               if (!dialogSelected && next.length > 0) setDialogSelected(next[0])
                             } catch {
-                              alert("Upload gagal. Cuba lagi.")
+                              alert("Upload failed. Please try again.")
                             } finally {
                               setAvatarUploading(false)
                               if (avatarFileRef.current) avatarFileRef.current.value = ""
@@ -677,7 +677,7 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
                         {qrDecodeStatus === "failed" && (
                           <div className="flex items-center gap-2 text-xs text-red-500">
                             <AlertCircle className="w-3.5 h-3.5" />
-                            <span>QR tidak dapat dibaca. Sila isi Destination URL secara manual.</span>
+                            <span>QR could not be read. Please enter the Destination URL manually.</span>
                           </div>
                         )}
 
@@ -792,7 +792,7 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
                       <>
                         <div className="flex items-start gap-2">
                           <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
-                          <p className="text-xs text-gray-500 dark:text-gray-400">Link berjaya dikesan. Tekan <span className="font-semibold text-gray-700 dark:text-gray-200">Buka</span> untuk teruskan.</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Link detected. Press <span className="font-semibold text-gray-700 dark:text-gray-200">Open</span> to continue.</p>
                         </div>
                         <div className="bg-gray-100 dark:bg-neutral-800 rounded-xl px-3 py-2.5">
                           <p className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500 mb-1">Destination</p>
@@ -804,18 +804,18 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
                     ) : (
                       <div className="flex items-start gap-2 py-1">
                         <X className="w-4 h-4 text-red-400 mt-0.5 shrink-0" />
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Tiada destination URL ditetapkan untuk QR code ini.</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">No destination URL set for this QR code.</p>
                       </div>
                     )}
                   </div>
                 </DialogDescription>
               </DialogHeader>
               <DialogFooter className="flex gap-2 justify-end">
-                <Button variant="outline" size="sm" onClick={() => setScannedUrl(null)}>Tutup</Button>
+                <Button variant="outline" size="sm" onClick={() => setScannedUrl(null)}>Close</Button>
                 {scannedUrl && (
                   <Button size="sm" onClick={() => { window.open(scannedUrl, "_blank"); setScannedUrl(null) }}>
                     <ExternalLink className="w-3.5 h-3.5 mr-1" />
-                    Buka
+                    Open
                   </Button>
                 )}
               </DialogFooter>

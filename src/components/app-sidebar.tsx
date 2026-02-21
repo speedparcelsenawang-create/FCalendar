@@ -8,6 +8,8 @@ import {
   LifeBuoy,
   Send,
   Package,
+  Search,
+  X,
 } from "lucide-react"
 
 import { NavMain } from "@/components/nav-main"
@@ -98,6 +100,16 @@ const data = {
           page: "settings-appearance",
         },
         {
+          title: "Font",
+          url: "#",
+          page: "settings-appearance-font",
+        },
+        {
+          title: "Display",
+          url: "#",
+          page: "settings-appearance-display",
+        },
+        {
           title: "Map Settings",
           url: "#",
           page: "settings-map",
@@ -137,6 +149,22 @@ export function AppSidebar({
 }: React.ComponentProps<typeof Sidebar> & { 
   onNavigate?: (page: string) => void 
 }) {
+  const [searchQuery, setSearchQuery] = React.useState("")
+
+  const filteredNavMain = React.useMemo(() => {
+    if (!searchQuery.trim()) return data.navMain
+    const q = searchQuery.toLowerCase()
+    return data.navMain
+      .map(item => {
+        const titleMatch = item.title.toLowerCase().includes(q)
+        const filteredSubs = item.items?.filter(sub => sub.title.toLowerCase().includes(q)) ?? []
+        if (titleMatch) return item
+        if (filteredSubs.length > 0) return { ...item, items: filteredSubs }
+        return null
+      })
+      .filter(Boolean) as typeof data.navMain
+  }, [searchQuery])
+
   const handleNavClick = (_itemTitle: string) => {
     // top-level items with children just expand/collapse — no navigation
   }
@@ -175,9 +203,28 @@ export function AppSidebar({
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
+        {/* Search field */}
+        <div className="relative mt-1 sidebar-search-wrapper">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none transition-colors" />
+          <input
+            type="text"
+            placeholder="Search..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className="sidebar-search h-8 w-full rounded-md border border-input bg-background pl-8 pr-7 text-sm shadow-none outline-none ring-0 transition-all duration-200 placeholder:text-muted-foreground/60 focus:ring-1 focus:ring-ring"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors duration-150"
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
+        </div>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} onItemClick={handleNavClick} onSubItemClick={handleSubItemClick} />
+        <NavMain items={filteredNavMain} onItemClick={handleNavClick} onSubItemClick={handleSubItemClick} searchQuery={searchQuery} />
         <NavProjects projects={data.projects} onProjectClick={handleProjectClick} />
         <NavSecondary items={data.navSecondary} className="mt-auto" />
       </SidebarContent>

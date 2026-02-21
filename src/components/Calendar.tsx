@@ -411,7 +411,7 @@ function WeekView({ events, onAdd, onEdit }: ViewProps) {
         </div>
         <div className="flex-1 min-h-0 overflow-auto">
           <div className="min-w-[640px]">
-            <div className="grid border-b border-border bg-muted/20 sticky top-0 z-10" style={{ gridTemplateColumns: "56px repeat(7, 1fr)" }}>
+            <div className="grid border-b border-border bg-background sticky top-0 z-10" style={{ gridTemplateColumns: "56px repeat(7, 1fr)" }}>
               <div className="border-r border-border" />
               {weekDays.map((day, i) => {
                 const isToday = isSameDay(day, today)

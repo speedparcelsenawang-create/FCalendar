@@ -211,12 +211,12 @@ function FilterModal({
         <div className="space-y-5 pt-1">
           {/* Search */}
           <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Carian</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Search</p>
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
               <Input
                 className="pl-8 h-9 text-sm"
-                placeholder="Nama lokasi, code, route…"
+                placeholder="Location name, code, route…"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
               />
@@ -233,7 +233,7 @@ function FilterModal({
 
           {/* Delivery type */}
           <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Jenis Penghantaran</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Delivery Type</p>
             <div className="flex flex-wrap gap-1.5">
               {DELIVERY_TYPES.map(type => (
                 <button
@@ -350,13 +350,13 @@ function RouteColorModal({ open, onClose, routes, routeColors, onChange }: Route
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Palette className="size-4" />
-            Warna Marker per Route
+            Marker Colour per Route
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 pt-1">
           <p className="text-xs text-muted-foreground">
-            Tetapkan warna marker bagi setiap route. Jika tidak ditetapkan, warna ikut jenis penghantaran.
+            Set marker colour for each route. If not set, colour follows delivery type.
           </p>
 
           <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
@@ -389,7 +389,7 @@ function RouteColorModal({ open, onClose, routes, routeColors, onChange }: Route
                     <div
                       className="relative size-7 rounded-full border-2 border-dashed border-muted-foreground/40 overflow-hidden hover:border-primary transition-colors cursor-pointer"
                       style={{ background: current ?? "conic-gradient(red,yellow,lime,aqua,blue,magenta,red)" }}
-                      title="Warna custom"
+                      title="Custom colour"
                     >
                       <input
                         type="color"
@@ -402,7 +402,7 @@ function RouteColorModal({ open, onClose, routes, routeColors, onChange }: Route
                     {current && (
                       <button
                         onClick={() => resetRoute(route.id)}
-                        title="Reset ke warna delivery"
+                        title="Reset to delivery colour"
                         className="text-muted-foreground hover:text-foreground transition-colors"
                       >
                         <X className="size-3.5" />
@@ -416,7 +416,7 @@ function RouteColorModal({ open, onClose, routes, routeColors, onChange }: Route
 
           {/* Legend */}
           <div className="rounded-lg bg-muted/40 p-3 space-y-2">
-            <p className="text-xs font-semibold text-muted-foreground">Warna lalai (jenis penghantaran)</p>
+            <p className="text-xs font-semibold text-muted-foreground">Default colour (delivery type)</p>
             <div className="flex flex-wrap gap-2">
               {Object.entries(DELIVERY_COLORS).map(([type, color]) => (
                 <span key={type} className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -428,8 +428,8 @@ function RouteColorModal({ open, onClose, routes, routeColors, onChange }: Route
           </div>
 
           <div className="flex justify-end gap-2 pt-1">
-            <Button variant="outline" size="sm" onClick={onClose}>Batal</Button>
-            <Button size="sm" onClick={() => { onChange(local); onClose() }}>Simpan Warna</Button>
+            <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
+            <Button size="sm" onClick={() => { onChange(local); onClose() }}>Save Colours</Button>
           </div>
         </div>
       </DialogContent>
@@ -473,22 +473,22 @@ function MapSettingsModal({ open, onClose, defaultView, onSave }: MapSettingsMod
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MapIcon className="size-4" />
-            Tetapan Default View Peta
+            Default Map View Settings
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 pt-1">
           <p className="text-xs text-muted-foreground">
-            Koordinat dan zoom yang dipaparkan pertama kali semasa membuka Map Marker.
+            Coordinates and zoom shown by default when opening Map Marker.
           </p>
 
           <div className="space-y-3">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Latitud</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Latitude</label>
               <Input value={lat} onChange={e => setLat(e.target.value)} placeholder="3.0695500" className="h-9 text-sm font-mono" />
             </div>
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Longitud</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Longitude</label>
               <Input value={lng} onChange={e => setLng(e.target.value)} placeholder="101.5469179" className="h-9 text-sm font-mono" />
             </div>
             <div className="space-y-1.5">
@@ -502,11 +502,11 @@ function MapSettingsModal({ open, onClose, defaultView, onSave }: MapSettingsMod
               onClick={() => { setLat(String(FALLBACK_CENTER[0])); setLng(String(FALLBACK_CENTER[1])); setZoom(String(FALLBACK_ZOOM)) }}
               className="text-xs text-muted-foreground underline hover:text-foreground"
             >
-              Reset ke lalai
+              Reset to default
             </button>
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={onClose}>Batal</Button>
-              <Button size="sm" onClick={handleSave}>Simpan</Button>
+              <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
+              <Button size="sm" onClick={handleSave}>Save</Button>
             </div>
           </div>
         </div>
@@ -606,9 +606,9 @@ export function MapMarkerPage() {
         <div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">Map Marker</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            {allPoints.length} lokasi · {routes.length} route
+            {allPoints.length} locations · {routes.length} route
             {(deliveryFilter !== "All" || selectedRouteIds.size > 0) && (
-              <span className="ml-1 text-primary font-medium">· {filteredPoints.length} ditunjukkan</span>
+              <span className="ml-1 text-primary font-medium">· {filteredPoints.length} shown</span>
             )}
           </p>
         </div>
@@ -616,19 +616,19 @@ export function MapMarkerPage() {
         <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
           <button
             onClick={() => setColorOpen(true)}
-            title="Set warna marker per route"
+            title="Set marker colour per route"
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-border bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
           >
             <Palette className="size-3.5" />
-            <span className="hidden sm:inline">Warna Route</span>
+            <span className="hidden sm:inline">Route Colours</span>
           </button>
           <button
             onClick={() => setMapSettingsOpen(true)}
-            title="Tetapan default view peta"
+            title="Map default view settings"
             className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-border bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
           >
             <Settings2 className="size-3.5" />
-            <span className="hidden sm:inline">Tetapan Peta</span>
+            <span className="hidden sm:inline">Map Settings</span>
           </button>
         </div>
       </div>
@@ -640,8 +640,8 @@ export function MapMarkerPage() {
           {allPoints.length === 0 ? (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-muted/20">
               <MapPin className="size-12 text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground">Tiada lokasi dengan koordinat.</p>
-              <p className="text-xs text-muted-foreground/70">Tambah lat/lng dalam Route List untuk papar marker.</p>
+              <p className="text-sm text-muted-foreground">No locations with coordinates.</p>
+              <p className="text-xs text-muted-foreground/70">Add lat/lng in Route List to display markers.</p>
             </div>
           ) : (
             <MapContainer
@@ -671,7 +671,7 @@ export function MapMarkerPage() {
                         <div className="text-xs text-gray-500 space-y-0.5">
                           <div>Code: {point.code}</div>
                           <div>Route: {point.routeName} ({point.routeCode})</div>
-                          <div>Jenis: {point.delivery}</div>
+                          <div>Type: {point.delivery}</div>
                           <div className="font-mono">{point.latitude.toFixed(6)}, {point.longitude.toFixed(6)}</div>
                         </div>
                       </div>
@@ -691,7 +691,7 @@ export function MapMarkerPage() {
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
               <Input
                 className="pl-8 h-8 text-sm rounded-lg"
-                placeholder="Cari lokasi…"
+                placeholder="Search location…"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
               />
@@ -751,13 +751,13 @@ export function MapMarkerPage() {
             {filteredPoints.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 gap-2 text-center px-4">
                 <MapPin className="size-8 text-muted-foreground/30" />
-                <p className="text-sm text-muted-foreground">Tiada lokasi dijumpai.</p>
+                <p className="text-sm text-muted-foreground">No locations found.</p>
                 {(searchQuery || deliveryFilter !== "All" || selectedRouteIds.size > 0) && (
                   <button
                     className="text-xs text-primary underline"
                     onClick={() => { setSearchQuery(""); setDeliveryFilter("All"); setSelectedRouteIds(new Set()) }}
                   >
-                    Clear semua filter
+                    Clear all filters
                   </button>
                 )}
               </div>
