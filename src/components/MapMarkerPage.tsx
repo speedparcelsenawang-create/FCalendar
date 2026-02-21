@@ -1,7 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react"
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet"
-import L from "leaflet"
-import "leaflet/dist/leaflet.css"
+import { GoogleMap, useLoadScript, MarkerF, InfoWindow } from "@react-google-maps/api"
 import {
   MapPin, Navigation, Search, X, SlidersHorizontal,
   Palette, Check, Map as MapIcon, Settings2,
@@ -15,13 +13,32 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 
-// Fix for default marker icons in React-Leaflet
-delete (L.Icon.Default.prototype as any)._getIconUrl
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
-  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
-})
+const GMAP_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? ""
+
+const GMAP_OPTIONS: google.maps.MapOptions = {
+  mapTypeControl: false,
+  streetViewControl: false,
+  fullscreenControl: false,
+  clickableIcons: false,
+}
+
+/**
+ * Standard teardrop / location-pin SVG marker icon for Google Maps.
+ * selected → slightly larger with glow.
+ */
+function createPinIcon(color: string, selected: boolean): google.maps.Icon {
+  const w = selected ? 28 : 22
+  const h = selected ? 40 : 32
+  const glow = selected
+    ? `filter:drop-shadow(0 0 5px ${color}99)`
+    : `filter:drop-shadow(0 1px 4px rgba(0,0,0,0.5))`
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="${w}" height="${h}" style="${glow}"><path d="M12 0C5.373 0 0 5.373 0 12c0 9.188 12 24 12 24S24 21.188 24 12C24 5.373 18.627 0 12 0z" fill="${color}" stroke="white" stroke-width="1.5"/><circle cx="12" cy="11.5" r="4.5" fill="white" opacity="0.92"/></svg>`
+  return {
+    url: `data:image/svg+xml,${encodeURIComponent(svg)}`,
+    scaledSize: new google.maps.Size(w, h),
+    anchor: new google.maps.Point(w / 2, h),
+  }
+}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface DeliveryPoint {
@@ -109,51 +126,6 @@ function getDeliveryBadgeClass(delivery: string) {
     case "Alt 2":   return "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-400"
     default:        return "bg-muted text-muted-foreground"
   }
-}
-
-/**
- * Standard teardrop / location-pin SVG marker.
- * selected → slightly larger with glow.
- */
-function createPinIcon(color: string, selected: boolean) {
-  const w = selected ? 28 : 22
-  const h = selected ? 40 : 32
-  const glow = selected
-    ? `filter:drop-shadow(0 0 5px ${color}99)`
-    : `filter:drop-shadow(0 1px 4px rgba(0,0,0,0.5))`
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="${w}" height="${h}" style="${glow}"><path d="M12 0C5.373 0 0 5.373 0 12c0 9.188 12 24 12 24S24 21.188 24 12C24 5.373 18.627 0 12 0z" fill="${color}" stroke="white" stroke-width="1.5"/><circle cx="12" cy="11.5" r="4.5" fill="white" opacity="0.92"/></svg>`
-  return L.divIcon({
-    className: "",
-    html: svg,
-    iconSize:    [w, h],
-    iconAnchor:  [w / 2, h],
-    popupAnchor: [0, -h],
-  })
-}
-
-// ─── Map sub-components ───────────────────────────────────────────────────────
-function SetViewOnMount({ center, zoom }: { center: [number, number]; zoom: number }) {
-  const map  = useMap()
-  const done = useRef(false)
-  useEffect(() => {
-    if (done.current) return
-    done.current = true
-    map.setView(center, zoom)
-  }, [map, center, zoom])
-  return null
-}
-
-function FlyToPoint({ point }: { point: EnrichedPoint | null }) {
-  const map     = useMap()
-  const prevKey = useRef<string | null>(null)
-  useEffect(() => {
-    if (!point) return
-    const key = `${point.routeId}-${point.code}`
-    if (key === prevKey.current) return
-    prevKey.current = key
-    map.flyTo([point.latitude, point.longitude], 16, { animate: true, duration: 1.2 })
-  }, [map, point])
-  return null
 }
 
 // ─── Sample data ──────────────────────────────────────────────────────────────
@@ -528,7 +500,11 @@ export function MapMarkerPage() {
   const [mapSettingsOpen,  setMapSettingsOpen]  = useState(false)
   const [routeColors,      setRouteColors]      = useState<Record<string, string>>(loadRouteColors)
   const [defaultView,      setDefaultView]      = useState(loadDefaultView)
+  const [infoWindowPoint,  setInfoWindowPoint]  = useState<EnrichedPoint | null>(null)
   const selectedListRef = useRef<HTMLButtonElement | null>(null)
+  const mapRef          = useRef<google.maps.Map | null>(null)
+  const flyPrevKey      = useRef<string | null>(null)
+  const { isLoaded: gmapsLoaded } = useLoadScript({ googleMapsApiKey: GMAP_KEY })
 
   // Fetch routes from API
   const fetchRoutes = useCallback(async () => {
@@ -576,6 +552,16 @@ export function MapMarkerPage() {
 
   useEffect(() => {
     selectedListRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+  }, [selectedPoint])
+
+  // Fly to selected point on Google Maps
+  useEffect(() => {
+    if (!selectedPoint || !mapRef.current) return
+    const key = `${selectedPoint.routeId}-${selectedPoint.code}`
+    if (key === flyPrevKey.current) return
+    flyPrevKey.current = key
+    mapRef.current.panTo({ lat: selectedPoint.latitude, lng: selectedPoint.longitude })
+    mapRef.current.setZoom(16)
   }, [selectedPoint])
 
   const handleSaveRouteColors = (colors: Record<string, string>) => {
@@ -644,42 +630,48 @@ export function MapMarkerPage() {
               <p className="text-xs text-muted-foreground/70">Add lat/lng in Route List to display markers.</p>
             </div>
           ) : (
-            <MapContainer
-              center={defaultView.center}
-              zoom={defaultView.zoom}
-              style={{ width: "100%", height: "100%" }}
-              scrollWheelZoom
-            >
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              <SetViewOnMount center={defaultView.center} zoom={defaultView.zoom} />
-              <FlyToPoint point={selectedPoint} />
-              {filteredPoints.map(point => {
-                const isSelected = selectedPoint?.code === point.code && selectedPoint?.routeId === point.routeId
-                return (
-                  <Marker
-                    key={`${point.routeId}-${point.code}`}
-                    position={[point.latitude, point.longitude]}
-                    icon={createPinIcon(getEffectiveColor(point, routeColors), isSelected)}
-                    eventHandlers={{ click: () => setSelectedPoint(point) }}
-                  >
-                    <Popup>
-                      <div className="text-sm min-w-[150px]">
-                        <strong className="block mb-1">{point.name}</strong>
-                        <div className="text-xs text-gray-500 space-y-0.5">
-                          <div>Code: {point.code}</div>
-                          <div>Route: {point.routeName} ({point.routeCode})</div>
-                          <div>Type: {point.delivery}</div>
-                          <div className="font-mono">{point.latitude.toFixed(6)}, {point.longitude.toFixed(6)}</div>
-                        </div>
-                      </div>
-                    </Popup>
-                  </Marker>
-                )
-              })}
-            </MapContainer>
+            (!gmapsLoaded ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-muted/20">
+                <div className="size-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : (
+              <GoogleMap
+                mapContainerStyle={{ width: "100%", height: "100%" }}
+                center={{ lat: defaultView.center[0], lng: defaultView.center[1] }}
+                zoom={defaultView.zoom}
+                options={GMAP_OPTIONS}
+                onLoad={(map) => { mapRef.current = map }}
+                onClick={() => setInfoWindowPoint(null)}
+              >
+                {filteredPoints.map(point => {
+                  const isSelected = selectedPoint?.code === point.code && selectedPoint?.routeId === point.routeId
+                  const isInfoOpen = infoWindowPoint?.code === point.code && infoWindowPoint?.routeId === point.routeId
+                  return (
+                    <MarkerF
+                      key={`${point.routeId}-${point.code}`}
+                      position={{ lat: point.latitude, lng: point.longitude }}
+                      icon={createPinIcon(getEffectiveColor(point, routeColors), isSelected)}
+                      zIndex={isSelected ? 100 : undefined}
+                      onClick={() => { setSelectedPoint(point); setInfoWindowPoint(point) }}
+                    >
+                      {isInfoOpen && (
+                        <InfoWindow onCloseClick={() => setInfoWindowPoint(null)}>
+                          <div className="text-sm min-w-[150px]">
+                            <strong className="block mb-1">{point.name}</strong>
+                            <div className="text-xs text-gray-500 space-y-0.5">
+                              <div>Code: {point.code}</div>
+                              <div>Route: {point.routeName} ({point.routeCode})</div>
+                              <div>Type: {point.delivery}</div>
+                              <div className="font-mono">{point.latitude.toFixed(6)}, {point.longitude.toFixed(6)}</div>
+                            </div>
+                          </div>
+                        </InfoWindow>
+                      )}
+                    </MarkerF>
+                  )
+                })}
+              </GoogleMap>
+            ))
           )}
         </div>
 

@@ -755,17 +755,6 @@ body {
   scroll-behavior: smooth;
 }
 
-/* ── Leaflet CSS override ─────────────────────────────────── */
-/* Leaflet sets img { max-width: none } globally which breaks Tailwind */
-img {
-  max-width: 100%;
-}
-
-/* Leaflet map container should still ignore this */
-.leaflet-container img {
-  max-width: none;
-}
-
 /* ── Animated Modal ── */
 @keyframes modalFadeIn {
   from { opacity: 0; }

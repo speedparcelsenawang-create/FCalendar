@@ -1,15 +1,14 @@
-import { useMemo, useEffect } from "react"
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet"
-import L from "leaflet"
-import "leaflet/dist/leaflet.css"
+import { useMemo, useState } from "react"
+import { GoogleMap, useLoadScript, MarkerF, InfoWindow } from "@react-google-maps/api"
 
-// Fix for default marker icons in React-Leaflet
-delete (L.Icon.Default.prototype as any)._getIconUrl
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
-  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
-  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
-})
+const GMAP_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? ""
+
+const DELIVERY_COLORS: Record<string, string> = {
+  Daily:   "#22c55e",
+  Weekday: "#3b82f6",
+  "Alt 1": "#eab308",
+  "Alt 2": "#a855f7",
+}
 
 interface DeliveryPoint {
   code: string
@@ -25,103 +24,91 @@ interface DeliveryMapProps {
   scrollZoom?: boolean
 }
 
+const MAP_OPTIONS: google.maps.MapOptions = {
+  mapTypeControl: false,
+  streetViewControl: false,
+  fullscreenControl: false,
+  clickableIcons: false,
+}
+
+function getDotIcon(delivery: string): google.maps.Symbol {
+  return {
+    path: google.maps.SymbolPath.CIRCLE,
+    fillColor: DELIVERY_COLORS[delivery] ?? "#6b7280",
+    fillOpacity: 1,
+    strokeColor: "#ffffff",
+    strokeWeight: 2.5,
+    scale: 8,
+  }
+}
+
 export function DeliveryMap({ deliveryPoints, scrollZoom = false }: DeliveryMapProps) {
+  const { isLoaded } = useLoadScript({ googleMapsApiKey: GMAP_KEY })
+  const [activeCode, setActiveCode] = useState<string | null>(null)
+
   const validPoints = useMemo(
     () => deliveryPoints.filter((p) => p.latitude !== 0 && p.longitude !== 0),
     [deliveryPoints]
   )
 
   const center = useMemo(() => {
-    if (validPoints.length === 0) {
-      return { lat: 3.15, lng: 101.65 } // Kuala Lumpur default
+    if (validPoints.length === 0) return { lat: 3.15, lng: 101.65 }
+    return {
+      lat: validPoints.reduce((s, p) => s + p.latitude, 0) / validPoints.length,
+      lng: validPoints.reduce((s, p) => s + p.longitude, 0) / validPoints.length,
     }
-    const avgLat = validPoints.reduce((sum, p) => sum + p.latitude, 0) / validPoints.length
-    const avgLng = validPoints.reduce((sum, p) => sum + p.longitude, 0) / validPoints.length
-    return { lat: avgLat, lng: avgLng }
   }, [validPoints])
 
-  const getMarkerColor = (delivery: string) => {
-    switch (delivery) {
-      case "Daily":
-        return "#22c55e" // green
-      case "Weekday":
-        return "#3b82f6" // blue
-      case "Alt 1":
-        return "#eab308" // yellow
-      case "Alt 2":
-        return "#a855f7" // purple
-      default:
-        return "#6b7280" // gray
-    }
-  }
-
-  const createCustomIcon = (delivery: string) => {
-    const color = getMarkerColor(delivery)
-    return L.divIcon({
-      className: "",
-      html: `<div style="width:14px;height:14px;border-radius:50%;background:${color};border:2.5px solid white;box-shadow:0 1px 4px rgba(0,0,0,0.35);"></div>`,
-      iconSize: [14, 14],
-      iconAnchor: [7, 7],
-    })
-  }
-
-  // Component to fit bounds to all markers
-  function FitBounds({ points }: { points: DeliveryPoint[] }) {
-    const map = useMap()
-    
-    useEffect(() => {
-      if (points.length === 0) return
-      
-      if (points.length === 1) {
-        // Single point - center on it with reasonable zoom
-        map.setView([points[0].latitude, points[0].longitude], 13)
-      } else {
-        // Multiple points - fit bounds to show all markers
-        const bounds = L.latLngBounds(
-          points.map(p => [p.latitude, p.longitude] as [number, number])
-        )
-        map.fitBounds(bounds, {
-          padding: [30, 30], // Add padding around the markers
-          maxZoom: 15 // Don't zoom in too much
-        })
-      }
-    }, [map, points])
-    
-    return null
+  if (!isLoaded) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-muted/20">
+        <div className="size-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
   }
 
   return (
-    <MapContainer
-      center={[center.lat, center.lng]}
+    <GoogleMap
+      mapContainerStyle={{ width: "100%", height: "100%" }}
+      center={center}
       zoom={13}
-      style={{ width: "100%", height: "100%", borderRadius: "0" }}
-      scrollWheelZoom={scrollZoom}
+      options={{
+        ...MAP_OPTIONS,
+        scrollwheel: scrollZoom,
+        gestureHandling: scrollZoom ? "greedy" : "cooperative",
+      }}
+      onLoad={(map) => {
+        if (validPoints.length > 1) {
+          const bounds = new google.maps.LatLngBounds()
+          validPoints.forEach(p => bounds.extend({ lat: p.latitude, lng: p.longitude }))
+          map.fitBounds(bounds, 30)
+        } else if (validPoints.length === 1) {
+          map.setCenter({ lat: validPoints[0].latitude, lng: validPoints[0].longitude })
+          map.setZoom(13)
+        }
+      }}
     >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-      <FitBounds points={validPoints} />
       {validPoints.map((point) => (
-        <Marker
+        <MarkerF
           key={point.code}
-          position={[point.latitude, point.longitude]}
-          icon={createCustomIcon(point.delivery)}
+          position={{ lat: point.latitude, lng: point.longitude }}
+          icon={getDotIcon(point.delivery)}
+          onClick={() => setActiveCode(prev => prev === point.code ? null : point.code)}
         >
-          <Popup>
-            <div className="text-sm">
-              <strong className="block mb-1">{point.name}</strong>
-              <div className="text-xs text-muted-foreground">
-                <div>Code: {point.code}</div>
-                <div>Delivery: {point.delivery}</div>
-                <div>
-                  {point.latitude.toFixed(4)}, {point.longitude.toFixed(4)}
+          {activeCode === point.code && (
+            <InfoWindow onCloseClick={() => setActiveCode(null)}>
+              <div className="text-sm">
+                <strong className="block mb-1">{point.name}</strong>
+                <div className="text-xs text-gray-500 space-y-0.5">
+                  <div>Code: {point.code}</div>
+                  <div>Delivery: {point.delivery}</div>
+                  <div className="font-mono">{point.latitude.toFixed(4)}, {point.longitude.toFixed(4)}</div>
                 </div>
               </div>
-            </div>
-          </Popup>
-        </Marker>
+            </InfoWindow>
+          )}
+        </MarkerF>
       ))}
-    </MapContainer>
+    </GoogleMap>
   )
 }
