@@ -588,10 +588,10 @@ export function MapMarkerPage() {
   return (
     <div className="flex flex-col flex-1 min-h-0 h-full">
       {/* ── Header ───────────────────────────────────────────────────────── */}
-      <div className="shrink-0 px-4 pt-4 pb-2 md:px-6 md:pt-5 flex items-start justify-between gap-2">
+      <div className="shrink-0 px-4 pt-5 pb-3 md:px-6 md:pt-6 md:pb-4 border-b border-border/50 flex items-start justify-between gap-3">
         <div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">Map Marker</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
+          <p className="text-sm text-muted-foreground mt-1">
             {allPoints.length} locations · {routes.length} route
             {(deliveryFilter !== "All" || selectedRouteIds.size > 0) && (
               <span className="ml-1 text-primary font-medium">· {filteredPoints.length} shown</span>
@@ -599,7 +599,7 @@ export function MapMarkerPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0 mt-0.5">
+        <div className="flex items-center gap-2 shrink-0 mt-0.5">
           <button
             onClick={() => setColorOpen(true)}
             title="Set marker colour per route"
@@ -620,7 +620,7 @@ export function MapMarkerPage() {
       </div>
 
       {/* ── Body ─────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row flex-1 min-h-0 gap-0">
+      <div className="flex flex-col md:flex-row flex-1 min-h-0">
         {/* MAP */}
         <div className="relative h-[52vh] md:h-auto md:flex-[7] min-h-0 border-b md:border-b-0 md:border-r border-border">
           {allPoints.length === 0 ? (
@@ -678,7 +678,7 @@ export function MapMarkerPage() {
         {/* LIST PANEL */}
         <div className="flex flex-col md:flex-[3] min-h-0 md:max-w-xs lg:max-w-sm">
           {/* Filter bar */}
-          <div className="shrink-0 px-3 pt-3 pb-2 border-b border-border/60 flex items-center gap-2">
+          <div className="shrink-0 px-4 pt-3.5 pb-3 border-b border-border/60 flex items-center gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
               <Input
@@ -716,7 +716,7 @@ export function MapMarkerPage() {
 
           {/* Active filter chips */}
           {(deliveryFilter !== "All" || selectedRouteIds.size > 0) && (
-            <div className="shrink-0 px-3 py-1.5 flex flex-wrap gap-1.5 border-b border-border/60 bg-muted/10">
+            <div className="shrink-0 px-4 py-2 flex flex-wrap gap-1.5 border-b border-border/60 bg-muted/10">
               {deliveryFilter !== "All" && (
                 <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-primary/10 text-primary border border-primary/20">
                   <span className="w-2 h-2 rounded-full" style={{ background: DELIVERY_COLORS[deliveryFilter] }} />
@@ -763,7 +763,7 @@ export function MapMarkerPage() {
                       key={`${point.routeId}-${point.code}`}
                       ref={isSelected ? selectedListRef : null}
                       onClick={() => setSelectedPoint(point)}
-                      className={`w-full flex items-start gap-3 px-3 py-2.5 text-left transition-colors ${
+                      className={`w-full flex items-start gap-3 px-4 py-3 text-left transition-colors ${
                         isSelected
                           ? "bg-primary/8 border-l-2 border-primary"
                           : "hover:bg-muted/50 border-l-2 border-transparent"
@@ -789,12 +789,12 @@ export function MapMarkerPage() {
                             {point.delivery}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                           <span className="text-xs text-muted-foreground font-mono">{point.code}</span>
                           <span className="text-[10px] text-muted-foreground/60">·</span>
                           <span className="text-xs text-muted-foreground truncate">{point.routeName}</span>
                         </div>
-                        <div className="text-[10px] text-muted-foreground/60 font-mono mt-0.5">
+                        <div className="text-[10px] text-muted-foreground/60 font-mono mt-1">
                           {point.latitude.toFixed(5)}, {point.longitude.toFixed(5)}
                         </div>
                       </div>
@@ -806,7 +806,7 @@ export function MapMarkerPage() {
           </div>
 
           {/* Footer */}
-          <div className="shrink-0 px-3 py-2 border-t border-border/60 bg-muted/20">
+          <div className="shrink-0 px-4 py-2.5 border-t border-border/60 bg-muted/20">
             <p className="text-[11px] text-muted-foreground">
               Tunjuk {filteredPoints.length} / {allPoints.length} marker
               {selectedPoint && (
