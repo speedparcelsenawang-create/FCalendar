@@ -1,5 +1,8 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react"
-import { GoogleMap, useLoadScript, MarkerF, InfoWindow } from "@react-google-maps/api"
+import { GoogleMap, useLoadScript, InfoWindow } from "@react-google-maps/api"
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const LIBRARIES = ["marker"] as any
 import {
   MapPin, Navigation, Search, X, SlidersHorizontal,
   Palette, Check, Map as MapIcon, Settings2,
@@ -20,24 +23,33 @@ const GMAP_OPTIONS: google.maps.MapOptions = {
   streetViewControl: false,
   fullscreenControl: false,
   clickableIcons: false,
+  mapId: "DEMO_MAP_ID",
 }
 
 /**
- * Standard teardrop / location-pin SVG marker icon for Google Maps.
- * selected → slightly larger with glow.
+ * Teardrop pin HTMLElement for AdvancedMarkerElement.
+ * selected → larger with glow ring.
  */
-function createPinIcon(color: string, selected: boolean): google.maps.Icon {
-  const w = selected ? 28 : 22
-  const h = selected ? 40 : 32
-  const glow = selected
-    ? `filter:drop-shadow(0 0 5px ${color}99)`
-    : `filter:drop-shadow(0 1px 4px rgba(0,0,0,0.5))`
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="${w}" height="${h}" style="${glow}"><path d="M12 0C5.373 0 0 5.373 0 12c0 9.188 12 24 12 24S24 21.188 24 12C24 5.373 18.627 0 12 0z" fill="${color}" stroke="white" stroke-width="1.5"/><circle cx="12" cy="11.5" r="4.5" fill="white" opacity="0.92"/></svg>`
-  return {
-    url: `data:image/svg+xml,${encodeURIComponent(svg)}`,
-    scaledSize: new google.maps.Size(w, h),
-    anchor: new google.maps.Point(w / 2, h),
-  }
+function createPinElement(color: string, selected: boolean): HTMLElement {
+  const w = selected ? 30 : 22
+  const h = Math.round(w * 1.5)
+  const wrapper = document.createElement("div")
+  wrapper.style.cssText = `
+    cursor: pointer;
+    transform-origin: bottom center;
+    transition: transform 0.15s ease;
+    transform: ${selected ? "scale(1.15)" : "scale(1)"};
+  `
+  wrapper.innerHTML = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36"
+         width="${w}" height="${h}"
+         style="filter: drop-shadow(0 ${selected ? "3px 8px" : "1px 4px"} rgba(0,0,0,${selected ? "0.5" : "0.4"})">
+      <path d="M12 0C5.373 0 0 5.373 0 12c0 9.188 12 24 12 24S24 21.188 24 12C24 5.373 18.627 0 12 0z"
+            fill="${color}" stroke="white" stroke-width="1.5"/>
+      <circle cx="12" cy="11.5" r="4.5" fill="white" opacity="0.92"/>
+    </svg>
+  `
+  return wrapper
 }
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -494,7 +506,13 @@ export function MapMarkerPage() {
   const selectedListRef = useRef<HTMLButtonElement | null>(null)
   const mapRef          = useRef<google.maps.Map | null>(null)
   const flyPrevKey      = useRef<string | null>(null)
-  const { isLoaded: gmapsLoaded } = useLoadScript({ googleMapsApiKey: GMAP_KEY })
+  const { isLoaded: gmapsLoaded } = useLoadScript({ googleMapsApiKey: GMAP_KEY, libraries: LIBRARIES })
+  const [mapInstance,  setMapInstance]  = useState<google.maps.Map | null>(null)
+  const markerMapRef = useRef<Map<string, {
+    marker: google.maps.marker.AdvancedMarkerElement
+    el: HTMLElement
+    point: EnrichedPoint
+  }>>(new Map())
 
   // Fetch routes from API
   const fetchRoutes = useCallback(async () => {
@@ -567,18 +585,57 @@ export function MapMarkerPage() {
   const activeFiltersCount =
     (deliveryFilter !== "All" ? 1 : 0) + selectedRouteIds.size + (searchQuery.trim() ? 1 : 0)
 
-  // Precompute marker icons so Google Maps doesn't recreate SVG on every render
-  const pinIconsMap = useMemo(() => {
-    if (!gmapsLoaded) return new Map<string, google.maps.Icon>()
-    const cache = new Map<string, google.maps.Icon>()
-    for (const point of filteredPoints) {
-      const color = getEffectiveColor(point, routeColors)
-      const key = `${point.routeId}-${point.code}`
-      cache.set(`${key}-0`, createPinIcon(color, false))
-      cache.set(`${key}-1`, createPinIcon(color, true))
+  // Create / sync AdvancedMarkers when map, points or colours change
+  useEffect(() => {
+    if (!mapInstance) return
+    const prev = markerMapRef.current
+    const nextKeys = new Set(filteredPoints.map(p => `${p.routeId}-${p.code}`))
+
+    // Remove markers no longer in filtered list
+    for (const [key, { marker }] of prev) {
+      if (!nextKeys.has(key)) { marker.map = null; prev.delete(key) }
     }
-    return cache
-  }, [filteredPoints, routeColors, gmapsLoaded])
+
+    // Add new markers, update existing colour
+    for (const point of filteredPoints) {
+      const key   = `${point.routeId}-${point.code}`
+      const color = getEffectiveColor(point, routeColors)
+      const isSelected = selectedPoint?.code === point.code && selectedPoint?.routeId === point.routeId
+
+      if (prev.has(key)) {
+        // Update colour on existing element
+        const { el } = prev.get(key)!
+        const svg = el.querySelector("path")
+        if (svg) svg.setAttribute("fill", color)
+      } else {
+        const el     = createPinElement(color, isSelected)
+        const marker = new google.maps.marker.AdvancedMarkerElement({
+          map:      mapInstance,
+          position: { lat: point.latitude, lng: point.longitude },
+          content:  el,
+          title:    point.name,
+        })
+        marker.addListener("click", () => {
+          setSelectedPoint(point)
+          setInfoWindowPoint(point)
+        })
+        prev.set(key, { marker, el, point })
+      }
+    }
+  }, [mapInstance, filteredPoints, routeColors]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Update selected-state styling without recreating markers
+  useEffect(() => {
+    for (const [, { el, point }] of markerMapRef.current) {
+      const isSelected = selectedPoint?.code === point.code && selectedPoint?.routeId === point.routeId
+      el.style.transform        = isSelected ? "scale(1.15)" : "scale(1)"
+      el.style.zIndex           = isSelected ? "100" : ""
+      const svg = el.querySelector("svg")
+      if (svg) svg.style.filter = isSelected
+        ? "drop-shadow(0 3px 8px rgba(0,0,0,0.5))"
+        : "drop-shadow(0 1px 4px rgba(0,0,0,0.4))"
+    }
+  }, [selectedPoint])
 
   if (isLoading) {
     return (
@@ -643,21 +700,9 @@ export function MapMarkerPage() {
                 center={{ lat: defaultView.center[0], lng: defaultView.center[1] }}
                 zoom={defaultView.zoom}
                 options={GMAP_OPTIONS}
-                onLoad={(map) => { mapRef.current = map }}
+                onLoad={(map) => { mapRef.current = map; setMapInstance(map) }}
                 onClick={() => setInfoWindowPoint(null)}
               >
-                {filteredPoints.map(point => {
-                  const isSelected = selectedPoint?.code === point.code && selectedPoint?.routeId === point.routeId
-                  return (
-                    <MarkerF
-                      key={`${point.routeId}-${point.code}`}
-                      position={{ lat: point.latitude, lng: point.longitude }}
-                      icon={pinIconsMap.get(`${point.routeId}-${point.code}-${isSelected ? 1 : 0}`)}
-                      zIndex={isSelected ? 100 : undefined}
-                      onClick={() => { setSelectedPoint(point); setInfoWindowPoint(point) }}
-                    />
-                  )
-                })}
                 {infoWindowPoint && (
                   <InfoWindow
                     position={{ lat: infoWindowPoint.latitude, lng: infoWindowPoint.longitude }}

@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react"
-import { List, Info, Plus, Check, X, Edit2, Trash2, Search, Settings, Map, MapPin, Save, ArrowUp, ArrowDown, RotateCcw, Truck, SlidersHorizontal, Loader2, Maximize2, Minimize2, MessageSquare } from "lucide-react"
+import { List, Info, Plus, Check, X, Edit2, Trash2, Search, Settings, Save, ArrowUp, ArrowDown, RotateCcw, Truck, SlidersHorizontal, Loader2, Maximize2, Minimize2, MessageSquare } from "lucide-react"
 import { RowInfoModal } from "./RowInfoModal"
 import { useEditMode } from "@/contexts/EditModeContext"
 import {
@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { DeliveryMap } from "./DeliveryMap"
 import {
   Tooltip,
   TooltipContent,
@@ -76,7 +75,7 @@ function formatRelativeTime(dateStr?: string): string {
 }
 
 // ── Distance helpers ──────────────────────────────────────────────
-const DEFAULT_MAP_CENTER = { lat: 3.15, lng: 101.65 } // Kuala Lumpur default
+const DEFAULT_MAP_CENTER = { lat: 3.0695500, lng: 101.5469179 }
 
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371
@@ -149,7 +148,6 @@ export function RouteList() {
   const [newRoute, setNewRoute] = useState({ name: "", code: "", shift: "AM" })
   const [searchQuery, setSearchQuery] = useState("")
   const [filterRegion, setFilterRegion] = useState<"all" | "KL" | "Sel">("all")
-  const [fullscreenRouteId, setFullscreenRouteId] = useState<string | null>(null)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [detailFullscreen, setDetailFullscreen] = useState(false)
 
@@ -782,22 +780,17 @@ export function RouteList() {
                   >
                     {/* Header */}
                     <div className="px-4 py-3 border-b border-border shrink-0 bg-background flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 ring-1 ring-primary/20">
-                        <Truck className="size-[17px] text-primary" />
-                      </div>
+                      {(route.name + " " + route.code).toLowerCase().includes("kl")
+                        ? <img src="/kl-flag.png" className="h-7 w-auto max-w-[48px] object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10 shrink-0" alt="KL" />
+                        : (route.name + " " + route.code).toLowerCase().includes("sel")
+                        ? <img src="/selangor-flag.png" className="h-7 w-auto max-w-[48px] object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10 shrink-0" alt="Selangor" />
+                        : (
+                          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 ring-1 ring-primary/20">
+                            <Truck className="size-[17px] text-primary" />
+                          </div>
+                        )}
                       <div className="flex-1 min-w-0">
                         <h1 className="text-sm font-bold leading-tight truncate">{route.name}</h1>
-                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                          <span className="font-mono text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md">{route.code}</span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            route.shift === 'AM'
-                              ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
-                              : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                          }`}>{route.shift}</span>
-                          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                            <MapPin className="size-3" />{deliveryPoints.length} pts
-                          </span>
-                        </div>
                       </div>
                       <Button variant="outline" size="sm" onClick={() => openSettings(route.id)} className="shrink-0 flex items-center gap-1.5 h-8 rounded-xl text-xs">
                         <Settings className="size-3.5" />Settings
@@ -913,7 +906,7 @@ export function RouteList() {
                                           </div>
                                         </PopoverContent>
                                       </Popover>
-                                      ) : (<span className="font-mono text-[11px] font-medium px-2 py-0.5 rounded-md bg-muted text-muted-foreground">{point.code}</span>)}
+                                      ) : (<span className="font-mono text-[11px] text-muted-foreground">{point.code}</span>)}
                                     </td>
                                   )
                                   if (col.key === 'name') return (
@@ -969,11 +962,11 @@ export function RouteList() {
                                           <Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
                                         </button>
                                       ) : (
-                                        <span className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                                          point.delivery === 'Daily'   ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
-                                          : point.delivery === 'Weekday' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400'
-                                          : point.delivery === 'Alt 1'  ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400'
-                                          : 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400'
+                                        <span className={`text-[11px] font-semibold ${
+                                          point.delivery === 'Daily'   ? 'text-green-700 dark:text-green-400'
+                                          : point.delivery === 'Weekday' ? 'text-blue-700 dark:text-blue-400'
+                                          : point.delivery === 'Alt 1'  ? 'text-orange-700 dark:text-orange-400'
+                                          : 'text-purple-700 dark:text-purple-400'
                                         }`}>{point.delivery}</span>
                                       )}
                                     </td>
@@ -1496,29 +1489,6 @@ export function RouteList() {
         </div>
         )}
         </div>
-
-        {/* Fullscreen Map Dialog */}
-        <Dialog open={!!fullscreenRouteId} onOpenChange={(open) => { if (!open) setFullscreenRouteId(null) }}>
-          <DialogContent className="max-w-none w-screen h-[100dvh] p-0 rounded-none border-0 flex flex-col">
-            <DialogTitle className="sr-only">Fullscreen Map</DialogTitle>
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-border bg-background shrink-0 pr-12">
-              <Map className="size-4 text-muted-foreground" />
-              <span className="font-semibold text-sm">
-                {routes.find(r => r.id === fullscreenRouteId)?.name ?? "Map"}
-              </span>
-            </div>
-            <div className="flex-1 relative h-full min-h-0">
-              {fullscreenRouteId && (
-                <div className="absolute inset-0">
-                  <DeliveryMap
-                    deliveryPoints={routes.find(r => r.id === fullscreenRouteId)?.deliveryPoints ?? []}
-                    scrollZoom
-                  />
-                </div>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
 
         {/* Edit Route Dialog */}
         <Dialog open={editRouteDialogOpen} onOpenChange={setEditRouteDialogOpen}>
