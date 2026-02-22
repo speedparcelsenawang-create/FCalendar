@@ -228,94 +228,76 @@ export function DeliveryTableDialog() {
         </div>
       )}
 
-      {/* ── Virtual-scroll table ─────────────────────────────────────── */}
+      {/* ── Table — flex scroll (fills remaining height, scrolls inside) ── */}
       {(!loading || flat.length > 0) && !error && (
-        <div className="flex flex-col flex-1 min-h-0">
-          {/* Frozen header */}
-          <div className="shrink-0 overflow-x-auto border-b">
-            <table className="w-full" style={{ minWidth: 480 }}>
-              <thead className="bg-muted/70 text-xs uppercase tracking-wider text-muted-foreground font-semibold">
+        <div className="flex-1 overflow-auto min-h-0">
+          <table className="border-collapse text-sm whitespace-nowrap min-w-max w-full">
+            <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm text-xs uppercase tracking-wider text-muted-foreground font-semibold border-b border-border">
+              <tr>
+                <th className="px-3 py-3 text-center w-10">#</th>
+                <th className="px-3 py-3 text-center cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("route")}>
+                  Route <SortIcon col="route" />
+                </th>
+                <th className="px-3 py-3 text-center cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("code")}>
+                  Code <SortIcon col="code" />
+                </th>
+                <th className="px-3 py-3 text-left cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("name")}>
+                  Location Name <SortIcon col="name" />
+                </th>
+                <th className="px-3 py-3 text-center cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("delivery")}>
+                  Delivery <SortIcon col="delivery" />
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {displayed.length === 0 ? (
                 <tr>
-                  <th className="px-3 py-3 text-center font-semibold w-10">#</th>
-                  <th className="px-3 py-3 text-center font-semibold cursor-pointer select-none hover:text-foreground" style={{ minWidth: 130 }} onClick={() => handleSort("route")}>
-                    Route <SortIcon col="route" />
-                  </th>
-                  <th className="px-3 py-3 text-center font-semibold cursor-pointer select-none hover:text-foreground" style={{ minWidth: 80 }} onClick={() => handleSort("code")}>
-                    Code <SortIcon col="code" />
-                  </th>
-                  <th className="px-3 py-3 text-left font-semibold cursor-pointer select-none hover:text-foreground" style={{ minWidth: 200 }} onClick={() => handleSort("name")}>
-                    Location Name <SortIcon col="name" />
-                  </th>
-                  <th className="px-3 py-3 text-center font-semibold cursor-pointer select-none hover:text-foreground" style={{ minWidth: 100 }} onClick={() => handleSort("delivery")}>
-                    Delivery <SortIcon col="delivery" />
-                  </th>
+                  <td colSpan={5} className="text-center py-16 text-muted-foreground">
+                    No results found.
+                  </td>
                 </tr>
-              </thead>
-            </table>
-          </div>
-
-          {/* Scrollable body */}
-          <div className="flex-1 overflow-auto">
-            <table className="w-full text-sm" style={{ minWidth: 480 }}>
-              <tbody className="divide-y divide-border">
-                {displayed.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="text-center py-16 text-muted-foreground">
-                      No results found.
+              ) : (
+                displayed.map((pt, idx) => (
+                  <tr
+                    key={`${pt.routeId}-${pt.code}-${idx}`}
+                    className={cn(
+                      "transition-colors",
+                      (pt._dupCode || pt._dupName)
+                        ? "bg-amber-50/60 dark:bg-amber-900/10 hover:bg-amber-100/60 dark:hover:bg-amber-900/20"
+                        : idx % 2 === 0 ? "hover:bg-muted/40" : "bg-muted/20 hover:bg-muted/40"
+                    )}
+                  >
+                    <td className="px-3 py-3 text-center text-muted-foreground w-10 text-xs tabular-nums">{idx + 1}</td>
+                    <td className="px-3 py-3 text-center">
+                      <span className="inline-block text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-primary/10 text-primary">{pt.routeName}</span>
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      <span className={cn("font-mono text-xs font-medium", pt._dupCode && "text-amber-600 dark:text-amber-400 font-bold")}>
+                        {pt.code}
+                      </span>
+                      {pt._dupCode && <AlertTriangle className="inline w-3 h-3 ml-1 text-amber-500" />}
+                    </td>
+                    <td className="px-3 py-3 text-left">
+                      <span className={cn("text-xs", pt._dupName && "text-rose-600 dark:text-rose-400 font-semibold")}>
+                        {pt.name}
+                      </span>
+                      {pt._dupName && <AlertTriangle className="inline w-3 h-3 ml-1 text-rose-500" />}
+                    </td>
+                    <td className="px-3 py-3 text-center">
+                      <span className={cn(
+                        "inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full",
+                        pt.delivery === 'Daily'   ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
+                        : pt.delivery === 'Weekday' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400'
+                        : pt.delivery === 'Alt 1'  ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400'
+                        : pt.delivery === 'Alt 2'  ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400'
+                        : 'bg-muted text-muted-foreground'
+                      )}>{pt.delivery}</span>
                     </td>
                   </tr>
-                ) : (
-                  displayed.map((pt, idx) => (
-                    <tr
-                      key={`${pt.routeId}-${pt.code}-${idx}`}
-                      className={cn(
-                        "transition-colors",
-                        (pt._dupCode || pt._dupName)
-                          ? "bg-amber-50/60 dark:bg-amber-900/10 hover:bg-amber-100/60 dark:hover:bg-amber-900/20"
-                          : idx % 2 === 0 ? "hover:bg-muted/40" : "bg-muted/20 hover:bg-muted/40"
-                      )}
-                    >
-                      {/* # */}
-                      <td className="px-3 py-3 text-center text-muted-foreground w-10 text-xs tabular-nums">{idx + 1}</td>
-
-                      {/* Route — colored badge */}
-                      <td className="px-3 py-3 text-center" style={{ minWidth: 130 }}>
-                        <span className="inline-block text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-primary/10 text-primary truncate max-w-[120px]">{pt.routeName}</span>
-                      </td>
-
-                      {/* Code */}
-                      <td className="px-3 py-3 text-center" style={{ minWidth: 80 }}>
-                        <span className={cn("font-mono text-xs font-medium", pt._dupCode && "text-amber-600 dark:text-amber-400 font-bold")}>
-                          {pt.code}
-                        </span>
-                        {pt._dupCode && <AlertTriangle className="inline w-3 h-3 ml-1 text-amber-500" />}
-                      </td>
-
-                      {/* Name — left aligned */}
-                      <td className="px-3 py-3 text-left" style={{ minWidth: 200 }}>
-                        <span className={cn("text-xs", pt._dupName && "text-rose-600 dark:text-rose-400 font-semibold")}>
-                          {pt.name}
-                        </span>
-                        {pt._dupName && <AlertTriangle className="inline w-3 h-3 ml-1 text-rose-500" />}
-                      </td>
-
-                      {/* Delivery — colored pill badge */}
-                      <td className="px-3 py-3 text-center" style={{ minWidth: 100 }}>
-                        <span className={cn(
-                          "inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full",
-                          pt.delivery === 'Daily'   ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
-                          : pt.delivery === 'Weekday' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400'
-                          : pt.delivery === 'Alt 1'  ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400'
-                          : pt.delivery === 'Alt 2'  ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400'
-                          : 'bg-muted text-muted-foreground'
-                        )}>{pt.delivery}</span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       )}
 

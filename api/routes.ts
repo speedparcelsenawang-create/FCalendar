@@ -24,6 +24,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         code: row.code,
         shift: row.shift,
         deliveryPoints: row.delivery_points,
+        updatedAt: row.updated_at,
       }));
       return res.status(200).json({ success: true, data: routes });
     }

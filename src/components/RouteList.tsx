@@ -1,6 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react"
-import { List, Info, Plus, Check, X, Edit2, Trash2, Search, Settings, Map, MapPin, Save, ArrowUp, ArrowDown, RotateCcw, Truck, ChevronLeft, SlidersHorizontal, Loader2 } from "lucide-react"
-import { toast } from "sonner"
+import { List, Info, Plus, Check, X, Edit2, Trash2, Search, Settings, Map, MapPin, Save, ArrowUp, ArrowDown, RotateCcw, Truck, SlidersHorizontal, Loader2, Maximize2, Minimize2, MessageSquare } from "lucide-react"
 import { RowInfoModal } from "./RowInfoModal"
 import { useEditMode } from "@/contexts/EditModeContext"
 import {
@@ -45,6 +44,7 @@ interface Route {
   code: string
   shift: string
   deliveryPoints: DeliveryPoint[]
+  updatedAt?: string
 }
 
 // Returns true if the delivery point is active on the given date
@@ -58,6 +58,21 @@ function isDeliveryActive(delivery: DeliveryPoint['delivery'], date: Date = new 
     case 'Weekday': return dayOfWeek <= 4       // Sun(0) – Thu(4)
     default:        return true
   }
+}
+
+function formatRelativeTime(dateStr?: string): string {
+  if (!dateStr) return 'Never'
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1)   return 'Just now'
+  if (mins < 60)  return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24)   return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  if (days < 30)  return `${days}d ago`
+  const months = Math.floor(days / 30)
+  if (months < 12) return `${months}mo ago`
+  return `${Math.floor(months / 12)}y ago`
 }
 
 // ── Distance helpers ──────────────────────────────────────────────
@@ -120,11 +135,10 @@ const DEFAULT_ROUTES: Route[] = [
 ]
 
 export function RouteList() {
-  const { isEditMode, hasUnsavedChanges, isSaving, setHasUnsavedChanges, registerSaveHandler } = useEditMode()
+  const { isEditMode, hasUnsavedChanges, isSaving, setHasUnsavedChanges, registerSaveHandler, saveChanges } = useEditMode()
   const [routes, setRoutes] = useState<Route[]>(DEFAULT_ROUTES)
   const [isLoading, setIsLoading] = useState(true)
   const [currentRouteId, setCurrentRouteId] = useState<string>("route-1")
-  const [currentView, setCurrentView] = useState<'list' | 'detail'>('list')
   const [infoModalOpen, setInfoModalOpen] = useState(false)
   const [selectedPoint, setSelectedPoint] = useState<DeliveryPoint | null>(null)
   const [addRouteDialogOpen, setAddRouteDialogOpen] = useState(false)
@@ -136,7 +150,8 @@ export function RouteList() {
   const [searchQuery, setSearchQuery] = useState("")
   const [filterRegion, setFilterRegion] = useState<"all" | "KL" | "Sel">("all")
   const [fullscreenRouteId, setFullscreenRouteId] = useState<string | null>(null)
-  const [detailClosing, setDetailClosing] = useState(false)
+  const [detailDialogOpen, setDetailDialogOpen] = useState(false)
+  const [detailFullscreen, setDetailFullscreen] = useState(false)
 
   // Fetch routes from database
   const fetchRoutes = useCallback(async (preserveCurrentId?: string) => {
@@ -590,16 +605,6 @@ export function RouteList() {
     registerSaveHandler(doSave)
   }, [doSave, registerSaveHandler])
 
-  const handleSaveChanges = async () => {
-    try {
-      await doSave()
-      setHasUnsavedChanges(false)
-      toast.success('Saved successfully!')
-    } catch (e) {
-      toast.error('Save failed: ' + (e instanceof Error ? e.message : 'Unknown error'))
-    }
-  }
-
   const handleDeleteRoute = () => {
     if (!routeToDelete) return
     
@@ -715,84 +720,103 @@ export function RouteList() {
               className="bg-card rounded-xl border border-border shadow-sm hover:shadow-md hover:border-primary/30 transition-all duration-200 overflow-hidden group"
             >
               {/* Card Row */}
-              <div className="flex items-center gap-3 px-4 py-3.5">
-                {/* Icon */}
-                <div className="shrink-0 w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Truck className="size-[18px] text-primary" />
-                </div>
+              <div className="flex items-center gap-4 px-4 py-3.5">
                 {/* Route Info */}
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-[13.5px] font-semibold truncate group-hover:text-primary transition-colors leading-tight">{route.name}</h3>
-                  <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                    <span className="font-mono text-[11px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md">{route.code}</span>
-                    <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full ${route.shift === 'AM' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>{route.shift}</span>
-                    <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground">
-                      <MapPin className="size-3" />{route.deliveryPoints.length} pts
+                  <div className="flex items-center gap-2 min-w-0">
+                    <h3 className="text-[13px] font-semibold truncate group-hover:text-primary transition-colors leading-tight">{route.name}</h3>
+                    <span className="text-[12px] text-muted-foreground/40 shrink-0">·</span>
+                    <span className="font-mono text-[11px] text-muted-foreground/70 shrink-0">{route.code}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={`text-[11px] font-medium ${
+                      route.shift === 'AM' ? 'text-orange-500 dark:text-orange-400' : 'text-blue-500 dark:text-blue-400'
+                    }`}>{route.shift}</span>
+                    <span className="text-muted-foreground/30 text-[10px]">·</span>
+                    <span className="text-[11px] text-muted-foreground/70">
+                      <span className="font-medium text-foreground">{route.deliveryPoints.filter(p => isDeliveryActive(p.delivery)).length}</span>
+                      <span className="text-muted-foreground/50"> / {route.deliveryPoints.length}</span>
+                      <span className="ml-1">Locations</span>
                     </span>
                   </div>
                 </div>
-                {/* Action Buttons */}
-                <div className="shrink-0 flex items-center gap-1">
-                  {isEditMode && (
+                {/* Right side */}
+                <div className="shrink-0 flex flex-col items-end gap-2">
+                  <span className="text-[10px] text-muted-foreground/50 whitespace-nowrap">
+                    {formatRelativeTime(route.updatedAt)}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    {isEditMode && (
+                      <button
+                        className="p-1.5 rounded-lg text-muted-foreground/60 hover:text-primary hover:bg-primary/8 transition-colors"
+                        onClick={() => handleEditRoute(route)}
+                        title="Edit Route"
+                      >
+                        <Settings className="size-[15px]" />
+                      </button>
+                    )}
                     <button
-                      className="p-2 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/8 transition-colors"
-                      onClick={() => handleEditRoute(route)}
-                      title="Edit Route"
+                      className="p-1.5 rounded-lg text-muted-foreground/60 hover:text-primary hover:bg-primary/8 transition-colors"
+                      title="Comments"
                     >
-                      <Settings className="size-4" />
+                      <MessageSquare className="size-[15px]" />
                     </button>
-                  )}
-                    <button 
-                      className="p-2 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/8 transition-colors"
-                      onClick={() => { setCurrentRouteId(route.id); setCurrentView('detail') }}
+                    <button
+                      className="p-1.5 rounded-lg text-muted-foreground/60 hover:text-primary hover:bg-primary/8 transition-colors"
+                      onClick={() => { setCurrentRouteId(route.id); setDetailDialogOpen(true) }}
                       title="View Details"
                     >
-                      <List className="size-4" />
+                      <List className="size-[15px]" />
                     </button>
-                  {route.id === currentRouteId && currentView === 'detail' && (
-                  <div
-                    className={`absolute inset-0 z-50 bg-background flex flex-col ${
-                      detailClosing
-                        ? 'animate-out slide-out-to-right duration-250 fill-mode-forwards'
-                        : 'animate-in slide-in-from-right duration-300'
-                    }`}
-                    style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+                  </div>
+                </div>
+              </div>
+            </div>
+                  <Dialog open={detailDialogOpen && route.id === currentRouteId} onOpenChange={(open) => { if (!open) { setDetailDialogOpen(false); setDetailFullscreen(false); setSelectedRows([]) } }}>
+                  <DialogContent
+                    className="p-0 gap-0 flex flex-col overflow-hidden transition-[width,height,max-width,border-radius] duration-300 ease-in-out"
+                    style={detailFullscreen
+                      ? { width: '100vw', maxWidth: '100vw', height: '100dvh', borderRadius: 0 }
+                      : { width: '92vw', maxWidth: '56rem', height: 'calc(7 * 44px + 96px)', borderRadius: '0.75rem' }
+                    }
                   >
                     {/* Header */}
                     <div className="px-4 py-3 border-b border-border shrink-0 bg-background flex items-center gap-3">
-                      <button
-                        onClick={() => {
-                          setDetailClosing(true)
-                          setTimeout(() => { setCurrentView('list'); setSelectedRows([]); setDetailClosing(false) }, 250)
-                        }}
-                        className="p-2 rounded-xl hover:bg-muted transition-colors shrink-0"
-                      >
-                        <ChevronLeft className="size-5" />
-                      </button>
-                      <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                        <Truck className="size-[18px] text-primary" />
+                      <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 ring-1 ring-primary/20">
+                        <Truck className="size-[17px] text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h1 className="text-[15px] font-bold leading-tight truncate">{route.name}</h1>
+                        <h1 className="text-sm font-bold leading-tight truncate">{route.name}</h1>
                         <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                          <span className="font-mono text-[11px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md">{route.code}</span>
-                          <span className={`text-[11px] font-semibold ${route.shift === 'AM' ? 'text-orange-600 dark:text-orange-400' : 'text-blue-600 dark:text-blue-400'}`}>{route.shift}</span>
-                          <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                          <span className="font-mono text-[10px] font-medium text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md">{route.code}</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            route.shift === 'AM'
+                              ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
+                              : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                          }`}>{route.shift}</span>
+                          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
                             <MapPin className="size-3" />{deliveryPoints.length} pts
                           </span>
                         </div>
                       </div>
-                      <Button variant="outline" size="sm" onClick={() => openSettings(route.id)} className="shrink-0 flex items-center gap-1.5 h-8 rounded-xl">
+                      <Button variant="outline" size="sm" onClick={() => openSettings(route.id)} className="shrink-0 flex items-center gap-1.5 h-8 rounded-xl text-xs">
                         <Settings className="size-3.5" />Settings
                       </Button>
+                      <button
+                        onClick={() => setDetailFullscreen(f => !f)}
+                        className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        title={detailFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+                      >
+                        {detailFullscreen ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
+                      </button>
                     </div>
                     {/* Table */}
-                    <div className="flex-1 overflow-auto">
-                          <table className="w-full border-collapse">
-                            <thead className="bg-muted/60 sticky top-0 z-10">
+                    <div className="flex-1 overflow-auto scroll-smooth">
+                          <table className="border-collapse text-[12px] whitespace-nowrap min-w-max w-full">
+                            <thead className="bg-muted/70 sticky top-0 z-10 backdrop-blur-sm">
                               <tr className="border-b border-border">
                                 {isEditMode && (
-                                  <th className="px-3 py-2.5 text-center w-10">
+                                  <th className="px-3 h-9 text-center w-10">
                                     <input
                                       type="checkbox"
                                       checked={selectedRows.length === deliveryPoints.length && deliveryPoints.length > 0}
@@ -802,13 +826,13 @@ export function RouteList() {
                                   </th>
                                 )}
                                 {columns.filter(c => c.visible && c.key !== 'action').map(col => (
-                                  <th key={col.key} className="px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">{col.label}</th>
+                                  <th key={col.key} className="px-3 h-9 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{col.label}</th>
                                 ))}
-                                <th className="px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Km</th>
-                                {isEditMode && <th className="px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Latitude</th>}
-                                {isEditMode && <th className="px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Longitude</th>}
+                                <th className="px-3 h-9 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Km</th>
+                                {isEditMode && <th className="px-3 h-9 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Latitude</th>}
+                                {isEditMode && <th className="px-3 h-9 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Longitude</th>}
                                 {columns.find(c => c.key === 'action' && c.visible) && (
-                                  <th className="px-3 py-2.5 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground">Action</th>
+                                  <th className="px-3 h-9 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Action</th>
                                 )}
                           </tr>
                         </thead>
@@ -823,27 +847,27 @@ export function RouteList() {
                               : `${sortedDeliveryPoints[index - 1].name || sortedDeliveryPoints[index - 1].code} → ${point.name || point.code}: ${distInfo ? formatKm(distInfo.segment) : '-'}`
 
                             return (
-                              <tr key={point.code} className={`border-b border-border/40 transition-colors ${
+                              <tr key={point.code} className={`border-b border-border/30 transition-colors duration-100 ${
                                 isActive
-                                  ? index % 2 === 0 ? 'hover:bg-primary/5' : 'bg-muted/20 hover:bg-primary/5'
-                                  : 'bg-muted/50 opacity-50 hover:opacity-70'
+                                  ? index % 2 === 0 ? 'hover:bg-primary/5' : 'bg-muted/25 hover:bg-primary/5'
+                                  : 'opacity-40 hover:opacity-60'
                               }`}>
                                 {isEditMode && (
-                                  <td className="p-3 text-center">
+                                  <td className="px-3 h-11 text-center">
                                     <input
                                       type="checkbox"
                                       checked={selectedRows.includes(point.code)}
                                       onChange={() => toggleRowSelection(point.code)}
-                                      className="w-4 h-4 rounded border-border cursor-pointer"
+                                      className="w-4 h-4 rounded border-border cursor-pointer accent-primary"
                                     />
                                   </td>
                                 )}
                                 {columns.filter(c => c.visible).map(col => {
                                   if (col.key === 'no') return (
-                                    <td key="no" className="px-3 py-3.5 text-[11px] text-center text-muted-foreground tabular-nums">{index + 1}</td>
+                                    <td key="no" className="px-3 h-11 text-center text-[11px] text-muted-foreground tabular-nums font-medium">{index + 1}</td>
                                   )
                                   if (col.key === 'code') return (
-                                    <td key="code" className="px-3 py-3.5 text-[11px] text-center">
+                                    <td key="code" className="px-3 h-11 text-center">
                                       {isEditMode ? (
                                       <Popover
                                         open={isEditMode && !!popoverOpen[`${point.code}-code`]}
@@ -889,11 +913,11 @@ export function RouteList() {
                                           </div>
                                         </PopoverContent>
                                       </Popover>
-                                      ) : (<span className="px-3 py-1">{point.code}</span>)}
+                                      ) : (<span className="font-mono text-[11px] font-medium px-2 py-0.5 rounded-md bg-muted text-muted-foreground">{point.code}</span>)}
                                     </td>
                                   )
                                   if (col.key === 'name') return (
-                                    <td key="name" className="px-3 py-3.5 text-[11px] text-center">
+                                    <td key="name" className="px-3 h-11 text-center">
                                       {isEditMode ? (
                                       <Popover
                                         open={isEditMode && !!popoverOpen[`${point.code}-name`]}
@@ -922,11 +946,11 @@ export function RouteList() {
                                           </div>
                                         </PopoverContent>
                                       </Popover>
-                                      ) : (<span className="px-3 py-1">{point.name}</span>)}
+                                      ) : (<span className="text-[12px]">{point.name}</span>)}
                                     </td>
                                   )
                                   if (col.key === 'delivery') return (
-                                    <td key="delivery" className="px-3 py-3.5 text-center">
+                                    <td key="delivery" className="px-3 h-11 text-center">
                                       {isEditMode ? (
                                         <button
                                           className="group inline-flex items-center gap-1.5 hover:scale-105 transition-transform mx-auto"
@@ -945,11 +969,11 @@ export function RouteList() {
                                           <Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
                                         </button>
                                       ) : (
-                                        <span className={`text-[11px] font-semibold ${
-                                          point.delivery === 'Daily' ? 'text-green-700 dark:text-green-400'
-                                          : point.delivery === 'Weekday' ? 'text-blue-700 dark:text-blue-400'
-                                          : point.delivery === 'Alt 1' ? 'text-orange-700 dark:text-orange-400'
-                                          : 'text-purple-700 dark:text-purple-400'
+                                        <span className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                                          point.delivery === 'Daily'   ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
+                                          : point.delivery === 'Weekday' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400'
+                                          : point.delivery === 'Alt 1'  ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400'
+                                          : 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400'
                                         }`}>{point.delivery}</span>
                                       )}
                                     </td>
@@ -957,7 +981,7 @@ export function RouteList() {
                                   if (col.key === 'action') return null
                                   return null
                                 })}
-                                <td className="px-3 py-3.5 text-sm text-center">
+                                <td className="px-3 h-11 text-center">
                                   <TooltipProvider delayDuration={100}>
                                     <Tooltip
                                       open={openKmTooltip === point.code}
@@ -977,10 +1001,10 @@ export function RouteList() {
                                   </TooltipProvider>
                                 </td>
                                 {isEditMode && (
-                                  <td className="px-3 py-3.5 text-[11px] font-mono text-center">
+                                  <td className="px-3 h-11 text-center font-mono">
                                     <Popover open={isEditMode && !!popoverOpen[`${point.code}-latitude`]} onOpenChange={(open) => { if (!isEditMode) return; if (!open) cancelEdit(); setPopoverOpen({ [`${point.code}-latitude`]: open }) }}>
                                       <PopoverTrigger asChild>
-                                        <button className="hover:bg-accent px-3 py-1 rounded flex items-center justify-center gap-1.5 group font-mono mx-auto" onClick={() => startEdit(point.code, 'latitude', point.latitude.toFixed(4))}>
+                                        <button className="hover:bg-accent px-3 py-1 rounded flex items-center justify-center gap-1.5 group font-mono mx-auto text-[11px]" onClick={() => startEdit(point.code, 'latitude', point.latitude.toFixed(4))}>
                                           <span>{point.latitude.toFixed(4)}</span><Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
                                         </button>
                                       </PopoverTrigger>
@@ -989,10 +1013,10 @@ export function RouteList() {
                                   </td>
                                 )}
                                 {isEditMode && (
-                                  <td className="px-3 py-3.5 text-[11px] font-mono text-center">
+                                  <td className="px-3 h-11 text-center font-mono">
                                     <Popover open={isEditMode && !!popoverOpen[`${point.code}-longitude`]} onOpenChange={(open) => { if (!isEditMode) return; if (!open) cancelEdit(); setPopoverOpen({ [`${point.code}-longitude`]: open }) }}>
                                       <PopoverTrigger asChild>
-                                        <button className="hover:bg-accent px-3 py-1 rounded flex items-center justify-center gap-1.5 group font-mono mx-auto" onClick={() => startEdit(point.code, 'longitude', point.longitude.toFixed(4))}>
+                                        <button className="hover:bg-accent px-3 py-1 rounded flex items-center justify-center gap-1.5 group font-mono mx-auto text-[11px]" onClick={() => startEdit(point.code, 'longitude', point.longitude.toFixed(4))}>
                                           <span>{point.longitude.toFixed(4)}</span><Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
                                         </button>
                                       </PopoverTrigger>
@@ -1001,12 +1025,12 @@ export function RouteList() {
                                   </td>
                                 )}
                                 {columns.find(c => c.key === 'action' && c.visible) && (
-                                  <td className="px-3 py-3.5 text-center">
+                                  <td className="px-3 h-11 text-center">
                                     <button
-                                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-muted hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors"
+                                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-muted hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors duration-150"
                                       onClick={() => { setSelectedPoint(point); setInfoModalOpen(true) }}
                                     >
-                                      <Info className="size-3.5" />
+                                      <Info className="size-3" />
                                       Detail
                                     </button>
                                   </td>
@@ -1018,18 +1042,18 @@ export function RouteList() {
                           {/* Add New Row */}
                           {isEditMode && (
                           <tr 
-                            className="border-2 border-dashed border-border hover:border-primary hover:bg-accent/30 cursor-pointer transition-all group"
+                            className="border border-dashed border-border/60 hover:border-primary/50 hover:bg-primary/3 cursor-pointer transition-all duration-150 group"
                             onClick={() => {
                               setAddPointDialogOpen(true)
                               setCodeError("")
                             }}
                           >
-                            <td colSpan={8} className="p-4 text-center">
+                            <td colSpan={8} className="py-3 text-center">
                               <div className="flex items-center justify-center gap-2">
-                                <div className="w-8 h-8 rounded-full bg-green-100 dark:bg-green-900/30 group-hover:bg-green-200 dark:group-hover:bg-green-900/50 flex items-center justify-center transition-colors">
-                                  <Plus className="size-4 text-green-600 dark:text-green-500" />
+                                <div className="w-6 h-6 rounded-full bg-primary/10 group-hover:bg-primary/20 flex items-center justify-center transition-colors">
+                                  <Plus className="size-3.5 text-primary" />
                                 </div>
-                                <span className="font-medium text-sm group-hover:text-primary transition-colors">
+                                <span className="text-[12px] font-medium text-muted-foreground group-hover:text-primary transition-colors">
                                   Add New Delivery Point
                                 </span>
                               </div>
@@ -1042,23 +1066,22 @@ export function RouteList() {
                     
                     {/* Action Buttons - Show when rows are selected in Edit Mode */}
                     {selectedRows.length > 0 && isEditMode && (
-                      <div className="border-t border-border px-5 py-3 flex items-center justify-between bg-primary/5 shrink-0">
-                        <span className="text-sm font-medium text-primary">
+                      <div className="border-t border-border px-4 py-2.5 flex items-center justify-between bg-primary/5 shrink-0">
+                        <span className="text-xs font-semibold text-primary">
                           {selectedRows.length} row{selectedRows.length > 1 ? 's' : ''} selected
                         </span>
                         <div className="flex gap-2">
-                          <Button variant="ghost" size="sm" className="h-8" onClick={() => setSelectedRows([])}>
-                            <X className="size-3.5 mr-1" />Deselect
+                          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSelectedRows([])}>
+                            <X className="size-3 mr-1" />Deselect
                           </Button>
-                          <Button size="sm" className="h-8" onClick={handleDoneClick}>
-                            <Check className="size-3.5 mr-1" />Action
+                          <Button size="sm" className="h-7 text-xs" onClick={handleDoneClick}>
+                            <Check className="size-3 mr-1" />Action
                           </Button>
                         </div>
                       </div>
                     )}
-                  </div>
-                  )}
-                  </div>
+                  </DialogContent>
+                  </Dialog>
                 
                 {/* Action Modal - After Done is clicked */}
                 <Dialog open={actionModalOpen} onOpenChange={setActionModalOpen}>
@@ -1359,8 +1382,6 @@ export function RouteList() {
                     }}
                   />
                 )}
-              </div>
-            </div>
           </div>
         ))}
         
@@ -1928,11 +1949,16 @@ export function RouteList() {
       </Dialog>
 
       {/* Floating Save Button */}
-      {hasUnsavedChanges && isEditMode && (
+      {(hasUnsavedChanges || isSaving) && isEditMode && (
         <Button
-          onClick={handleSaveChanges}
+          onClick={saveChanges}
           disabled={isSaving}
-          className="fixed bottom-6 right-6 z-50 bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl transition-all h-12 px-6 gap-2"
+          className={
+            `fixed bottom-6 right-6 z-50 shadow-lg hover:shadow-xl transition-all h-12 px-6 gap-2 ` +
+            (isSaving
+              ? 'bg-green-600 hover:bg-green-600 animate-pulse cursor-not-allowed'
+              : 'bg-green-600 hover:bg-green-700')
+          }
           size="lg"
         >
           {isSaving ? (
@@ -1940,7 +1966,18 @@ export function RouteList() {
           ) : (
             <Save className="size-5" />
           )}
-          {isSaving ? 'Saving...' : 'Save Changes'}
+          <span>
+            {isSaving ? (
+              <span className="inline-flex items-center gap-0.5">
+                Saving
+                <span className="inline-flex gap-0.5 ml-0.5">
+                  <span className="animate-bounce [animation-delay:0ms]">.</span>
+                  <span className="animate-bounce [animation-delay:150ms]">.</span>
+                  <span className="animate-bounce [animation-delay:300ms]">.</span>
+                </span>
+              </span>
+            ) : 'Save Changes'}
+          </span>
         </Button>
       )}
     </div>
