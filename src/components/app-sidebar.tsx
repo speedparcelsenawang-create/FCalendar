@@ -3,18 +3,15 @@
 import * as React from "react"
 import {
   Calendar,
-  CalendarDays,
-  Settings2,
-  LifeBuoy,
-  Send,
   Package,
   Search,
   X,
+  LayoutGrid,
 } from "lucide-react"
+import { useEditMode } from "@/contexts/EditModeContext"
 
 import { NavMain } from "@/components/nav-main"
 import { NavProjects } from "@/components/nav-projects"
-import { NavSecondary } from "@/components/nav-secondary"
 import { NavUser } from "@/components/nav-user"
 import {
   Sidebar,
@@ -80,76 +77,52 @@ const data = {
       ],
     },
     {
-      title: "Settings",
+      title: "Plano VM",
       url: "#",
-      icon: Settings2,
-      items: [
-        {
-          title: "Profile",
-          url: "#",
-          page: "settings-profile",
-        },
-        {
-          title: "Notifications",
-          url: "#",
-          page: "settings-notifications",
-        },
-        {
-          title: "Appearance",
-          url: "#",
-          page: "settings-appearance",
-        },
-        {
-          title: "Font",
-          url: "#",
-          page: "settings-appearance-font",
-        },
-        {
-          title: "Display",
-          url: "#",
-          page: "settings-appearance-display",
-        },
-        {
-          title: "Map Settings",
-          url: "#",
-          page: "settings-map",
-        },
-        {
-          title: "Security",
-          url: "#",
-          page: "settings-security",
-        },
-      ],
+      icon: LayoutGrid,
+      page: "plano-vm",
     },
   ],
-  navSecondary: [
-    {
-      title: "Support",
-      url: "#",
-      icon: LifeBuoy,
-    },
-    {
-      title: "Feedback",
-      url: "#",
-      icon: Send,
-    },
-  ],
-  projects: [
-    {
-      name: "Plano Vm",
-      url: "#",
-      icon: CalendarDays,
-    },
+  settingsItems: [
+    { title: "Profile",     page: "settings-profile" },
+    { title: "Notifications", page: "settings-notifications" },
+    { title: "Appearance",  page: "settings-appearance" },
+    { title: "Font",        page: "settings-appearance-font" },
+    { title: "Display",     page: "settings-appearance-display" },
+    { title: "Map Settings",page: "settings-map" },
+    { title: "Security",    page: "settings-security" },
   ],
 }
 
+const SETTINGS_PAGES = new Set([
+  "settings-profile","settings-notifications","settings-appearance",
+  "settings-appearance-font","settings-appearance-display","settings-map","settings-security",
+])
+
+
 export function AppSidebar({ 
   onNavigate,
+  currentPage,
   ...props 
 }: React.ComponentProps<typeof Sidebar> & { 
-  onNavigate?: (page: string) => void 
+  onNavigate?: (page: string) => void
+  currentPage?: string
 }) {
   const [searchQuery, setSearchQuery] = React.useState("")
+  const [settingsOpen, setSettingsOpen] = React.useState(() => SETTINGS_PAGES.has(currentPage ?? ""))
+  const [openNavItem, setOpenNavItem] = React.useState<string | null>(null)
+  const { isEditMode, setIsEditMode } = useEditMode()
+
+  // Mutually exclusive: opening a Platform submenu closes Settings, and vice versa
+  const handleNavItemChange = (item: string | null) => {
+    setOpenNavItem(item)
+    if (item !== null) setSettingsOpen(false)
+  }
+
+  const handleSettingsOpenChange = (open: boolean) => {
+    setSettingsOpen(open)
+    if (open) setOpenNavItem(null)
+  }
 
   const filteredNavMain = React.useMemo(() => {
     if (!searchQuery.trim()) return data.navMain
@@ -171,14 +144,6 @@ export function AppSidebar({
 
   const handleSubItemClick = (page: string) => {
     onNavigate?.(page)
-  }
-
-  const handleProjectClick = (projectName: string) => {
-    if (onNavigate) {
-      if (projectName === "Plano Vm") {
-        onNavigate("plano-vm")
-      }
-    }
   }
 
   return (
@@ -224,9 +189,24 @@ export function AppSidebar({
         </div>
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={filteredNavMain} onItemClick={handleNavClick} onSubItemClick={handleSubItemClick} searchQuery={searchQuery} />
-        <NavProjects projects={data.projects} onProjectClick={handleProjectClick} />
-        <NavSecondary items={data.navSecondary} className="mt-auto" />
+        <NavMain
+          items={filteredNavMain}
+          onItemClick={handleNavClick}
+          onSubItemClick={handleSubItemClick}
+          searchQuery={searchQuery}
+          openItem={openNavItem}
+          onOpenItemChange={handleNavItemChange}
+        />
+        <NavProjects
+          settingsItems={data.settingsItems}
+          settingsOpen={settingsOpen}
+          onSettingsOpenChange={handleSettingsOpenChange}
+          currentPage={currentPage}
+          onNavigate={onNavigate}
+          isEditMode={isEditMode}
+          onEditModeToggle={() => setIsEditMode(!isEditMode)}
+          searchQuery={searchQuery}
+        />
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={data.user} />

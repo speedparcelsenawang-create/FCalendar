@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react"
-import { List, Info, Plus, Check, X, Edit2, Trash2, Search, Settings, Map, MapPin, Save, ArrowUp, ArrowDown, RotateCcw, Truck, ChevronLeft } from "lucide-react"
+import { List, Info, Plus, Check, X, Edit2, Trash2, Search, Settings, Map, MapPin, Save, ArrowUp, ArrowDown, RotateCcw, Truck, ChevronLeft, SlidersHorizontal } from "lucide-react"
 import { RowInfoModal } from "./RowInfoModal"
 import { useEditMode } from "@/contexts/EditModeContext"
 import {
@@ -133,6 +133,7 @@ export function RouteList() {
   const [routeToDelete, setRouteToDelete] = useState<Route | null>(null)
   const [newRoute, setNewRoute] = useState({ name: "", code: "", shift: "AM" })
   const [searchQuery, setSearchQuery] = useState("")
+  const [filterRegion, setFilterRegion] = useState<"all" | "KL" | "Sel">("all")
   const [fullscreenRouteId, setFullscreenRouteId] = useState<string | null>(null)
   const [detailClosing, setDetailClosing] = useState(false)
 
@@ -183,23 +184,31 @@ export function RouteList() {
         : route
     ))
   }
-  // Filter routes based on search query, then sort A-Z / 1-10 by name
+  // Filter routes based on search query + region, then sort A-Z / 1-10 by name
   const filteredRoutes = useMemo(() => {
-    const list = !searchQuery.trim()
-      ? routes
-      : (() => {
-          const query = searchQuery.toLowerCase()
-          return routes.filter(route =>
-            route.name.toLowerCase().includes(query) ||
-            route.code.toLowerCase().includes(query) ||
-            route.shift.toLowerCase().includes(query)
-          )
-        })()
+    const list = routes.filter(route => {
+      // Search filter
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase()
+        const matchSearch =
+          route.name.toLowerCase().includes(query) ||
+          route.code.toLowerCase().includes(query) ||
+          route.shift.toLowerCase().includes(query)
+        if (!matchSearch) return false
+      }
+      // Region filter
+      if (filterRegion !== "all") {
+        const hay = (route.name + " " + route.code).toLowerCase()
+        const needle = filterRegion.toLowerCase()
+        if (!hay.includes(needle)) return false
+      }
+      return true
+    })
 
     return [...list].sort((a, b) =>
       a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
     )
-  }, [routes, searchQuery])
+  }, [routes, searchQuery, filterRegion])
   const [editingCell, setEditingCell] = useState<{ rowCode: string; field: string } | null>(null)
   const [editValue, setEditValue] = useState<string>("")
   const [editError, setEditError] = useState<string>("")
@@ -624,9 +633,9 @@ export function RouteList() {
     <div className="relative font-light flex-1 overflow-y-auto">
       {/* Route List */}
       <div className="mt-4 px-4 max-w-5xl mx-auto" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
-        {/* Search Field */}
+        {/* Search Field + Filter */}
         <div className="mb-5">
-          <div className="flex items-center gap-3 max-w-md mx-auto">
+          <div className="flex items-center gap-2 max-w-md mx-auto">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/60" />
               <Input
@@ -646,6 +655,53 @@ export function RouteList() {
               )}
             </div>
 
+            {/* Filter popover */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className={`relative h-10 w-10 rounded-xl border-border/70 bg-card shadow-sm shrink-0 ${
+                    filterRegion !== "all" ? "border-primary text-primary" : ""
+                  }`}
+                  title="Filter"
+                >
+                  <SlidersHorizontal className="size-4" />
+                  {filterRegion !== "all" && (
+                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-primary" />
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-48 p-3 rounded-xl shadow-lg">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Region</p>
+                <div className="flex flex-col gap-1.5">
+                  {(["all", "KL", "Sel"] as const).map(r => (
+                    <button
+                      key={r}
+                      onClick={() => setFilterRegion(r)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                        filterRegion === r
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "border-border text-muted-foreground hover:bg-muted"
+                      }`}
+                    >
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${
+                        r === "KL" ? "bg-blue-500" : r === "Sel" ? "bg-red-500" : "bg-muted-foreground"
+                      }`} />
+                      {r === "all" ? "All" : r === "KL" ? "Kuala Lumpur" : "Selangor"}
+                    </button>
+                  ))}
+                </div>
+                {filterRegion !== "all" && (
+                  <button
+                    onClick={() => setFilterRegion("all")}
+                    className="w-full mt-2 text-xs text-center text-muted-foreground hover:text-foreground pt-2 border-t border-border transition-colors"
+                  >
+                    Clear filter
+                  </button>
+                )}
+              </PopoverContent>
+            </Popover>
           </div>
         </div>
 
@@ -718,7 +774,7 @@ export function RouteList() {
                         <h1 className="text-[15px] font-bold leading-tight truncate">{route.name}</h1>
                         <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                           <span className="font-mono text-[11px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-md">{route.code}</span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${route.shift === 'AM' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>{route.shift}</span>
+                          <span className={`text-[11px] font-semibold ${route.shift === 'AM' ? 'text-orange-600 dark:text-orange-400' : 'text-blue-600 dark:text-blue-400'}`}>{route.shift}</span>
                           <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
                             <MapPin className="size-3" />{deliveryPoints.length} pts
                           </span>
@@ -877,21 +933,21 @@ export function RouteList() {
                                             setDeliveryModalOpen(true)
                                           }}
                                         >
-                                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                                            point.delivery === 'Daily' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
-                                            : point.delivery === 'Weekday' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400'
-                                            : point.delivery === 'Alt 1' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400'
-                                            : 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400'
+                                          <span className={`text-[11px] font-semibold ${
+                                            point.delivery === 'Daily' ? 'text-green-700 dark:text-green-400'
+                                            : point.delivery === 'Weekday' ? 'text-blue-700 dark:text-blue-400'
+                                            : point.delivery === 'Alt 1' ? 'text-orange-700 dark:text-orange-400'
+                                            : 'text-purple-700 dark:text-purple-400'
                                           }`}>{point.delivery}</span>
-                                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isActive ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400' : 'bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400'}`}>{isActive ? 'ON' : 'OFF'}</span>
+                                          <span className={`text-[10px] font-semibold ${isActive ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>{isActive ? 'ON' : 'OFF'}</span>
                                           <Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
                                         </button>
                                       ) : (
-                                        <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                                          point.delivery === 'Daily' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
-                                          : point.delivery === 'Weekday' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400'
-                                          : point.delivery === 'Alt 1' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400'
-                                          : 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400'
+                                        <span className={`text-[11px] font-semibold ${
+                                          point.delivery === 'Daily' ? 'text-green-700 dark:text-green-400'
+                                          : point.delivery === 'Weekday' ? 'text-blue-700 dark:text-blue-400'
+                                          : point.delivery === 'Alt 1' ? 'text-orange-700 dark:text-orange-400'
+                                          : 'text-purple-700 dark:text-purple-400'
                                         }`}>{point.delivery}</span>
                                       )}
                                     </td>
@@ -907,7 +963,7 @@ export function RouteList() {
                                     >
                                       <TooltipTrigger
                                         type="button"
-                                        className="inline-flex items-center justify-center px-2 py-0.5 rounded-full bg-primary/8 text-primary text-[11px] font-medium cursor-help tabular-nums"
+                                        className="text-[11px] font-medium text-muted-foreground cursor-help tabular-nums"
                                         onClick={() => setOpenKmTooltip(prev => prev === point.code ? null : point.code)}
                                       >
                                         {distInfo ? formatKm(distInfo.display) : '-'}
@@ -1307,7 +1363,7 @@ export function RouteList() {
         ))}
         
         {/* No Results Message */}
-        {filteredRoutes.length === 0 && searchQuery && (
+        {filteredRoutes.length === 0 && (searchQuery || filterRegion !== "all") && (
           <div className="col-span-full flex flex-col items-center justify-center py-16 text-center">
             <div className="relative mb-6">
               <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-muted/50 to-muted/30 flex items-center justify-center">
@@ -1317,8 +1373,19 @@ export function RouteList() {
             </div>
             <h3 className="text-xl font-bold mb-2 text-foreground">No routes found</h3>
             <p className="text-sm text-muted-foreground max-w-md">
-              No routes match &quot;{searchQuery}&quot;. Try a different search term or create a new route.
+              {searchQuery
+                ? `No routes match "${searchQuery}".`
+                : `No routes found in ${filterRegion === "KL" ? "Kuala Lumpur" : "Selangor"}.`}{" "}
+              Try adjusting your search or filter.
             </p>
+            {filterRegion !== "all" && (
+              <button
+                onClick={() => setFilterRegion("all")}
+                className="mt-3 text-xs text-primary hover:underline"
+              >
+                Clear filter
+              </button>
+            )}
           </div>
         )}
         

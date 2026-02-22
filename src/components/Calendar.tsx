@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { useEditMode } from "@/contexts/EditModeContext"
 
 // ─── TYPES ───────────────────────────────────────────────────────────────────
 
@@ -207,11 +208,12 @@ function EventFormDialog({ open, onClose, initialDate, event, onSave, onDelete }
 
 interface ViewProps {
   events: Event[]
+  isEditMode: boolean
   onAdd: (date: Date) => void
   onEdit: (event: Event) => void
 }
 
-function MonthView({ events, onAdd, onEdit }: ViewProps) {
+function MonthView({ events, isEditMode, onAdd, onEdit }: ViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
 
@@ -281,14 +283,16 @@ function MonthView({ events, onAdd, onEdit }: ViewProps) {
                   aria-label={`Select ${day.date.toLocaleDateString()}`}
                 />
                 <div className="relative flex items-center justify-between mb-1 z-10">
-                  <button
-                    className="p-0.5 rounded-full hover:bg-primary/10 transition-opacity"
-                    onClick={e => { e.stopPropagation(); onAdd(day.date!) }}
-                    aria-label="Add event"
-                    title="Add event"
-                  >
-                    <Plus className="size-3 text-muted-foreground" />
-                  </button>
+                  {isEditMode ? (
+                    <button
+                      className="p-0.5 rounded-full hover:bg-primary/10 transition-opacity"
+                      onClick={e => { e.stopPropagation(); onAdd(day.date!) }}
+                      aria-label="Add event"
+                      title="Add event"
+                    >
+                      <Plus className="size-3 text-muted-foreground" />
+                    </button>
+                  ) : <div className="w-5" />}
                   <span className={`text-sm font-medium ml-auto
                     ${todayDate ? "bg-primary text-primary-foreground rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold" : ""}`}>
                     {day.day}
@@ -297,8 +301,8 @@ function MonthView({ events, onAdd, onEdit }: ViewProps) {
                 <div className="relative space-y-1 mt-1 z-10">
                   {dayEvents.slice(0, 3).map(event => (
                     <button key={event.id}
-                      onClick={e => { e.stopPropagation(); onEdit(event) }}
-                      className={`w-full text-left text-[10px] leading-tight ${event.color} text-white px-1.5 py-0.5 rounded truncate font-medium hover:opacity-90 transition-opacity`}
+                      onClick={e => { e.stopPropagation(); if (isEditMode) onEdit(event) }}
+                      className={`w-full text-left text-[10px] leading-tight ${event.color} text-white px-1.5 py-0.5 rounded truncate font-medium hover:opacity-90 transition-opacity ${!isEditMode ? "cursor-default" : ""}`}
                       title={event.title}>
                       {event.title}
                     </button>
@@ -321,7 +325,7 @@ function MonthView({ events, onAdd, onEdit }: ViewProps) {
                 ? selectedDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })
                 : "Select a date"}
             </h3>
-            {selectedDate && (
+            {selectedDate && isEditMode && (
               <Button size="sm" variant="outline" className="h-8" onClick={() => onAdd(selectedDate)}>
                 <Plus className="size-3 mr-1" />Add Event
               </Button>
@@ -334,8 +338,8 @@ function MonthView({ events, onAdd, onEdit }: ViewProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {selectedDateEvents.length > 0 ? selectedDateEvents.map(event => (
                 <button key={event.id}
-                  onClick={() => onEdit(event)}
-                  className="group p-4 border border-border rounded-lg hover:border-primary/50 hover:shadow-md transition-all text-left bg-background">
+                  onClick={() => { if (isEditMode) onEdit(event) }}
+                  className={`group p-4 border border-border rounded-lg transition-all text-left bg-background ${isEditMode ? "hover:border-primary/50 hover:shadow-md cursor-pointer" : "cursor-default"}`}>
                   <div className="flex items-start gap-3">
                     <div className={`w-1 self-stretch ${event.color} rounded-full flex-shrink-0`} />
                     <div className="flex-1 min-w-0">
@@ -344,15 +348,17 @@ function MonthView({ events, onAdd, onEdit }: ViewProps) {
                         <span className={`w-2 h-2 ${event.color} rounded-full`} />{event.type}
                       </p>
                     </div>
-                    <Pencil className="size-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5" />
+                      {isEditMode && <Pencil className="size-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0 mt-0.5" />}
                   </div>
                 </button>
               )) : (
                 <div className="col-span-full text-center py-12 text-muted-foreground">
                   <p className="text-sm mb-3">No events scheduled for this date</p>
-                  <Button size="sm" variant="outline" onClick={() => onAdd(selectedDate)}>
-                    <Plus className="size-3 mr-1" />Add Event
-                  </Button>
+                  {isEditMode && (
+                    <Button size="sm" variant="outline" onClick={() => onAdd(selectedDate)}>
+                      <Plus className="size-3 mr-1" />Add Event
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
@@ -368,7 +374,7 @@ function MonthView({ events, onAdd, onEdit }: ViewProps) {
 
 // ─── WEEK VIEW ───────────────────────────────────────────────────────────────
 
-function WeekView({ events, onAdd, onEdit }: ViewProps) {
+function WeekView({ events, isEditMode, onAdd, onEdit }: ViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
 
   const weekStart = useMemo(() => {
@@ -422,12 +428,14 @@ function WeekView({ events, onAdd, onEdit }: ViewProps) {
                       ${isToday ? "bg-primary text-primary-foreground" : ""}`}>
                       {day.getDate()}
                     </div>
-                    <button
-                      onClick={() => onAdd(day)}
-                      className="mt-0.5 flex items-center justify-center gap-0.5 text-[10px] text-muted-foreground hover:text-primary transition-colors mx-auto px-1.5 py-0.5 rounded hover:bg-primary/10"
-                      title="Add event">
-                      <Plus className="size-2.5" />Add
-                    </button>
+                    {isEditMode && (
+                      <button
+                        onClick={() => onAdd(day)}
+                        className="mt-0.5 flex items-center justify-center gap-0.5 text-[10px] text-muted-foreground hover:text-primary transition-colors mx-auto px-1.5 py-0.5 rounded hover:bg-primary/10"
+                        title="Add event">
+                        <Plus className="size-2.5" />Add
+                      </button>
+                    )}
                   </div>
                 )
               })}
@@ -443,8 +451,8 @@ function WeekView({ events, onAdd, onEdit }: ViewProps) {
                   <div key={i} className={`min-h-[36px] p-1 border-r border-border last:border-r-0 space-y-0.5 ${isToday ? "bg-blue-50/30 dark:bg-blue-950/10" : ""}`}>
                     {dayEvents.map(event => (
                       <button key={event.id}
-                        onClick={() => onEdit(event)}
-                        className={`w-full text-left text-[10px] leading-tight ${event.color} text-white px-1.5 py-0.5 rounded truncate font-medium hover:opacity-90 transition-opacity`}
+                        onClick={() => { if (isEditMode) onEdit(event) }}
+                        className={`w-full text-left text-[10px] leading-tight ${event.color} text-white px-1.5 py-0.5 rounded truncate font-medium hover:opacity-90 transition-opacity ${!isEditMode ? "cursor-default" : ""}`}
                         title={event.title}>
                         {event.title}
                       </button>
@@ -461,11 +469,12 @@ function WeekView({ events, onAdd, onEdit }: ViewProps) {
                   const isCurrentHour = isToday && currentHour === hour
                   return (
                     <div key={i}
-                      className={`h-14 border-r border-border last:border-r-0 relative cursor-pointer hover:bg-accent/30 transition-colors
+                      className={`h-14 border-r border-border last:border-r-0 relative transition-colors
+                        ${isEditMode ? "cursor-pointer hover:bg-accent/30" : ""}
                         ${isToday ? "bg-blue-50/20 dark:bg-blue-950/10" : ""}
                         ${isCurrentHour ? "bg-blue-100/40 dark:bg-blue-900/20" : ""}`}
-                      onClick={() => onAdd(day)}
-                      title="Add event">
+                      onClick={() => { if (isEditMode) onAdd(day) }}
+                      title={isEditMode ? "Add event" : ""}>
                       {isCurrentHour && (
                         <div className="absolute left-0 right-0 top-0 flex items-center pointer-events-none">
                           <div className="w-2 h-2 rounded-full bg-primary -ml-1 shrink-0 z-10" />
@@ -489,7 +498,7 @@ function WeekView({ events, onAdd, onEdit }: ViewProps) {
 
 // ─── DAY VIEW ────────────────────────────────────────────────────────────────
 
-function DayView({ events, onAdd, onEdit }: ViewProps) {
+function DayView({ events, isEditMode, onAdd, onEdit }: ViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
 
   const goToPrev = () => { const d = new Date(currentDate); d.setDate(d.getDate() - 1); setCurrentDate(d) }
@@ -509,9 +518,11 @@ function DayView({ events, onAdd, onEdit }: ViewProps) {
             {isToday && <span className="text-xs font-medium bg-primary text-primary-foreground px-2 py-0.5 rounded-full">Today</span>}
           </h2>
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => onAdd(currentDate)}>
-              <Plus className="size-3" />Add Event
-            </Button>
+            {isEditMode && (
+              <Button size="sm" variant="outline" className="h-8 gap-1" onClick={() => onAdd(currentDate)}>
+                <Plus className="size-3" />Add Event
+              </Button>
+            )}
             <Button variant="outline" size="sm" className="h-8" onClick={() => setCurrentDate(new Date())}>Today</Button>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goToPrev}><ChevronLeft className="size-4" /></Button>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goToNext}><ChevronRight className="size-4" /></Button>
@@ -527,11 +538,11 @@ function DayView({ events, onAdd, onEdit }: ViewProps) {
                 <div className="flex-1 p-2 space-y-1">
                   {dayEvents.map(event => (
                     <button key={event.id}
-                      onClick={() => onEdit(event)}
-                      className={`w-full text-left text-xs leading-tight ${event.color} text-white px-2 py-1 rounded font-medium flex items-center gap-2 hover:opacity-90 transition-opacity group`}>
+                      onClick={() => { if (isEditMode) onEdit(event) }}
+                      className={`w-full text-left text-xs leading-tight ${event.color} text-white px-2 py-1 rounded font-medium flex items-center gap-2 hover:opacity-90 transition-opacity group ${!isEditMode ? "cursor-default" : ""}`}>
                       <span className="flex-1">{event.title}</span>
                       <span className="opacity-75 capitalize text-[10px]">· {event.type}</span>
-                      <Pencil className="size-3 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                      {isEditMode && <Pencil className="size-3 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />}
                     </button>
                   ))}
                 </div>
@@ -545,9 +556,9 @@ function DayView({ events, onAdd, onEdit }: ViewProps) {
                     ${isCurrentHour ? "text-primary font-bold" : "text-muted-foreground"}`}>
                     {label}
                   </div>
-                  <div className={`flex-1 h-14 relative cursor-pointer hover:bg-accent/30 transition-colors ${isCurrentHour ? "bg-blue-50/40 dark:bg-blue-900/20" : ""}`}
-                    onClick={() => onAdd(currentDate)}
-                    title="Add event">
+                  <div className={`flex-1 h-14 relative transition-colors ${isEditMode ? "cursor-pointer hover:bg-accent/30" : ""} ${isCurrentHour ? "bg-blue-50/40 dark:bg-blue-900/20" : ""}`}
+                    onClick={() => { if (isEditMode) onAdd(currentDate) }}
+                    title={isEditMode ? "Add event" : ""}>
                     {isCurrentHour && (
                       <div className="absolute left-0 right-0 top-0 flex items-center pointer-events-none">
                         <div className="w-2 h-2 rounded-full bg-primary -ml-1 shrink-0 z-10" />
@@ -628,6 +639,7 @@ async function apiDeleteEvent(id: number): Promise<boolean> {
 // ─── MAIN EXPORT ─────────────────────────────────────────────────────────────
 
 export function Calendar({ view = "month" }: { view?: "month" | "week" | "day" }) {
+  const { isEditMode } = useEditMode()
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -644,12 +656,14 @@ export function Calendar({ view = "month" }: { view?: "month" | "week" | "day" }
   }, [])
 
   function openAdd(date: Date) {
+    if (!isEditMode) return
     setEditingEvent(null)
     setAddDate(date)
     setDialogOpen(true)
   }
 
   function openEdit(event: Event) {
+    if (!isEditMode) return
     setEditingEvent(event)
     setAddDate(null)
     setDialogOpen(true)
@@ -670,7 +684,7 @@ export function Calendar({ view = "month" }: { view?: "month" | "week" | "day" }
     if (ok) setEvents(prev => prev.filter(e => e.id !== id))
   }
 
-  const viewProps: ViewProps = { events, onAdd: openAdd, onEdit: openEdit }
+  const viewProps: ViewProps = { events, isEditMode, onAdd: openAdd, onEdit: openEdit }
 
   if (loading) {
     return (

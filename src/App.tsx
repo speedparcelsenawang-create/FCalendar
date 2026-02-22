@@ -212,7 +212,7 @@ function AppContent() {
 
   return (
     <>
-      <AppSidebar onNavigate={handlePageChange} />
+      <AppSidebar onNavigate={handlePageChange} currentPage={currentPage} />
       
       {/* Backdrop for desktop sidebar */}
       {!isMobile && open && (

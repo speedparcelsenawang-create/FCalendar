@@ -23,11 +23,14 @@ export function NavMain({
   onItemClick,
   onSubItemClick,
   searchQuery = "",
+  openItem: controlledOpenItem,
+  onOpenItemChange,
 }: {
   items: {
     title: string
     url: string
     icon: LucideIcon
+    page?: string
     isActive?: boolean
     items?: {
       title: string
@@ -38,19 +41,29 @@ export function NavMain({
   onItemClick?: (title: string) => void
   onSubItemClick?: (page: string) => void
   searchQuery?: string
+  openItem?: string | null
+  onOpenItemChange?: (item: string | null) => void
 }) {
   const initialOpen = items.find((i) => i.isActive && i.items?.length)?.title ?? null
-  const [openItem, setOpenItem] = useState<string | null>(initialOpen)
+  const [localOpenItem, setLocalOpenItem] = useState<string | null>(initialOpen)
+
+  const isControlled = controlledOpenItem !== undefined
+  const openItem = isControlled ? controlledOpenItem : localOpenItem
+  const setOpenItem = (val: string | null) => {
+    if (isControlled) onOpenItemChange?.(val)
+    else setLocalOpenItem(val)
+  }
 
   // Auto-expand all groups when searching
   const isSearching = searchQuery.trim().length > 0
 
-  const handleToggle = (title: string, hasChildren: boolean) => {
+  const handleToggle = (title: string, hasChildren: boolean, page?: string) => {
     if (!hasChildren) {
-      onItemClick?.(title)
+      if (page) onSubItemClick?.(page)
+      else onItemClick?.(title)
       return
     }
-    setOpenItem((prev) => (prev === title ? null : title))
+    setOpenItem(openItem === title ? null : title)
     onItemClick?.(title)
   }
 
@@ -82,7 +95,7 @@ export function NavMain({
                     href={item.url}
                     onClick={(e) => {
                       e.preventDefault()
-                      handleToggle(item.title, hasChildren)
+                      handleToggle(item.title, hasChildren, item.page)
                     }}
                   >
                     <item.icon />

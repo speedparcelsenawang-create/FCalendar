@@ -3,13 +3,11 @@ import {
   User, Bell, Lock, Globe, Mail, Phone, Save, Shield,
   Eye, EyeOff, Moon, Sun, Check, Type, ZoomIn,
   Brush, AlertTriangle, Languages, Navigation,
-  Edit3, X, Loader2,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
 import { useTheme, FONT_OPTIONS, type ColorTheme, type AppFont, type AppZoom, type TextSize } from "@/hooks/use-theme"
-import { useEditMode } from "@/contexts/EditModeContext"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type ThemeOption = {
@@ -62,29 +60,6 @@ function SectionHeader({ icon, title, description }: { icon: React.ReactNode; ti
 // ─── Main export ──────────────────────────────────────────────────────────────
 export function Settings({ section = "profile" }: { section?: SectionId }) {
   const { mode, setMode, colorTheme, setColorTheme, appFont, setAppFont, appZoom, setAppZoom, textSize, setTextSize } = useTheme()
-  const { isEditMode, hasUnsavedChanges, isSaving, setIsEditMode, setHasUnsavedChanges, saveChanges } = useEditMode()
-
-  const [isEditTransitioning, setIsEditTransitioning] = useState(false)
-  const [editTransitionPhase, setEditTransitionPhase] = useState<"idle" | "closing" | "opening">("idle")
-  const [showExitDialog, setShowExitDialog] = useState(false)
-
-  const handleToggleEditMode = () => {
-    if (isEditMode && hasUnsavedChanges) {
-      setShowExitDialog(true)
-      return
-    }
-    setIsEditTransitioning(true)
-    setEditTransitionPhase("closing")
-    setTimeout(() => {
-      setIsEditMode(!isEditMode)
-      setEditTransitionPhase("opening")
-      setTimeout(() => {
-        setIsEditTransitioning(false)
-        setEditTransitionPhase("idle")
-      }, 600)
-    }, 600)
-  }
-
   const active = section
 
   // Profile state
@@ -466,117 +441,10 @@ export function Settings({ section = "profile" }: { section?: SectionId }) {
   }
 
   return (
-    <div className="flex flex-1 flex-col min-h-0 overflow-y-auto p-4 md:p-6 max-w-3xl w-full" style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}>
+    <div className="flex flex-1 flex-col min-h-0 overflow-y-auto p-4 md:p-6 max-w-3xl w-full mx-auto" style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}>
       {renderContent()}
 
-      {/* ── Edit Mode Toggle ─────────────────────────────────────── */}
-      <div className="mt-8">
-        <Separator className="mb-6" />
-        <div className={`rounded-xl border-2 p-4 transition-all duration-300 ${
-          isEditMode
-            ? "border-red-400/60 bg-red-50/60 dark:bg-red-900/10"
-            : "border-orange-400/40 bg-orange-50/50 dark:bg-orange-900/10"
-        }`}>
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                isEditMode ? "bg-red-100 dark:bg-red-900/30" : "bg-orange-100 dark:bg-orange-900/30"
-              }`}>
-                {isEditMode
-                  ? <X className="size-5 text-red-600 dark:text-red-400" />
-                  : <Edit3 className="size-5 text-orange-600 dark:text-orange-400" />
-                }
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-semibold">Edit Mode</p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {isEditMode
-                    ? hasUnsavedChanges ? "Active — ada perubahan belum disimpan" : "Active — boleh edit data"
-                    : "Tidak aktif — data selamat dari perubahan"}
-                </p>
-              </div>
-            </div>
-            <Button
-              onClick={handleToggleEditMode}
-              disabled={isEditTransitioning}
-              size="sm"
-              className={`shrink-0 h-9 px-4 transition-colors duration-300 ${
-                isEditMode
-                  ? "bg-red-600 hover:bg-red-700 text-white"
-                  : "bg-orange-600 hover:bg-orange-700 text-white"
-              }`}
-            >
-              {isEditMode ? (
-                <><X className="size-4 mr-1.5" />Exit Edit Mode</>
-              ) : (
-                <><Edit3 className="size-4 mr-1.5" />Enable Edit Mode</>
-              )}
-            </Button>
-          </div>
-          {isEditMode && hasUnsavedChanges && (
-            <div className="mt-3 pt-3 border-t border-red-200/60 dark:border-red-800/40 flex items-center justify-between gap-3">
-              <p className="text-xs text-red-600 dark:text-red-400 font-medium">Ada perubahan yang belum disimpan.</p>
-              <Button
-                size="sm"
-                onClick={() => saveChanges()}
-                disabled={isSaving}
-                className="h-7 px-3 bg-green-600 hover:bg-green-700 text-white text-xs"
-              >
-                {isSaving ? <Loader2 className="size-3.5 mr-1 animate-spin" /> : <Save className="size-3.5 mr-1" />}
-                {isSaving ? "Saving..." : "Save Now"}
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
 
-      {/* Edit Mode Transition Overlay */}
-      {isEditTransitioning && (
-        <div
-          className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center gap-4 bg-black transition-opacity duration-500 ${
-            editTransitionPhase === "closing" ? "opacity-100" : "opacity-0 pointer-events-none"
-          }`}
-        >
-          <Loader2 className="size-10 animate-spin text-white/80" />
-          <p className="text-white/60 text-sm tracking-widest uppercase">
-            {editTransitionPhase === "closing"
-              ? (isEditMode ? "Exiting Edit Mode..." : "Entering Edit Mode...")
-              : ""}
-          </p>
-        </div>
-      )}
-
-      {/* Exit Confirmation Dialog */}
-      {showExitDialog && (
-        <div className="fixed inset-0 z-[99] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="bg-background rounded-2xl border shadow-xl max-w-sm w-full p-6 space-y-4">
-            <div>
-              <h3 className="text-base font-bold">Unsaved Changes</h3>
-              <p className="text-sm text-muted-foreground mt-1">
-                Ada perubahan yang belum disimpan. Simpan sebelum exit?
-              </p>
-            </div>
-            <div className="flex flex-col gap-2">
-              <Button
-                onClick={() => { saveChanges(); setIsEditMode(false); setShowExitDialog(false) }}
-                className="bg-green-600 hover:bg-green-700 w-full"
-              >
-                <Save className="size-4 mr-2" />Save &amp; Exit
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() => { setHasUnsavedChanges(false); setIsEditMode(false); setShowExitDialog(false) }}
-                className="w-full"
-              >
-                Discard &amp; Exit
-              </Button>
-              <Button variant="outline" onClick={() => setShowExitDialog(false)} className="w-full">
-                Continue Editing
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

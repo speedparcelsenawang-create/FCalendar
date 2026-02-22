@@ -118,16 +118,6 @@ function getEffectiveColor(
   return routeColors[point.routeId] ?? DELIVERY_COLORS[point.delivery] ?? "#6b7280"
 }
 
-function getDeliveryBadgeClass(delivery: string) {
-  switch (delivery) {
-    case "Daily":   return "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400"
-    case "Weekday": return "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400"
-    case "Alt 1":   return "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-400"
-    case "Alt 2":   return "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-400"
-    default:        return "bg-muted text-muted-foreground"
-  }
-}
-
 // ─── Sample data ──────────────────────────────────────────────────────────────
 const DEFAULT_ROUTES: Route[] = [
   {
@@ -577,6 +567,19 @@ export function MapMarkerPage() {
   const activeFiltersCount =
     (deliveryFilter !== "All" ? 1 : 0) + selectedRouteIds.size + (searchQuery.trim() ? 1 : 0)
 
+  // Precompute marker icons so Google Maps doesn't recreate SVG on every render
+  const pinIconsMap = useMemo(() => {
+    if (!gmapsLoaded) return new Map<string, google.maps.Icon>()
+    const cache = new Map<string, google.maps.Icon>()
+    for (const point of filteredPoints) {
+      const color = getEffectiveColor(point, routeColors)
+      const key = `${point.routeId}-${point.code}`
+      cache.set(`${key}-0`, createPinIcon(color, false))
+      cache.set(`${key}-1`, createPinIcon(color, true))
+    }
+    return cache
+  }, [filteredPoints, routeColors, gmapsLoaded])
+
   if (isLoading) {
     return (
       <div className="flex flex-col flex-1 min-h-0 items-center justify-center">
@@ -645,31 +648,32 @@ export function MapMarkerPage() {
               >
                 {filteredPoints.map(point => {
                   const isSelected = selectedPoint?.code === point.code && selectedPoint?.routeId === point.routeId
-                  const isInfoOpen = infoWindowPoint?.code === point.code && infoWindowPoint?.routeId === point.routeId
                   return (
                     <MarkerF
                       key={`${point.routeId}-${point.code}`}
                       position={{ lat: point.latitude, lng: point.longitude }}
-                      icon={createPinIcon(getEffectiveColor(point, routeColors), isSelected)}
+                      icon={pinIconsMap.get(`${point.routeId}-${point.code}-${isSelected ? 1 : 0}`)}
                       zIndex={isSelected ? 100 : undefined}
                       onClick={() => { setSelectedPoint(point); setInfoWindowPoint(point) }}
-                    >
-                      {isInfoOpen && (
-                        <InfoWindow onCloseClick={() => setInfoWindowPoint(null)}>
-                          <div className="text-sm min-w-[150px]">
-                            <strong className="block mb-1">{point.name}</strong>
-                            <div className="text-xs text-gray-500 space-y-0.5">
-                              <div>Code: {point.code}</div>
-                              <div>Route: {point.routeName} ({point.routeCode})</div>
-                              <div>Type: {point.delivery}</div>
-                              <div className="font-mono">{point.latitude.toFixed(6)}, {point.longitude.toFixed(6)}</div>
-                            </div>
-                          </div>
-                        </InfoWindow>
-                      )}
-                    </MarkerF>
+                    />
                   )
                 })}
+                {infoWindowPoint && (
+                  <InfoWindow
+                    position={{ lat: infoWindowPoint.latitude, lng: infoWindowPoint.longitude }}
+                    onCloseClick={() => setInfoWindowPoint(null)}
+                  >
+                    <div className="text-sm min-w-[150px]">
+                      <strong className="block mb-1">{infoWindowPoint.name}</strong>
+                      <div className="text-xs text-gray-500 space-y-0.5">
+                        <div>Code: {infoWindowPoint.code}</div>
+                        <div>Route: {infoWindowPoint.routeName} ({infoWindowPoint.routeCode})</div>
+                        <div>Type: {infoWindowPoint.delivery}</div>
+                        <div className="font-mono">{infoWindowPoint.latitude.toFixed(6)}, {infoWindowPoint.longitude.toFixed(6)}</div>
+                      </div>
+                    </div>
+                  </InfoWindow>
+                )}
               </GoogleMap>
             ))
           )}
@@ -698,19 +702,14 @@ export function MapMarkerPage() {
             </div>
             <button
               onClick={() => setFilterOpen(true)}
-              className={`relative shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+              className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${
                 activeFiltersCount > 0
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
               <SlidersHorizontal className="size-3.5" />
-              Filter
-              {activeFiltersCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 size-4 flex items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
-                  {activeFiltersCount}
-                </span>
-              )}
+              Filter{activeFiltersCount > 0 ? ` (${activeFiltersCount})` : ""}
             </button>
           </div>
 
@@ -785,14 +784,13 @@ export function MapMarkerPage() {
                           <span className={`font-semibold text-sm truncate ${isSelected ? "text-primary" : ""}`}>
                             {point.name}
                           </span>
-                          <span className={`shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-md ${getDeliveryBadgeClass(point.delivery)}`}>
-                            {point.delivery}
-                          </span>
                         </div>
                         <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                           <span className="text-xs text-muted-foreground font-mono">{point.code}</span>
                           <span className="text-[10px] text-muted-foreground/60">·</span>
                           <span className="text-xs text-muted-foreground truncate">{point.routeName}</span>
+                          <span className="text-[10px] text-muted-foreground/60">·</span>
+                          <span className="text-xs text-muted-foreground">{point.delivery}</span>
                         </div>
                         <div className="text-[10px] text-muted-foreground/60 font-mono mt-1">
                           {point.latitude.toFixed(5)}, {point.longitude.toFixed(5)}
