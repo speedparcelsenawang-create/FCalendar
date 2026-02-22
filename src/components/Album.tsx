@@ -162,7 +162,7 @@ export function Album() {
         {filteredImages.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-12">No images in this page.</p>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-1.5">
             {filteredImages.map((img, idx) => (
               <button
                 key={img.id}

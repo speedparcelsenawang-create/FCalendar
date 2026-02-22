@@ -9,6 +9,8 @@ interface EditModeContextType {
   setHasUnsavedChanges: (value: boolean) => void
   saveChanges: () => void
   registerSaveHandler: (handler: () => Promise<void>) => void
+  discardChanges: () => void
+  registerDiscardHandler: (handler: () => void) => void
 }
 
 const EditModeContext = createContext<EditModeContextType | undefined>(undefined)
@@ -18,9 +20,14 @@ export function EditModeProvider({ children }: { children: ReactNode }) {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const saveHandlerRef = useRef<(() => Promise<void>) | null>(null)
+  const discardHandlerRef = useRef<(() => void) | null>(null)
 
   const registerSaveHandler = (handler: () => Promise<void>) => {
     saveHandlerRef.current = handler
+  }
+
+  const registerDiscardHandler = (handler: () => void) => {
+    discardHandlerRef.current = handler
   }
 
   const saveChanges = async () => {
@@ -40,6 +47,13 @@ export function EditModeProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const discardChanges = () => {
+    if (discardHandlerRef.current) {
+      discardHandlerRef.current()
+    }
+    setHasUnsavedChanges(false)
+  }
+
   return (
     <EditModeContext.Provider
       value={{
@@ -50,6 +64,8 @@ export function EditModeProvider({ children }: { children: ReactNode }) {
         setHasUnsavedChanges,
         saveChanges,
         registerSaveHandler,
+        discardChanges,
+        registerDiscardHandler,
       }}
     >
       {children}
@@ -68,6 +84,8 @@ export function useEditMode() {
       setHasUnsavedChanges: () => {},
       saveChanges: () => {},
       registerSaveHandler: () => {},
+      discardChanges: () => {},
+      registerDiscardHandler: () => {},
     }
   }
   return context

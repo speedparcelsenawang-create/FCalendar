@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from "react"
-import { ChevronLeft, ChevronRight, Plus, Pencil, Trash2 } from "lucide-react"
+import { ChevronLeft, ChevronRight, ChevronDown, Plus, Pencil, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -74,17 +74,26 @@ function getEventsForDate(events: Event[], date: Date) {
 // ─── LEGEND ──────────────────────────────────────────────────────────────────
 
 function Legend() {
+  const [open, setOpen] = useState(false)
   return (
-    <div className="flex items-center gap-4 flex-wrap">
-      <span className="text-xs font-medium text-muted-foreground">Event Types:</span>
-      <div className="flex items-center gap-4">
-        {(Object.entries(TYPE_LABELS) as [EventType, string][]).map(([type, label]) => (
-          <div key={type} className="flex items-center gap-1.5 text-xs">
-            <div className={`w-2.5 h-2.5 ${TYPE_COLORS[type]} rounded`} />
-            <span>{label}</span>
-          </div>
-        ))}
-      </div>
+    <div className="flex items-center gap-2 flex-wrap">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+      >
+        <span>Event Types</span>
+        <ChevronDown className={`size-3 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <div className="flex items-center gap-4">
+          {(Object.entries(TYPE_LABELS) as [EventType, string][]).map(([type, label]) => (
+            <div key={type} className="flex items-center gap-1.5 text-xs">
+              <div className={`w-2.5 h-2.5 ${TYPE_COLORS[type]} rounded`} />
+              <span>{label}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
@@ -216,7 +225,8 @@ interface ViewProps {
 
 function MonthView({ events, isEditMode, onAdd, onEdit }: ViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
+  const [selectedDate, setSelectedDate] = useState<Date | null>(new Date())
+  const [eventsOpen, setEventsOpen] = useState(false)
 
   const year = currentDate.getFullYear()
   const month = currentDate.getMonth()
@@ -319,22 +329,28 @@ function MonthView({ events, isEditMode, onAdd, onEdit }: ViewProps) {
       </div>
 
       <div className="bg-card border border-border rounded-lg shadow overflow-hidden">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 px-6 py-4 border-b border-border bg-muted/30">
+        <button
+          className="w-full flex flex-col lg:flex-row lg:items-center justify-between gap-4 px-6 py-4 border-b border-border bg-muted/30 text-left hover:bg-muted/50 transition-colors"
+          onClick={() => setEventsOpen(v => !v)}
+        >
           <div className="flex items-center gap-3">
+            <ChevronDown className={`size-4 text-muted-foreground transition-transform duration-200 shrink-0 ${eventsOpen ? "rotate-180" : ""}`} />
             <h3 className="text-lg font-semibold">
               {selectedDate
                 ? selectedDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })
                 : "Select a date"}
             </h3>
-            {selectedDate && isEditMode && (
-              <Button size="sm" variant="outline" className="h-8" onClick={() => onAdd(selectedDate)}>
+            {selectedDate && isEditMode && eventsOpen && (
+              <Button size="sm" variant="outline" className="h-8" onClick={e => { e.stopPropagation(); onAdd(selectedDate) }}>
                 <Plus className="size-3 mr-1" />Add Event
               </Button>
             )}
           </div>
-          <Legend />
-        </div>
-        {selectedDate && (
+          <div onClick={e => e.stopPropagation()}>
+            <Legend />
+          </div>
+        </button>
+        {eventsOpen && selectedDate && (
           <div className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {selectedDateEvents.length > 0 ? selectedDateEvents.map(event => (
@@ -365,7 +381,7 @@ function MonthView({ events, isEditMode, onAdd, onEdit }: ViewProps) {
             </div>
           </div>
         )}
-        {!selectedDate && (
+        {eventsOpen && !selectedDate && (
           <div className="text-center py-16 text-muted-foreground"><p className="text-sm">Click on a date to view events</p></div>
         )}
       </div>

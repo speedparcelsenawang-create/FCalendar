@@ -42,10 +42,11 @@ interface PlanoPage {
 }
 
 export function PlanoVM() {
-  const { isEditMode, setHasUnsavedChanges, registerSaveHandler, hasUnsavedChanges, isSaving, saveChanges } = useEditMode()
+  const { isEditMode, setHasUnsavedChanges, registerSaveHandler, registerDiscardHandler, hasUnsavedChanges, isSaving, saveChanges } = useEditMode()
   const lightGalleryRefs = useRef<Map<string, any>>(new Map())
   const [selectedImage, setSelectedImage] = useState<{ url: string; title: string; description: string } | null>(null)
   const [pages, setPages] = useState<PlanoPage[]>([])
+  const pagesSnapshotRef = useRef<PlanoPage[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -125,6 +126,21 @@ export function PlanoVM() {
       }
     })
   }, [pages, registerSaveHandler])
+
+  // Snapshot pages when edit mode turns ON for instant discard
+  useEffect(() => {
+    if (isEditMode) {
+      pagesSnapshotRef.current = JSON.parse(JSON.stringify(pages))
+    }
+  }, [isEditMode]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Register discard handler — restore snapshot instantly
+  useEffect(() => {
+    registerDiscardHandler(() => {
+      setPages(pagesSnapshotRef.current)
+      if (pagesSnapshotRef.current.length > 0) setActivePage(pagesSnapshotRef.current[0].id)
+    })
+  }, [registerDiscardHandler])
 
   // Initialize lightGallery for each row when not in edit mode
   useEffect(() => {

@@ -133,7 +133,7 @@ export function AppSidebar({
   const [settingsOpen, setSettingsOpen] = React.useState(() => SETTINGS_PAGES.has(currentPage ?? ""))
   const [openNavItem, setOpenNavItem] = React.useState<string | null>(null)
   const [unsavedDialogOpen, setUnsavedDialogOpen] = React.useState(false)
-  const { isEditMode, setIsEditMode, hasUnsavedChanges, saveChanges, isSaving } = useEditMode()
+  const { isEditMode, setIsEditMode, hasUnsavedChanges, saveChanges, isSaving, discardChanges } = useEditMode()
 
   // Mutually exclusive: opening a Platform submenu closes Settings, and vice versa
   const handleNavItemChange = (item: string | null) => {
@@ -185,7 +185,7 @@ export function AppSidebar({
             <SidebarMenuButton 
               size="lg" 
               asChild
-              onClick={() => onNavigate?.("dashboard")}
+              onClick={() => onNavigate?.("home")}
             >
               <a href="#">
                 <div className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
@@ -257,6 +257,7 @@ export function AppSidebar({
             <Button
               variant="outline"
               onClick={() => {
+                discardChanges()
                 setUnsavedDialogOpen(false)
                 setIsEditMode(false)
               }}

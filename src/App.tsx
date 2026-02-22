@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense, Component, type ErrorInfo, type ReactNode } from "react"
+import { useState, useEffect, lazy, Suspense, Component, type ErrorInfo, type ReactNode } from "react"
 import { AppSidebar } from "@/components/app-sidebar"
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt"
 
@@ -11,7 +11,7 @@ const MapMarkerPage = lazy(() => import("@/components/MapMarkerPage").then(m => 
 const Album = lazy(() => import("@/components/Album").then(m => ({ default: m.Album })))
 import { EditModeProvider } from "@/contexts/EditModeContext"
 import { Toaster } from "sonner"
-import { Home, Package, Settings2, Calendar as CalendarIcon, Images } from "lucide-react"
+import { Home, Package, Settings2, Calendar as CalendarIcon, Images, ChevronDown, Truck, Pin } from "lucide-react"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -51,32 +51,114 @@ function ColorDot({ color }: { color: string }) {
 }
 
 function HomePage() {
+  const [tableOpen, setTableOpen] = useState(true)
+  const [tableExpanded, setTableExpanded] = useState(false)
+  const [legendOpen, setLegendOpen] = useState(false)
+  // Mon=0 … Sun=6
+  const todayIndex = (new Date().getDay() + 6) % 7
+
+  // Read pinned routes from localStorage (written by RouteList)
+  const [pinnedRoutes, setPinnedRoutes] = useState<Array<{ id: string; name: string; code: string; shift: string }>>(() => {
+    try { return JSON.parse(localStorage.getItem("fcalendar_pinned_routes") || "[]") } catch { return [] }
+  })
+  // Re-sync when tab becomes visible (user switches from RouteList → Home)
+  useEffect(() => {
+    const sync = () => {
+      try { setPinnedRoutes(JSON.parse(localStorage.getItem("fcalendar_pinned_routes") || "[]")) } catch {}
+    }
+    window.addEventListener("fcalendar_pins_changed", sync)
+    window.addEventListener("focus", sync)
+    return () => {
+      window.removeEventListener("fcalendar_pins_changed", sync)
+      window.removeEventListener("focus", sync)
+    }
+  }, [])
+
+  function unpin(id: string) {
+    const updated = pinnedRoutes.filter(r => r.id !== id)
+    localStorage.setItem("fcalendar_pinned_routes", JSON.stringify(updated))
+    setPinnedRoutes(updated)
+    window.dispatchEvent(new Event("fcalendar_pins_changed"))
+  }
+
   return (
-    <div className="flex flex-1 flex-col gap-6 p-4 md:p-6 max-w-2xl mx-auto w-full overflow-y-auto" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
+    <div className="flex flex-1 flex-col gap-4 p-4 md:p-6 max-w-2xl mx-auto w-full overflow-y-auto" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
       {/* Welcome */}
       <div>
         <h1 className="text-xl font-bold text-gray-900 dark:text-white">Welcome to FCalendar</h1>
         <p className="text-sm text-muted-foreground mt-1">Daily colour guide for stock operations.</p>
       </div>
 
+      {/* Pinned Routes */}
+      {pinnedRoutes.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            <Pin className="size-3" />
+            Pinned Routes
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+            {pinnedRoutes.map(r => {
+              const isKL  = (r.name + " " + r.code).toLowerCase().includes("kl")
+              const isSel = (r.name + " " + r.code).toLowerCase().includes("sel")
+              return (
+                <div key={r.id} className="relative bg-card rounded-xl ring-1 ring-border/60 shadow-sm flex flex-col items-center gap-1.5 px-3 py-3 text-center">
+                  {/* Unpin */}
+                  <button
+                    className="absolute top-1.5 right-1.5 p-0.5 rounded-md text-primary/50 hover:text-destructive hover:bg-destructive/10 transition-colors"
+                    title="Unpin"
+                    onClick={() => unpin(r.id)}
+                  >
+                    <Pin className="size-3" />
+                  </button>
+                  {isKL
+                    ? <img src="/kl-flag.png" className="h-7 w-auto max-w-[40px] object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10" alt="KL" />
+                    : isSel
+                    ? <img src="/selangor-flag.png" className="h-7 w-auto max-w-[40px] object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10" alt="Selangor" />
+                    : <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
+                        <Truck className="size-4 text-primary" />
+                      </div>
+                  }
+                  <p className="text-xs font-semibold text-foreground leading-tight line-clamp-2">{r.name}</p>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${r.shift === "AM" ? "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400" : "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400"}`}>
+                    {r.shift}
+                  </span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Color Guide Table */}
       <div className="rounded-2xl border border-border overflow-hidden shadow-sm">
-        {/* Table header */}
-        <div className="grid grid-cols-4 bg-muted/60 text-xs font-semibold uppercase tracking-wide text-muted-foreground px-4 py-3 gap-2">
-          <span>Day</span>
+        {/* Collapsible header */}
+        <button
+          className="w-full grid grid-cols-4 bg-muted/60 text-xs font-semibold uppercase tracking-wide text-muted-foreground px-4 py-3 gap-2 hover:bg-muted/80 transition-colors text-left items-center"
+          onClick={() => setTableOpen(v => !v)}
+        >
+          <span className="flex items-center gap-1.5">
+            <ChevronDown className={`size-3.5 shrink-0 transition-transform duration-200 ${tableOpen ? "rotate-180" : ""}`} />
+            Day
+          </span>
           <span className="text-center">✅ Stock In</span>
           <span className="text-center">🔄 Move Front</span>
           <span className="text-center">🚫 Expired</span>
-        </div>
-        {/* Rows */}
-        {DAYS.map((day, i) => (
+        </button>
+        {/* Rows — today always visible, others shown when expanded */}
+        {tableOpen && DAYS.map((day, i) => {
+          const isToday = i === todayIndex
+          if (!isToday && !tableExpanded) return null
+          return (
           <div
             key={day.en}
-            className="grid grid-cols-4 items-center px-4 py-3 gap-2 border-t border-border/60 hover:bg-muted/30 transition-colors"
+            className={`grid grid-cols-4 items-center px-4 py-3 gap-2 border-t border-border/60 transition-colors ${isToday ? "bg-primary/8 dark:bg-primary/10" : "hover:bg-muted/30"}`}
           >
-            <div>
-              <p className="text-sm font-semibold text-foreground">{day.my}</p>
-              <p className="text-xs text-muted-foreground">{day.en}</p>
+            <div className="flex items-center gap-2">
+              {isToday && <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary shrink-0" />}
+              <div>
+                <p className={`text-sm font-semibold ${isToday ? "text-primary" : "text-foreground"}`}>{day.my}</p>
+                <p className="text-xs text-muted-foreground">{day.en}</p>
+              </div>
             </div>
             <div className="flex justify-center">
               <ColorDot color={STOCK_IN_COLORS[i]} />
@@ -88,32 +170,53 @@ function HomePage() {
               <ColorDot color={EXPIRED_COLORS[i]} />
             </div>
           </div>
-        ))}
+          )
+        })}
+        {tableOpen && (
+          <button
+            className="w-full flex items-center justify-center gap-1 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors border-t border-border/60"
+            onClick={() => setTableExpanded(v => !v)}
+          >
+            <ChevronDown className={`size-3 transition-transform duration-200 ${tableExpanded ? "rotate-180" : ""}`} />
+            {tableExpanded ? "Show less" : "Show all days"}
+          </button>
+        )}
       </div>
 
       {/* Legend */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        {[
-          { color: "#3B82F6", label: "Blue / Biru" },
-          { color: "#F97316", label: "Orange" },
-          { color: "#92400E", label: "Brown / Coklat" },
-          { color: "#22C55E", label: "Green / Hijau" },
-          { color: "#A855F7", label: "Purple / Ungu" },
-          { color: "#EC4899", label: "Pink" },
-          { color: "#EAB308", label: "Yellow / Kuning" },
-        ].map(({ color, label }) => (
-          <div key={label} className="flex items-center gap-2 text-sm text-muted-foreground">
-            <ColorDot color={color} />
-            <span>{label}</span>
+      <div className="rounded-2xl border border-border overflow-hidden shadow-sm">
+        <button
+          className="w-full flex items-center gap-1.5 bg-muted/60 text-xs font-semibold uppercase tracking-wide text-muted-foreground px-4 py-3 hover:bg-muted/80 transition-colors text-left"
+          onClick={() => setLegendOpen(v => !v)}
+        >
+          <ChevronDown className={`size-3.5 shrink-0 transition-transform duration-200 ${legendOpen ? "rotate-180" : ""}`} />
+          Colour Legend
+        </button>
+        {legendOpen && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 p-4 border-t border-border/60">
+            {[
+              { color: "#3B82F6", label: "Blue / Biru" },
+              { color: "#F97316", label: "Orange" },
+              { color: "#92400E", label: "Brown / Coklat" },
+              { color: "#22C55E", label: "Green / Hijau" },
+              { color: "#A855F7", label: "Purple / Ungu" },
+              { color: "#EC4899", label: "Pink" },
+              { color: "#EAB308", label: "Yellow / Kuning" },
+            ].map(({ color, label }) => (
+              <div key={label} className="flex items-center gap-2 text-sm text-muted-foreground">
+                <ColorDot color={color} />
+                <span>{label}</span>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
       </div>
     </div>
   )
 }
 
 function AppContent() {
-  const [currentPage, setCurrentPage] = useState("dashboard")
+  const [currentPage, setCurrentPage] = useState("home")
   const [isTransitioning, setIsTransitioning] = useState(false)
   const { open, openMobile, isMobile, toggleSidebar } = useSidebar()
 
@@ -169,7 +272,7 @@ function AppContent() {
         return <PlanoVM />
       case "gallery-album":
         return <Album />
-      case "dashboard":
+      case "home":
       default:
         return <HomePage />
     }
@@ -210,7 +313,7 @@ function AppContent() {
         return { parent: { label: "Gallery", icon: Images }, current: "Plano VM" }
       case "gallery-album":
         return { parent: { label: "Gallery", icon: Images }, current: "Album" }
-      case "dashboard":
+      case "home":
       default:
         return { current: "Home" }
     }
@@ -237,10 +340,10 @@ function AppContent() {
               <BreadcrumbItem className="shrink-0">
                 <BreadcrumbLink
                   href="#"
-                  onClick={() => handlePageChange("dashboard")}
+                  onClick={() => handlePageChange("home")}
                   className="flex items-center gap-1.5 font-semibold text-foreground hover:text-foreground/80 transition-colors"
                 >
-                  <Home className="size-3.5 shrink-0" />
+                  <Home className="size-[18px] shrink-0" />
                 </BreadcrumbLink>
               </BreadcrumbItem>
               {(() => {

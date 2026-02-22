@@ -1,6 +1,7 @@
-import { useState, useMemo, useEffect, useCallback } from "react"
-import { List, Info, Plus, Check, X, Edit2, Trash2, Search, Settings, Save, ArrowUp, ArrowDown, RotateCcw, Truck, Loader2, Maximize2, Minimize2, MessageSquare, MapPin, Clock, SlidersHorizontal } from "lucide-react"
+import { useState, useMemo, useEffect, useCallback, useRef } from "react"
+import { List, Info, Plus, Check, X, Edit2, Trash2, Search, Settings, Save, ArrowUp, ArrowDown, RotateCcw, Truck, Loader2, Maximize2, Minimize2, StickyNote, Clock, SlidersHorizontal, Pin } from "lucide-react"
 import { RowInfoModal } from "./RowInfoModal"
+import { RouteNotesModal, appendChangelog } from "./RouteNotesModal"
 import { useEditMode } from "@/contexts/EditModeContext"
 import {
   Dialog,
@@ -134,8 +135,9 @@ const DEFAULT_ROUTES: Route[] = [
 ]
 
 export function RouteList() {
-  const { isEditMode, hasUnsavedChanges, isSaving, setHasUnsavedChanges, registerSaveHandler, saveChanges } = useEditMode()
+  const { isEditMode, hasUnsavedChanges, isSaving, setHasUnsavedChanges, registerSaveHandler, saveChanges, registerDiscardHandler } = useEditMode()
   const [routes, setRoutes] = useState<Route[]>(DEFAULT_ROUTES)
+  const routesSnapshotRef = useRef<Route[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [currentRouteId, setCurrentRouteId] = useState<string>("route-1")
   const [infoModalOpen, setInfoModalOpen] = useState(false)
@@ -151,6 +153,30 @@ export function RouteList() {
   const [filterShift, setFilterShift] = useState<"all" | "AM" | "PM">("all")
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [detailFullscreen, setDetailFullscreen] = useState(false)
+  const [notesModalOpen, setNotesModalOpen] = useState(false)
+  const [notesRouteId, setNotesRouteId] = useState<string>("")
+  const [notesRouteName, setNotesRouteName] = useState<string>("")
+
+  // Pinned routes stored in localStorage
+  const [pinnedIds, setPinnedIds] = useState<Set<string>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem("fcalendar_pinned_routes") || "[]").map((r: { id: string }) => r.id)) }
+    catch { return new Set() }
+  })
+
+  function togglePin(route: Route) {
+    const stored: Array<{ id: string; name: string; code: string; shift: string }> = (() => {
+      try { return JSON.parse(localStorage.getItem("fcalendar_pinned_routes") || "[]") } catch { return [] }
+    })()
+    let updated
+    if (pinnedIds.has(route.id)) {
+      updated = stored.filter(r => r.id !== route.id)
+    } else {
+      updated = [...stored.filter(r => r.id !== route.id), { id: route.id, name: route.name, code: route.code, shift: route.shift }]
+    }
+    localStorage.setItem("fcalendar_pinned_routes", JSON.stringify(updated))
+    setPinnedIds(new Set(updated.map(r => r.id)))
+    window.dispatchEvent(new Event("fcalendar_pins_changed"))
+  }
 
   // Fetch routes from database
   const fetchRoutes = useCallback(async (preserveCurrentId?: string) => {
@@ -591,6 +617,8 @@ export function RouteList() {
   }
 
   const doSave = useCallback(async () => {
+    // Snapshot before state for changelog
+    const before = routesSnapshotRef.current
     const res = await fetch('/api/routes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -598,6 +626,28 @@ export function RouteList() {
     })
     const data = await res.json()
     if (!data.success) throw new Error(data.error || 'Save failed')
+    // Record changelog entries per changed route
+    routes.forEach(route => {
+      const old = before.find(r => r.id === route.id)
+      const changes: string[] = []
+      if (!old) {
+        changes.push(`Route "${route.name}" added`)
+      } else {
+        if (old.name !== route.name) changes.push(`Name changed: "${old.name}" → "${route.name}"`)
+        if (old.code !== route.code) changes.push(`Code changed: ${old.code} → ${route.code}`)
+        if (old.shift !== route.shift) changes.push(`Shift changed: ${old.shift} → ${route.shift}`)
+        const addedPts = route.deliveryPoints.filter(p => !old.deliveryPoints.find(o => o.code === p.code))
+        const removedPts = old.deliveryPoints.filter(o => !route.deliveryPoints.find(p => p.code === o.code))
+        const editedPts = route.deliveryPoints.filter(p => {
+          const o = old.deliveryPoints.find(x => x.code === p.code)
+          return o && (o.name !== p.name || o.delivery !== p.delivery || o.latitude !== p.latitude || o.longitude !== p.longitude)
+        })
+        if (addedPts.length) changes.push(`Added ${addedPts.length} location(s): ${addedPts.map(p => p.name || p.code).join(", ")}`)
+        if (removedPts.length) changes.push(`Removed ${removedPts.length} location(s): ${removedPts.map(p => p.name || p.code).join(", ")}`)
+        if (editedPts.length) changes.push(`Edited ${editedPts.length} location(s): ${editedPts.map(p => p.name || p.code).join(", ")}`)
+      }
+      changes.forEach(desc => appendChangelog(route.id, desc))
+    })
     // Clear pending-edit markers once successfully persisted
     setPendingCellEdits(new Set())
     // Re-fetch from server so UI mirrors exactly what was persisted
@@ -607,6 +657,21 @@ export function RouteList() {
   useEffect(() => {
     registerSaveHandler(doSave)
   }, [doSave, registerSaveHandler])
+
+  // Snapshot routes when edit mode turns ON for instant discard
+  useEffect(() => {
+    if (isEditMode) {
+      routesSnapshotRef.current = JSON.parse(JSON.stringify(routes))
+    }
+  }, [isEditMode]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Register discard handler — restore snapshot instantly, clear pending edits
+  useEffect(() => {
+    registerDiscardHandler(() => {
+      setRoutes(routesSnapshotRef.current)
+      setPendingCellEdits(new Set())
+    })
+  }, [registerDiscardHandler])
 
   const handleDeleteRoute = () => {
     if (!routeToDelete) return
@@ -642,7 +707,7 @@ export function RouteList() {
   return (
     <div className="relative font-light flex-1 overflow-y-auto">
       {/* Route List */}
-      <div className="mt-4 px-4 max-w-xl mx-auto" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+      <div className="mt-4 px-4 max-w-2xl mx-auto" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
         {/* Search + Filter */}
         <div className="mb-5 flex items-center gap-2">
           <div className="relative flex-1">
@@ -740,101 +805,109 @@ export function RouteList() {
           </Popover>
         </div>
 
-        <div className="grid grid-cols-1 gap-3">
+        <div className="grid grid-cols-2 gap-3">
         {filteredRoutes.map((route) => {
           const total   = route.deliveryPoints.length
           const active  = route.deliveryPoints.filter(p => isDeliveryActive(p.delivery)).length
-          const pct     = total > 0 ? Math.round((active / total) * 100) : 0
           const isKL    = (route.name + " " + route.code).toLowerCase().includes("kl")
           const isSel   = (route.name + " " + route.code).toLowerCase().includes("sel")
-          const accentCls = isKL  ? 'border-l-blue-500'
-                          : isSel ? 'border-l-red-500'
-                          : 'border-l-primary'
           return (
           <div key={route.id} className="w-full">
-            {/* Card */}
+            {/* Company-card style */}
             <div
-              className={`bg-card rounded-xl border border-border border-l-4 ${accentCls} shadow-sm hover:shadow-md hover:border-border/80 transition-all duration-200 overflow-hidden group cursor-pointer`}
+              className="bg-card rounded-xl ring-1 ring-border/60 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer overflow-hidden relative group flex flex-col justify-between"
               onClick={() => { setCurrentRouteId(route.id); setDetailDialogOpen(true) }}
             >
-              {/* Top section */}
-              <div className="flex items-start gap-3 px-4 pt-3.5 pb-2">
-                {/* Flag / Icon */}
-                <div className="shrink-0 mt-0.5">
-                  {isKL
-                    ? <img src="/kl-flag.png" className="h-8 w-auto max-w-[44px] object-cover rounded-md shadow-sm ring-1 ring-black/10 dark:ring-white/10" alt="KL" />
-                    : isSel
-                    ? <img src="/selangor-flag.png" className="h-8 w-auto max-w-[44px] object-cover rounded-md shadow-sm ring-1 ring-black/10 dark:ring-white/10" alt="Selangor" />
-                    : <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
-                        <Truck className="size-[17px] text-primary" />
-                      </div>
-                  }
+              {/* Edit settings button — top right, edit mode only */}
+              {isEditMode && (
+                <div className="absolute top-2 right-2 z-10" onClick={e => e.stopPropagation()}>
+                  <button
+                    className="p-1 rounded-lg text-muted-foreground/40 hover:text-primary hover:bg-primary/8 transition-colors"
+                    onClick={() => handleEditRoute(route)}
+                  >
+                    <Settings className="size-3.5" />
+                  </button>
                 </div>
+              )}
 
-                {/* Main info */}
-                <div className="flex-1 min-w-0">
-                  {/* Row 1: Route name only */}
-                  <h3 className="text-[13px] font-bold truncate group-hover:text-primary transition-colors leading-tight">{route.name}</h3>
-                  {/* Row 2: Code - Shift */}
-                  <p className="text-[11px] text-muted-foreground mt-0.5">
-                    <span className="font-mono">{route.code}</span>
-                    <span className="mx-1.5 text-muted-foreground/40">–</span>
-                    <span>{route.shift}</span>
-                  </p>
-                </div>
+              {/* Pin button — top left, always visible */}
+              <div className="absolute top-2 left-2 z-10" onClick={e => e.stopPropagation()}>
+                <button
+                  className={`p-1 rounded-lg transition-colors ${pinnedIds.has(route.id) ? "text-primary bg-primary/10 hover:bg-primary/20" : "text-muted-foreground/30 hover:text-primary hover:bg-primary/8"}`}
+                  title={pinnedIds.has(route.id) ? "Unpin from Home" : "Pin to Home"}
+                  onClick={() => togglePin(route)}
+                >
+                  <Pin className="size-3.5" />
+                </button>
+              </div>
 
-                {/* Action buttons */}
-                <div className="shrink-0 flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
-                  {isEditMode && (
-                    <button
-                      className="p-1.5 rounded-lg text-muted-foreground/50 hover:text-primary hover:bg-primary/8 transition-colors"
-                      onClick={() => handleEditRoute(route)}
-                      title="Edit Route"
-                    >
-                      <Settings className="size-[15px]" />
+              {/* Centered info */}
+              <div className="px-4 pt-6 pb-4 text-center flex flex-col items-center gap-2">
+                {isKL
+                  ? <img src="/kl-flag.png" className="h-10 w-auto max-w-[52px] object-cover rounded-lg shadow-sm ring-1 ring-black/10 dark:ring-white/10" alt="KL" />
+                  : isSel
+                  ? <img src="/selangor-flag.png" className="h-10 w-auto max-w-[52px] object-cover rounded-lg shadow-sm ring-1 ring-black/10 dark:ring-white/10" alt="Selangor" />
+                  : <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
+                      <Truck className="size-5 text-primary" />
+                    </div>
+                }
+                <h2 className="text-sm font-semibold text-foreground leading-tight line-clamp-2 group-hover:text-primary transition-colors">{route.name}</h2>
+                <p className="text-[11px] font-mono text-muted-foreground">{route.code}</p>
+              </div>
+
+              {/* Footer — Info + Comment + List buttons */}
+              <div className="flex items-center border-t border-border/50" onClick={e => e.stopPropagation()}>
+                {/* Info button with popover */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <button className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
+                      <Info className="size-3.5" />
+                      <span className="text-[11px] font-medium">Info</span>
                     </button>
-                  )}
-                  <button
-                    className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
-                    title="Comments"
-                  >
-                    <MessageSquare className="size-[18px] text-blue-400 hover:text-blue-500" />
-                  </button>
-                  <button
-                    className="p-1.5 rounded-lg hover:bg-primary/8 transition-colors"
-                    onClick={() => { setCurrentRouteId(route.id); setDetailDialogOpen(true) }}
-                    title="View Details"
-                  >
-                    <List className="size-[18px] text-primary/70 hover:text-primary" />
-                  </button>
-                </div>
-              </div>
+                  </PopoverTrigger>
+                  <PopoverContent side="top" align="start" className="w-52 p-3 space-y-2.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Locations</span>
+                      <span className="text-sm font-bold">
+                        {active}<span className="text-xs font-normal text-muted-foreground">/{total}</span>
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Shift</span>
+                      <span className={`text-sm font-bold ${
+                        route.shift === "AM" ? "text-orange-500" : "text-indigo-500"
+                      }`}>{route.shift}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Updated</span>
+                      <span className="text-xs text-muted-foreground flex items-center gap-1">
+                        <Clock className="size-3" />{formatRelativeTime(route.updatedAt)}
+                      </span>
+                    </div>
+                  </PopoverContent>
+                </Popover>
 
-              {/* Progress bar */}
-              <div className="px-4 pb-1">
-                <div className="w-full h-1 bg-muted/50 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      pct === 100 ? 'bg-green-500' : pct > 50 ? 'bg-primary' : 'bg-amber-500'
-                    }`}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-              </div>
+                <div className="w-px h-5 bg-border/50" />
 
-              {/* Bottom row: location count left, timestamp right */}
-              <div className="flex items-center justify-between gap-2 px-4 pb-3 pt-1.5">
-                <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
-                  <MapPin className="size-3 shrink-0" />
-                  <span className="font-semibold text-foreground">{active}</span>
-                  <span className="text-muted-foreground/70">/</span>
-                  <span>{total}</span>
-                  <span className="ml-0.5 text-muted-foreground/70">Locations</span>
-                </span>
-                <span className="flex items-center gap-1 text-[11px] text-muted-foreground shrink-0">
-                  <Clock className="size-3 shrink-0" />
-                  {formatRelativeTime(route.updatedAt)}
-                </span>
+                {/* Comment button → Notes */}
+                <button
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-amber-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+                  onClick={() => { setNotesRouteId(route.id); setNotesRouteName(route.name); setNotesModalOpen(true) }}
+                >
+                  <StickyNote className="size-3.5" />
+                  <span className="text-[11px] font-medium">Notes</span>
+                </button>
+
+                <div className="w-px h-5 bg-border/50" />
+
+                {/* List button */}
+                <button
+                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-primary/70 hover:text-primary hover:bg-primary/8 transition-colors"
+                  onClick={() => { setCurrentRouteId(route.id); setDetailDialogOpen(true) }}
+                >
+                  <List className="size-3.5" />
+                  <span className="text-[11px] font-medium">List</span>
+                </button>
               </div>
             </div>
                   <Dialog open={detailDialogOpen && route.id === currentRouteId} onOpenChange={(open) => { if (!open) { setDetailDialogOpen(false); setDetailFullscreen(false); setSelectedRows([]) } }}>
@@ -2029,6 +2102,14 @@ export function RouteList() {
           </span>
         </Button>
       )}
+
+      {/* Notes modal — rendered once outside the card loop */}
+      <RouteNotesModal
+        open={notesModalOpen}
+        onOpenChange={(open) => { if (!open) setNotesModalOpen(false) }}
+        routeId={notesRouteId}
+        routeName={notesRouteName}
+      />
     </div>
   )
 }
