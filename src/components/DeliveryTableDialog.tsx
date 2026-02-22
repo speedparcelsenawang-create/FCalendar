@@ -241,7 +241,7 @@ export function DeliveryTableDialog() {
                 <th className="px-3 py-3 text-center cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("code")}>
                   Code <SortIcon col="code" />
                 </th>
-                <th className="px-3 py-3 text-left cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("name")}>
+                <th className="px-3 py-3 text-center cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("name")}>
                   Location Name <SortIcon col="name" />
                 </th>
                 <th className="px-3 py-3 text-center cursor-pointer select-none hover:text-foreground transition-colors" onClick={() => handleSort("delivery")}>
@@ -269,7 +269,7 @@ export function DeliveryTableDialog() {
                   >
                     <td className="px-3 py-3 text-center text-muted-foreground w-10 text-xs tabular-nums">{idx + 1}</td>
                     <td className="px-3 py-3 text-center">
-                      <span className="inline-block text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-primary/10 text-primary">{pt.routeName}</span>
+                      <span className="text-xs text-foreground">{pt.routeName}</span>
                     </td>
                     <td className="px-3 py-3 text-center">
                       <span className={cn("font-mono text-xs font-medium", pt._dupCode && "text-amber-600 dark:text-amber-400 font-bold")}>
@@ -277,21 +277,14 @@ export function DeliveryTableDialog() {
                       </span>
                       {pt._dupCode && <AlertTriangle className="inline w-3 h-3 ml-1 text-amber-500" />}
                     </td>
-                    <td className="px-3 py-3 text-left">
+                    <td className="px-3 py-3 text-center">
                       <span className={cn("text-xs", pt._dupName && "text-rose-600 dark:text-rose-400 font-semibold")}>
                         {pt.name}
                       </span>
                       {pt._dupName && <AlertTriangle className="inline w-3 h-3 ml-1 text-rose-500" />}
                     </td>
                     <td className="px-3 py-3 text-center">
-                      <span className={cn(
-                        "inline-block text-[10px] font-semibold px-2 py-0.5 rounded-full",
-                        pt.delivery === 'Daily'   ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400'
-                        : pt.delivery === 'Weekday' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400'
-                        : pt.delivery === 'Alt 1'  ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400'
-                        : pt.delivery === 'Alt 2'  ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-400'
-                        : 'bg-muted text-muted-foreground'
-                      )}>{pt.delivery}</span>
+                      <span className="text-xs text-foreground">{pt.delivery}</span>
                     </td>
                   </tr>
                 ))

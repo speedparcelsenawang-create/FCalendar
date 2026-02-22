@@ -128,7 +128,7 @@ body {
     --secondary: hsl(202 33% 91%);
     --secondary-foreground: hsl(202 24% 9%);
     --muted: hsl(202 33% 91%);
-    --muted-foreground: hsl(202 12% 45%);
+    --muted-foreground: hsl(202 12% 58%);
     --accent: hsl(202 33% 91%);
     --accent-foreground: hsl(202 24% 9%);
     --destructive: hsl(0 72% 51%);
@@ -166,7 +166,7 @@ body {
     --secondary: hsl(202 14% 18%);
     --secondary-foreground: hsl(202 33% 96%);
     --muted: hsl(202 14% 16%);
-    --muted-foreground: hsl(202 12% 60%);
+    --muted-foreground: hsl(202 12% 72%);
     --accent: hsl(202 14% 18%);
     --accent-foreground: hsl(202 33% 96%);
     --destructive: hsl(0 72% 51%);

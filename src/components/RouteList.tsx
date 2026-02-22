@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react"
-import { List, Info, Plus, Check, X, Edit2, Trash2, Search, Settings, Save, ArrowUp, ArrowDown, RotateCcw, Truck, SlidersHorizontal, Loader2, Maximize2, Minimize2, MessageSquare } from "lucide-react"
+import { List, Info, Plus, Check, X, Edit2, Trash2, Search, Settings, Save, ArrowUp, ArrowDown, RotateCcw, Truck, Loader2, Maximize2, Minimize2, MessageSquare, MapPin, Clock, SlidersHorizontal } from "lucide-react"
 import { RowInfoModal } from "./RowInfoModal"
 import { useEditMode } from "@/contexts/EditModeContext"
 import {
@@ -148,6 +148,7 @@ export function RouteList() {
   const [newRoute, setNewRoute] = useState({ name: "", code: "", shift: "AM" })
   const [searchQuery, setSearchQuery] = useState("")
   const [filterRegion, setFilterRegion] = useState<"all" | "KL" | "Sel">("all")
+  const [filterShift, setFilterShift] = useState<"all" | "AM" | "PM">("all")
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [detailFullscreen, setDetailFullscreen] = useState(false)
 
@@ -201,7 +202,6 @@ export function RouteList() {
   // Filter routes based on search query + region, then sort A-Z / 1-10 by name
   const filteredRoutes = useMemo(() => {
     const list = routes.filter(route => {
-      // Search filter
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase()
         const matchSearch =
@@ -210,19 +210,18 @@ export function RouteList() {
           route.shift.toLowerCase().includes(query)
         if (!matchSearch) return false
       }
-      // Region filter
       if (filterRegion !== "all") {
         const hay = (route.name + " " + route.code).toLowerCase()
         const needle = filterRegion.toLowerCase()
         if (!hay.includes(needle)) return false
       }
+      if (filterShift !== "all" && route.shift !== filterShift) return false
       return true
     })
-
     return [...list].sort((a, b) =>
       a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
     )
-  }, [routes, searchQuery, filterRegion])
+  }, [routes, searchQuery, filterRegion, filterShift])
   const [editingCell, setEditingCell] = useState<{ rowCode: string; field: string } | null>(null)
   const [editValue, setEditValue] = useState<string>("")
   const [editError, setEditError] = useState<string>("")
@@ -246,6 +245,8 @@ export function RouteList() {
   const [deliveryModalOpen, setDeliveryModalOpen] = useState(false)
   const [deliveryModalCode, setDeliveryModalCode] = useState<string | null>(null)
   const [openKmTooltip, setOpenKmTooltip] = useState<string | null>(null)
+  // tracks locally-edited cells that haven't been pushed to DB yet
+  const [pendingCellEdits, setPendingCellEdits] = useState<Set<string>>(new Set())
 
   // ── Settings Modal ────────────────────────────────────────────────
   type ColumnKey = 'no' | 'code' | 'name' | 'delivery' | 'action'
@@ -447,20 +448,22 @@ export function RouteList() {
     }
     setEditError("")
     
+    const { rowCode, field } = editingCell
     setDeliveryPoints(prev => prev.map(point => {
-      if (point.code === editingCell.rowCode) {
-        if (editingCell.field === 'latitude' || editingCell.field === 'longitude') {
+      if (point.code === rowCode) {
+        if (field === 'latitude' || field === 'longitude') {
           const numValue = parseFloat(editValue)
           if (!isNaN(numValue)) {
-            return { ...point, [editingCell.field]: numValue }
+            return { ...point, [field]: numValue }
           }
         } else {
-          return { ...point, [editingCell.field]: editValue }
+          return { ...point, [field]: editValue }
         }
       }
       return point
     }))
-    
+    // mark this cell as pending (locally edited, not yet saved to DB)
+    setPendingCellEdits(prev => { const n = new Set(prev); n.add(`${rowCode}-${field}`); return n })
     cancelEdit()
   }
 
@@ -595,6 +598,8 @@ export function RouteList() {
     })
     const data = await res.json()
     if (!data.success) throw new Error(data.error || 'Save failed')
+    // Clear pending-edit markers once successfully persisted
+    setPendingCellEdits(new Set())
     // Re-fetch from server so UI mirrors exactly what was persisted
     await fetchRoutes(currentRouteId)
   }, [routes, fetchRoutes, currentRouteId])
@@ -637,137 +642,199 @@ export function RouteList() {
   return (
     <div className="relative font-light flex-1 overflow-y-auto">
       {/* Route List */}
-      <div className="mt-4 px-4 max-w-5xl mx-auto" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
-        {/* Search Field + Filter */}
-        <div className="mb-5">
-          <div className="flex items-center gap-2 max-w-md mx-auto">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/60" />
-              <Input
-                type="text"
-                placeholder="Search name, code, or shift..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-4 h-10 rounded-xl border-border/70 bg-card shadow-sm text-sm placeholder:text-muted-foreground/50 focus-visible:ring-primary/30"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                >
-                  <X className="size-3.5" />
-                </button>
-              )}
-            </div>
+      <div className="mt-4 px-4 max-w-xl mx-auto" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+        {/* Search + Filter */}
+        <div className="mb-5 flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/50 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search routes…"
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              className="w-full h-11 pl-10 pr-9 bg-card rounded-xl text-sm placeholder:text-muted-foreground/40 outline-none ring-1 ring-border/60 focus:ring-2 focus:ring-primary/40 shadow-sm transition-shadow"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground transition-colors"
+              >
+                <X className="size-3.5" />
+              </button>
+            )}
+          </div>
 
-            {/* Filter popover */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className={`relative h-10 w-10 rounded-xl border-border/70 bg-card shadow-sm shrink-0 ${
-                    filterRegion !== "all" ? "border-primary text-primary" : ""
-                  }`}
-                  title="Filter"
-                >
-                  <SlidersHorizontal className="size-4" />
-                  {filterRegion !== "all" && (
-                    <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-primary" />
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent align="end" className="w-48 p-3 rounded-xl shadow-lg">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Region</p>
-                <div className="flex flex-col gap-1.5">
+          {/* Single Filter Button */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                className={`relative h-11 w-11 flex items-center justify-center rounded-xl ring-1 shadow-sm transition-colors ${
+                  filterRegion !== "all" || filterShift !== "all"
+                    ? "bg-primary text-primary-foreground ring-primary"
+                    : "bg-card text-muted-foreground ring-border/60 hover:bg-muted"
+                }`}
+              >
+                <SlidersHorizontal className="size-4" />
+                {(filterRegion !== "all" || filterShift !== "all") && (
+                  <span className="absolute -top-1 -right-1 size-2 rounded-full bg-orange-400 ring-1 ring-background" />
+                )}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-64 p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold">Filter</span>
+                {(filterRegion !== "all" || filterShift !== "all") && (
+                  <button
+                    onClick={() => { setFilterRegion("all"); setFilterShift("all") }}
+                    className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
+
+              {/* Region */}
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Region</p>
+                <div className="flex gap-1.5">
                   {(["all", "KL", "Sel"] as const).map(r => (
                     <button
                       key={r}
                       onClick={() => setFilterRegion(r)}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                      className={`flex-1 h-8 rounded-lg text-xs font-medium transition-all ${
                         filterRegion === r
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "border-border text-muted-foreground hover:bg-muted"
+                          ? r === "KL" ? "bg-blue-500 text-white"
+                            : r === "Sel" ? "bg-red-500 text-white"
+                            : "bg-foreground text-background"
+                          : "bg-muted text-muted-foreground hover:bg-muted-foreground/20"
                       }`}
                     >
-                      <span className={`w-2 h-2 rounded-full shrink-0 ${
-                        r === "KL" ? "bg-blue-500" : r === "Sel" ? "bg-red-500" : "bg-muted-foreground"
-                      }`} />
-                      {r === "all" ? "All" : r === "KL" ? "Kuala Lumpur" : "Selangor"}
+                      {r === "all" ? "All" : r}
                     </button>
                   ))}
                 </div>
-                {filterRegion !== "all" && (
-                  <button
-                    onClick={() => setFilterRegion("all")}
-                    className="w-full mt-2 text-xs text-center text-muted-foreground hover:text-foreground pt-2 border-t border-border transition-colors"
-                  >
-                    Clear filter
-                  </button>
-                )}
-              </PopoverContent>
-            </Popover>
-          </div>
+              </div>
+
+              {/* Shift */}
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Shift</p>
+                <div className="flex gap-1.5">
+                  {(["all", "AM", "PM"] as const).map(s => (
+                    <button
+                      key={s}
+                      onClick={() => setFilterShift(s)}
+                      className={`flex-1 h-8 rounded-lg text-xs font-medium transition-all ${
+                        filterShift === s
+                          ? s === "AM" ? "bg-orange-500 text-white"
+                            : s === "PM" ? "bg-indigo-500 text-white"
+                            : "bg-foreground text-background"
+                          : "bg-muted text-muted-foreground hover:bg-muted-foreground/20"
+                      }`}
+                    >
+                      {s === "all" ? "All" : s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
 
-        <div className="grid grid-cols-1 gap-2.5">
-        {filteredRoutes.map((route) => (
+        <div className="grid grid-cols-1 gap-3">
+        {filteredRoutes.map((route) => {
+          const total   = route.deliveryPoints.length
+          const active  = route.deliveryPoints.filter(p => isDeliveryActive(p.delivery)).length
+          const pct     = total > 0 ? Math.round((active / total) * 100) : 0
+          const isKL    = (route.name + " " + route.code).toLowerCase().includes("kl")
+          const isSel   = (route.name + " " + route.code).toLowerCase().includes("sel")
+          const accentCls = isKL  ? 'border-l-blue-500'
+                          : isSel ? 'border-l-red-500'
+                          : 'border-l-primary'
+          return (
           <div key={route.id} className="w-full">
             {/* Card */}
-            <div 
-              className="bg-card rounded-xl border border-border shadow-sm hover:shadow-md hover:border-primary/30 transition-all duration-200 overflow-hidden group"
+            <div
+              className={`bg-card rounded-xl border border-border border-l-4 ${accentCls} shadow-sm hover:shadow-md hover:border-border/80 transition-all duration-200 overflow-hidden group cursor-pointer`}
+              onClick={() => { setCurrentRouteId(route.id); setDetailDialogOpen(true) }}
             >
-              {/* Card Row */}
-              <div className="flex items-center gap-4 px-4 py-3.5">
-                {/* Route Info */}
+              {/* Top section */}
+              <div className="flex items-start gap-3 px-4 pt-3.5 pb-2">
+                {/* Flag / Icon */}
+                <div className="shrink-0 mt-0.5">
+                  {isKL
+                    ? <img src="/kl-flag.png" className="h-8 w-auto max-w-[44px] object-cover rounded-md shadow-sm ring-1 ring-black/10 dark:ring-white/10" alt="KL" />
+                    : isSel
+                    ? <img src="/selangor-flag.png" className="h-8 w-auto max-w-[44px] object-cover rounded-md shadow-sm ring-1 ring-black/10 dark:ring-white/10" alt="Selangor" />
+                    : <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
+                        <Truck className="size-[17px] text-primary" />
+                      </div>
+                  }
+                </div>
+
+                {/* Main info */}
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <h3 className="text-[13px] font-semibold truncate group-hover:text-primary transition-colors leading-tight">{route.name}</h3>
-                    <span className="text-[12px] text-muted-foreground/40 shrink-0">·</span>
-                    <span className="font-mono text-[11px] text-muted-foreground/70 shrink-0">{route.code}</span>
-                  </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className={`text-[11px] font-medium ${
-                      route.shift === 'AM' ? 'text-orange-500 dark:text-orange-400' : 'text-blue-500 dark:text-blue-400'
-                    }`}>{route.shift}</span>
-                    <span className="text-muted-foreground/30 text-[10px]">·</span>
-                    <span className="text-[11px] text-muted-foreground/70">
-                      <span className="font-medium text-foreground">{route.deliveryPoints.filter(p => isDeliveryActive(p.delivery)).length}</span>
-                      <span className="text-muted-foreground/50"> / {route.deliveryPoints.length}</span>
-                      <span className="ml-1">Locations</span>
-                    </span>
-                  </div>
+                  {/* Row 1: Route name only */}
+                  <h3 className="text-[13px] font-bold truncate group-hover:text-primary transition-colors leading-tight">{route.name}</h3>
+                  {/* Row 2: Code - Shift */}
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    <span className="font-mono">{route.code}</span>
+                    <span className="mx-1.5 text-muted-foreground/40">–</span>
+                    <span>{route.shift}</span>
+                  </p>
                 </div>
-                {/* Right side */}
-                <div className="shrink-0 flex flex-col items-end gap-2">
-                  <span className="text-[10px] text-muted-foreground/50 whitespace-nowrap">
-                    {formatRelativeTime(route.updatedAt)}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    {isEditMode && (
-                      <button
-                        className="p-1.5 rounded-lg text-muted-foreground/60 hover:text-primary hover:bg-primary/8 transition-colors"
-                        onClick={() => handleEditRoute(route)}
-                        title="Edit Route"
-                      >
-                        <Settings className="size-[15px]" />
-                      </button>
-                    )}
+
+                {/* Action buttons */}
+                <div className="shrink-0 flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
+                  {isEditMode && (
                     <button
-                      className="p-1.5 rounded-lg text-muted-foreground/60 hover:text-primary hover:bg-primary/8 transition-colors"
-                      title="Comments"
+                      className="p-1.5 rounded-lg text-muted-foreground/50 hover:text-primary hover:bg-primary/8 transition-colors"
+                      onClick={() => handleEditRoute(route)}
+                      title="Edit Route"
                     >
-                      <MessageSquare className="size-[15px]" />
+                      <Settings className="size-[15px]" />
                     </button>
-                    <button
-                      className="p-1.5 rounded-lg text-muted-foreground/60 hover:text-primary hover:bg-primary/8 transition-colors"
-                      onClick={() => { setCurrentRouteId(route.id); setDetailDialogOpen(true) }}
-                      title="View Details"
-                    >
-                      <List className="size-[15px]" />
-                    </button>
-                  </div>
+                  )}
+                  <button
+                    className="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                    title="Comments"
+                  >
+                    <MessageSquare className="size-[18px] text-blue-400 hover:text-blue-500" />
+                  </button>
+                  <button
+                    className="p-1.5 rounded-lg hover:bg-primary/8 transition-colors"
+                    onClick={() => { setCurrentRouteId(route.id); setDetailDialogOpen(true) }}
+                    title="View Details"
+                  >
+                    <List className="size-[18px] text-primary/70 hover:text-primary" />
+                  </button>
                 </div>
+              </div>
+
+              {/* Progress bar */}
+              <div className="px-4 pb-1">
+                <div className="w-full h-1 bg-muted/50 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      pct === 100 ? 'bg-green-500' : pct > 50 ? 'bg-primary' : 'bg-amber-500'
+                    }`}
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Bottom row: location count left, timestamp right */}
+              <div className="flex items-center justify-between gap-2 px-4 pb-3 pt-1.5">
+                <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                  <MapPin className="size-3 shrink-0" />
+                  <span className="font-semibold text-foreground">{active}</span>
+                  <span className="text-muted-foreground/70">/</span>
+                  <span>{total}</span>
+                  <span className="ml-0.5 text-muted-foreground/70">Locations</span>
+                </span>
+                <span className="flex items-center gap-1 text-[11px] text-muted-foreground shrink-0">
+                  <Clock className="size-3 shrink-0" />
+                  {formatRelativeTime(route.updatedAt)}
+                </span>
               </div>
             </div>
                   <Dialog open={detailDialogOpen && route.id === currentRouteId} onOpenChange={(open) => { if (!open) { setDetailDialogOpen(false); setDetailFullscreen(false); setSelectedRows([]) } }}>
@@ -839,11 +906,17 @@ export function RouteList() {
                               ? `Origin → ${point.name || point.code}: ${distInfo ? formatKm(distInfo.segment) : '-'}`
                               : `${sortedDeliveryPoints[index - 1].name || sortedDeliveryPoints[index - 1].code} → ${point.name || point.code}: ${distInfo ? formatKm(distInfo.segment) : '-'}`
 
+                            const isEditingThisRow = editingCell?.rowCode === point.code
+                            const hasRowPending = [...pendingCellEdits].some(k => k.startsWith(`${point.code}-`))
                             return (
-                              <tr key={point.code} className={`border-b border-border/30 transition-colors duration-100 ${
-                                isActive
-                                  ? index % 2 === 0 ? 'hover:bg-primary/5' : 'bg-muted/25 hover:bg-primary/5'
-                                  : 'opacity-40 hover:opacity-60'
+                              <tr key={point.code} className={`border-b transition-colors duration-100 ${
+                                isEditingThisRow
+                                  ? 'border-primary/50 bg-primary/6 shadow-[inset_3px_0_0_hsl(var(--primary)/0.7)]'
+                                  : hasRowPending
+                                  ? 'border-amber-400/40 dark:border-amber-500/30 bg-amber-50/40 dark:bg-amber-900/10'
+                                  : isActive
+                                  ? index % 2 === 0 ? 'border-border/30 hover:bg-primary/5' : 'border-border/30 bg-muted/25 hover:bg-primary/5'
+                                  : 'border-border/30 opacity-40 hover:opacity-60'
                               }`}>
                                 {isEditMode && (
                                   <td className="px-3 h-11 text-center">
@@ -872,7 +945,7 @@ export function RouteList() {
                                       >
                                         <PopoverTrigger asChild>
                                           <button className="hover:bg-accent px-3 py-1 rounded flex items-center justify-center gap-1.5 group mx-auto" onClick={() => startEdit(point.code, 'code', point.code)}>
-                                            <span>{point.code}</span>
+                                            <span className={pendingCellEdits.has(`${point.code}-code`) ? 'text-amber-600 dark:text-amber-400 font-semibold' : ''}>{point.code}</span>
                                             <Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
                                           </button>
                                         </PopoverTrigger>
@@ -922,7 +995,7 @@ export function RouteList() {
                                       >
                                         <PopoverTrigger asChild>
                                           <button className="hover:bg-accent px-3 py-1 rounded flex items-center justify-center gap-1.5 group mx-auto" onClick={() => startEdit(point.code, 'name', point.name)}>
-                                            <span>{point.name}</span>
+                                            <span className={pendingCellEdits.has(`${point.code}-name`) ? 'text-amber-600 dark:text-amber-400 font-semibold' : ''}>{point.name}</span>
                                             <Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
                                           </button>
                                         </PopoverTrigger>
@@ -953,10 +1026,12 @@ export function RouteList() {
                                           }}
                                         >
                                           <span className={`text-[11px] font-semibold ${
-                                            point.delivery === 'Daily' ? 'text-green-700 dark:text-green-400'
-                                            : point.delivery === 'Weekday' ? 'text-blue-700 dark:text-blue-400'
-                                            : point.delivery === 'Alt 1' ? 'text-orange-700 dark:text-orange-400'
-                                            : 'text-purple-700 dark:text-purple-400'
+                                            pendingCellEdits.has(`${point.code}-delivery`)
+                                              ? 'text-amber-600 dark:text-amber-400'
+                                              : point.delivery === 'Daily' ? 'text-green-700 dark:text-green-400'
+                                              : point.delivery === 'Weekday' ? 'text-blue-700 dark:text-blue-400'
+                                              : point.delivery === 'Alt 1' ? 'text-orange-700 dark:text-orange-400'
+                                              : 'text-purple-700 dark:text-purple-400'
                                           }`}>{point.delivery}</span>
                                           <span className={`text-[10px] font-semibold ${isActive ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>{isActive ? 'ON' : 'OFF'}</span>
                                           <Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
@@ -998,7 +1073,7 @@ export function RouteList() {
                                     <Popover open={isEditMode && !!popoverOpen[`${point.code}-latitude`]} onOpenChange={(open) => { if (!isEditMode) return; if (!open) cancelEdit(); setPopoverOpen({ [`${point.code}-latitude`]: open }) }}>
                                       <PopoverTrigger asChild>
                                         <button className="hover:bg-accent px-3 py-1 rounded flex items-center justify-center gap-1.5 group font-mono mx-auto text-[11px]" onClick={() => startEdit(point.code, 'latitude', point.latitude.toFixed(4))}>
-                                          <span>{point.latitude.toFixed(4)}</span><Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                                          <span className={pendingCellEdits.has(`${point.code}-latitude`) ? 'text-amber-600 dark:text-amber-400 font-semibold' : ''}>{point.latitude.toFixed(4)}</span><Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
                                         </button>
                                       </PopoverTrigger>
                                       <PopoverContent className="w-64"><div className="space-y-3"><div className="space-y-2"><label className="text-sm font-medium">Latitude</label><Input className="text-center font-mono" type="number" step="0.0001" value={editValue} onChange={(e) => setEditValue(e.target.value)} placeholder="Enter latitude" autoFocus onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit() }} /></div><div className="flex gap-2"><Button size="sm" onClick={saveEdit} className="flex-1"><Check className="size-4 mr-1" /> Save</Button><Button size="sm" variant="outline" onClick={cancelEdit} className="flex-1"><X className="size-4 mr-1" /> Cancel</Button></div></div></PopoverContent>
@@ -1010,7 +1085,7 @@ export function RouteList() {
                                     <Popover open={isEditMode && !!popoverOpen[`${point.code}-longitude`]} onOpenChange={(open) => { if (!isEditMode) return; if (!open) cancelEdit(); setPopoverOpen({ [`${point.code}-longitude`]: open }) }}>
                                       <PopoverTrigger asChild>
                                         <button className="hover:bg-accent px-3 py-1 rounded flex items-center justify-center gap-1.5 group font-mono mx-auto text-[11px]" onClick={() => startEdit(point.code, 'longitude', point.longitude.toFixed(4))}>
-                                          <span>{point.longitude.toFixed(4)}</span><Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                                          <span className={pendingCellEdits.has(`${point.code}-longitude`) ? 'text-amber-600 dark:text-amber-400 font-semibold' : ''}>{point.longitude.toFixed(4)}</span><Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
                                         </button>
                                       </PopoverTrigger>
                                       <PopoverContent className="w-64"><div className="space-y-3"><div className="space-y-2"><label className="text-sm font-medium">Longitude</label><Input className="text-center font-mono" type="number" step="0.0001" value={editValue} onChange={(e) => setEditValue(e.target.value)} placeholder="Enter longitude" autoFocus onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit() }} /></div><div className="flex gap-2"><Button size="sm" onClick={saveEdit} className="flex-1"><Check className="size-4 mr-1" /> Save</Button><Button size="sm" variant="outline" onClick={cancelEdit} className="flex-1"><X className="size-4 mr-1" /> Cancel</Button></div></div></PopoverContent>
@@ -1330,6 +1405,9 @@ export function RouteList() {
                                   setDeliveryPoints(prev => prev.map(p =>
                                     p.code === deliveryModalCode ? { ...p, delivery: opt.value } : p
                                   ))
+                                  if (deliveryModalCode) {
+                                    setPendingCellEdits(prev => { const n = new Set(prev); n.add(`${deliveryModalCode}-delivery`); return n })
+                                  }
                                 }}
                                 className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-all text-left ${
                                   pt.delivery === opt.value
@@ -1376,7 +1454,8 @@ export function RouteList() {
                   />
                 )}
           </div>
-        ))}
+          )
+        })}
         
         {/* No Results Message */}
         {filteredRoutes.length === 0 && (searchQuery || filterRegion !== "all") && (

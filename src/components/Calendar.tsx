@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { useEditMode } from "@/contexts/EditModeContext"
+import { toast } from "sonner"
 
 // ─── TYPES ───────────────────────────────────────────────────────────────────
 
@@ -670,12 +671,30 @@ export function Calendar({ view = "month" }: { view?: "month" | "week" | "day" }
   }
 
   async function handleSave(data: { id?: number; title: string; date: Date; type: EventType }) {
+    const isEdit = data.id !== undefined
+
+    // Optimistic: add new event immediately with a temp negative id
+    const tempId = -Date.now()
+    const tempEvent: Event = {
+      id: tempId,
+      title: data.title,
+      date: data.date,
+      type: data.type,
+      color: TYPE_COLORS[data.type] ?? "bg-blue-500",
+    }
+    if (!isEdit) setEvents(prev => [...prev, tempEvent])
+
     const saved = await apiSaveEvent(data)
-    if (!saved) return
+    if (!saved) {
+      // Rollback optimistic add
+      if (!isEdit) setEvents(prev => prev.filter(e => e.id !== tempId))
+      toast.error("Failed to save event. Please try again.")
+      return
+    }
     setEvents(prev =>
-      data.id !== undefined
+      isEdit
         ? prev.map(e => (e.id === data.id ? saved : e))
-        : [...prev, saved]
+        : prev.map(e => (e.id === tempId ? saved : e))
     )
   }
 

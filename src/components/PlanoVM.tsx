@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react"
-import { Plus, Trash2, ChevronLeft, ChevronRight, Image as ImageIcon, Pencil, MoreVertical, ArrowUp, ArrowDown, Upload, Link, Loader2 } from "lucide-react"
+import { Plus, Trash2, ChevronLeft, ChevronRight, Image as ImageIcon, Pencil, MoreVertical, ArrowUp, ArrowDown, Upload, Link, Loader2, Save } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { useEditMode } from "@/contexts/EditModeContext"
@@ -42,7 +42,7 @@ interface PlanoPage {
 }
 
 export function PlanoVM() {
-  const { isEditMode, setHasUnsavedChanges, registerSaveHandler } = useEditMode()
+  const { isEditMode, setHasUnsavedChanges, registerSaveHandler, hasUnsavedChanges, isSaving, saveChanges } = useEditMode()
   const lightGalleryRefs = useRef<Map<string, any>>(new Map())
   const [selectedImage, setSelectedImage] = useState<{ url: string; title: string; description: string } | null>(null)
   const [pages, setPages] = useState<PlanoPage[]>([])
@@ -452,7 +452,15 @@ export function PlanoVM() {
           </div>
           
           {isEditMode && (
-            <div className="flex justify-end">
+            <div className="flex justify-end gap-2">
+              {hasUnsavedChanges && (
+                <Button variant="outline" onClick={saveChanges} disabled={isSaving}>
+                  {isSaving
+                    ? <Loader2 className="size-4 mr-2 animate-spin" />
+                    : <Save className="size-4 mr-2" />}
+                  {isSaving ? 'Saving...' : 'Save'}
+                </Button>
+              )}
             <Dialog open={addPageDialog} onOpenChange={setAddPageDialog}>
               <DialogTrigger asChild>
                 <Button>

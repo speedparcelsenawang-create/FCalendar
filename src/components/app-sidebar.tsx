@@ -6,7 +6,7 @@ import {
   Package,
   Search,
   X,
-  LayoutGrid,
+  Images,
 } from "lucide-react"
 import { useEditMode } from "@/contexts/EditModeContext"
 import {
@@ -86,10 +86,22 @@ const data = {
       ],
     },
     {
-      title: "Plano VM",
+      title: "Gallery",
       url: "#",
-      icon: LayoutGrid,
-      page: "plano-vm",
+      icon: Images,
+      isActive: false,
+      items: [
+        {
+          title: "Plano VM",
+          url: "#",
+          page: "plano-vm",
+        },
+        {
+          title: "Album",
+          url: "#",
+          page: "gallery-album",
+        },
+      ],
     },
   ],
   settingsItems: [

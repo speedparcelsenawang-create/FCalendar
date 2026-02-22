@@ -8,9 +8,10 @@ const Settings = lazy(() => import("@/components/Settings").then(m => ({ default
 const PlanoVM = lazy(() => import("@/components/PlanoVM").then(m => ({ default: m.PlanoVM })))
 const DeliveryTableDialog = lazy(() => import("@/components/DeliveryTableDialog").then(m => ({ default: m.DeliveryTableDialog })))
 const MapMarkerPage = lazy(() => import("@/components/MapMarkerPage").then(m => ({ default: m.MapMarkerPage })))
+const Album = lazy(() => import("@/components/Album").then(m => ({ default: m.Album })))
 import { EditModeProvider } from "@/contexts/EditModeContext"
 import { Toaster } from "sonner"
-import { Home, Package, CalendarDays as CalendarDaysIcon, Settings2, Calendar as CalendarIcon } from "lucide-react"
+import { Home, Package, Settings2, Calendar as CalendarIcon, Images } from "lucide-react"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -166,6 +167,8 @@ function AppContent() {
         return <Settings section="security" />
       case "plano-vm":
         return <PlanoVM />
+      case "gallery-album":
+        return <Album />
       case "dashboard":
       default:
         return <HomePage />
@@ -204,7 +207,9 @@ function AppContent() {
       case "settings-security":
         return { parent: { label: "Settings", icon: Settings2 }, current: "Security" }
       case "plano-vm":
-        return { parent: { label: "Plano VM", icon: CalendarDaysIcon }, current: "Plano VM" }
+        return { parent: { label: "Gallery", icon: Images }, current: "Plano VM" }
+      case "gallery-album":
+        return { parent: { label: "Gallery", icon: Images }, current: "Album" }
       case "dashboard":
       default:
         return { current: "Home" }
