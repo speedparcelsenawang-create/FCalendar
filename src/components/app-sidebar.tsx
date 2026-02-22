@@ -9,6 +9,15 @@ import {
   LayoutGrid,
 } from "lucide-react"
 import { useEditMode } from "@/contexts/EditModeContext"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
 
 import { NavMain } from "@/components/nav-main"
 import { NavProjects } from "@/components/nav-projects"
@@ -111,7 +120,8 @@ export function AppSidebar({
   const [searchQuery, setSearchQuery] = React.useState("")
   const [settingsOpen, setSettingsOpen] = React.useState(() => SETTINGS_PAGES.has(currentPage ?? ""))
   const [openNavItem, setOpenNavItem] = React.useState<string | null>(null)
-  const { isEditMode, setIsEditMode } = useEditMode()
+  const [unsavedDialogOpen, setUnsavedDialogOpen] = React.useState(false)
+  const { isEditMode, setIsEditMode, hasUnsavedChanges, saveChanges, isSaving } = useEditMode()
 
   // Mutually exclusive: opening a Platform submenu closes Settings, and vice versa
   const handleNavItemChange = (item: string | null) => {
@@ -122,6 +132,14 @@ export function AppSidebar({
   const handleSettingsOpenChange = (open: boolean) => {
     setSettingsOpen(open)
     if (open) setOpenNavItem(null)
+  }
+
+  const handleEditModeToggle = () => {
+    if (isEditMode && hasUnsavedChanges) {
+      setUnsavedDialogOpen(true)
+    } else {
+      setIsEditMode(!isEditMode)
+    }
   }
 
   const filteredNavMain = React.useMemo(() => {
@@ -147,6 +165,7 @@ export function AppSidebar({
   }
 
   return (
+    <>
     <Sidebar {...props}>
       <SidebarHeader>
         <SidebarMenu>
@@ -204,7 +223,7 @@ export function AppSidebar({
           currentPage={currentPage}
           onNavigate={onNavigate}
           isEditMode={isEditMode}
-          onEditModeToggle={() => setIsEditMode(!isEditMode)}
+          onEditModeToggle={handleEditModeToggle}
           searchQuery={searchQuery}
         />
       </SidebarContent>
@@ -212,5 +231,39 @@ export function AppSidebar({
         <NavUser user={data.user} />
       </SidebarFooter>
     </Sidebar>
+
+      {/* Unsaved Changes Dialog */}
+      <Dialog open={unsavedDialogOpen} onOpenChange={setUnsavedDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Unsaved Changes</DialogTitle>
+            <DialogDescription>
+              You have unsaved changes. What would you like to do before turning off Edit Mode?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setUnsavedDialogOpen(false)
+                setIsEditMode(false)
+              }}
+            >
+              Discard Changes
+            </Button>
+            <Button
+              onClick={async () => {
+                await saveChanges()
+                setUnsavedDialogOpen(false)
+                setIsEditMode(false)
+              }}
+              disabled={isSaving}
+            >
+              {isSaving ? 'Saving...' : 'Save & Turn Off'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }

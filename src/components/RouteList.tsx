@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react"
-import { List, Info, Plus, Check, X, Edit2, Trash2, Search, Settings, Map, MapPin, Save, ArrowUp, ArrowDown, RotateCcw, Truck, ChevronLeft, SlidersHorizontal } from "lucide-react"
+import { List, Info, Plus, Check, X, Edit2, Trash2, Search, Settings, Map, MapPin, Save, ArrowUp, ArrowDown, RotateCcw, Truck, ChevronLeft, SlidersHorizontal, Loader2 } from "lucide-react"
+import { toast } from "sonner"
 import { RowInfoModal } from "./RowInfoModal"
 import { useEditMode } from "@/contexts/EditModeContext"
 import {
@@ -593,8 +594,9 @@ export function RouteList() {
     try {
       await doSave()
       setHasUnsavedChanges(false)
+      toast.success('Saved successfully!')
     } catch (e) {
-      alert('Save failed: ' + (e instanceof Error ? e.message : 'Unknown error'))
+      toast.error('Save failed: ' + (e instanceof Error ? e.message : 'Unknown error'))
     }
   }
 
@@ -1930,10 +1932,14 @@ export function RouteList() {
         <Button
           onClick={handleSaveChanges}
           disabled={isSaving}
-          className="fixed bottom-6 right-6 z-50 bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl transition-all h-12 px-6"
+          className="fixed bottom-6 right-6 z-50 bg-green-600 hover:bg-green-700 shadow-lg hover:shadow-xl transition-all h-12 px-6 gap-2"
           size="lg"
         >
-          <Save className="size-5 mr-2" />
+          {isSaving ? (
+            <Loader2 className="size-5 animate-spin" />
+          ) : (
+            <Save className="size-5" />
+          )}
           {isSaving ? 'Saving...' : 'Save Changes'}
         </Button>
       )}

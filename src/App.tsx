@@ -9,6 +9,7 @@ const PlanoVM = lazy(() => import("@/components/PlanoVM").then(m => ({ default: 
 const DeliveryTableDialog = lazy(() => import("@/components/DeliveryTableDialog").then(m => ({ default: m.DeliveryTableDialog })))
 const MapMarkerPage = lazy(() => import("@/components/MapMarkerPage").then(m => ({ default: m.MapMarkerPage })))
 import { EditModeProvider } from "@/contexts/EditModeContext"
+import { Toaster } from "sonner"
 import { Home, Package, CalendarDays as CalendarDaysIcon, Settings2, Calendar as CalendarIcon } from "lucide-react"
 import {
   Breadcrumb,
@@ -321,6 +322,7 @@ export function App() {
         </EditModeProvider>
       </SidebarProvider>
       <PWAInstallPrompt />
+      <Toaster position="bottom-right" richColors closeButton />
     </ErrorBoundary>
   )
 }

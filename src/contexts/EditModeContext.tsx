@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useRef, type ReactNode } from "react"
+import { toast } from "sonner"
 
 interface EditModeContextType {
   isEditMode: boolean
@@ -28,8 +29,9 @@ export function EditModeProvider({ children }: { children: ReactNode }) {
       try {
         await saveHandlerRef.current()
         setHasUnsavedChanges(false)
-      } catch {
-        // handler should show its own error
+        toast.success('Saved successfully!')
+      } catch (e) {
+        toast.error('Save failed: ' + (e instanceof Error ? e.message : 'Unknown error'))
       } finally {
         setIsSaving(false)
       }
