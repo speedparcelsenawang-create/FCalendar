@@ -1058,11 +1058,12 @@ export function RouteList() {
                           {sortedDeliveryPoints.map((point, index) => {
                             const isActive = isDeliveryActive(point.delivery)
                             const distInfo = pointDistances[index]
+                            const hasCoords = point.latitude !== 0 || point.longitude !== 0
                             const segmentLabel = !isCustomSort
-                            ? `Origin → ${point.name || point.code}: ${distInfo ? formatKm(distInfo.display) : '-'}`
+                            ? `Origin → ${point.name || point.code}: ${hasCoords && distInfo ? formatKm(distInfo.display) : '-'}`
                             : index === 0
-                              ? `Origin → ${point.name || point.code}: ${distInfo ? formatKm(distInfo.segment) : '-'}`
-                              : `${sortedDeliveryPoints[index - 1].name || sortedDeliveryPoints[index - 1].code} → ${point.name || point.code}: ${distInfo ? formatKm(distInfo.segment) : '-'}`
+                              ? `Origin → ${point.name || point.code}: ${hasCoords && distInfo ? formatKm(distInfo.segment) : '-'}`
+                              : `${sortedDeliveryPoints[index - 1].name || sortedDeliveryPoints[index - 1].code} → ${point.name || point.code}: ${hasCoords && distInfo ? formatKm(distInfo.segment) : '-'}`
 
                             const isEditingThisRow = editingCell?.rowCode === point.code
                             const hasRowPending = [...pendingCellEdits].some(k => k.startsWith(`${point.code}-`))
@@ -1186,21 +1187,13 @@ export function RouteList() {
                                           <span className={`text-[11px] font-semibold ${
                                             pendingCellEdits.has(`${point.code}-delivery`)
                                               ? 'text-amber-600 dark:text-amber-400'
-                                              : point.delivery === 'Daily' ? 'text-green-700 dark:text-green-400'
-                                              : point.delivery === 'Weekday' ? 'text-blue-700 dark:text-blue-400'
-                                              : point.delivery === 'Alt 1' ? 'text-orange-700 dark:text-orange-400'
-                                              : 'text-purple-700 dark:text-purple-400'
+                                              : 'text-foreground'
                                           }`}>{point.delivery}</span>
                                           <span className={`text-[10px] font-semibold ${isActive ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>{isActive ? 'ON' : 'OFF'}</span>
                                           <Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
                                         </button>
                                       ) : (
-                                        <span className={`text-[11px] font-semibold ${
-                                          point.delivery === 'Daily'   ? 'text-green-700 dark:text-green-400'
-                                          : point.delivery === 'Weekday' ? 'text-blue-700 dark:text-blue-400'
-                                          : point.delivery === 'Alt 1'  ? 'text-orange-700 dark:text-orange-400'
-                                          : 'text-purple-700 dark:text-purple-400'
-                                        }`}>{point.delivery}</span>
+                                        <span className="text-[11px] font-semibold text-foreground">{point.delivery}</span>
                                       )}
                                     </td>
                                   )
@@ -1218,7 +1211,7 @@ export function RouteList() {
                                         className="text-[11px] font-medium text-muted-foreground cursor-help tabular-nums"
                                         onClick={() => setOpenKmTooltip(prev => prev === point.code ? null : point.code)}
                                       >
-                                        {distInfo ? formatKm(distInfo.display) : '-'}
+                                        {hasCoords && distInfo ? formatKm(distInfo.display) : ''}
                                       </TooltipTrigger>
                                       <TooltipContent side="top" className="text-xs max-w-[220px] text-center z-[9999]">
                                         {segmentLabel}
