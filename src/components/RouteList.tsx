@@ -902,8 +902,6 @@ export function RouteList() {
           'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5'
         }`}>
         {filteredRoutes.map((route) => {
-          const total   = route.deliveryPoints.length
-          const active  = route.deliveryPoints.filter(p => isDeliveryActive(p.delivery)).length
           const isKL    = (route.name + " " + route.code).toLowerCase().includes("kl")
           const isSel   = (route.name + " " + route.code).toLowerCase().includes("sel")
           return (
