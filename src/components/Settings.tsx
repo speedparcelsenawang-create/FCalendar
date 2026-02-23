@@ -1,4 +1,5 @@
 import { useState } from "react"
+import type { ReactNode } from "react"
 import {
   User, Bell, Lock, Globe, Mail, Phone, Save, Shield,
   Eye, EyeOff, Moon, Sun, Check, Type, ZoomIn,
@@ -7,6 +8,8 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
+import { Switch } from "@/components/ui/switch"
+import { Field, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { useTheme, FONT_OPTIONS, type ColorTheme, type AppFont, type AppZoom, type TextSize } from "@/hooks/use-theme"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -44,7 +47,7 @@ const MAP_FALLBACK = { lat: "3.0695500", lng: "101.5469179", zoom: "12" }
 
 // ─── Sidebar nav ──────────────────────────────────────────────────────────────
 // ─── Section panels ───────────────────────────────────────────────────────────
-function SectionHeader({ icon, title, description }: { icon: React.ReactNode; title: string; description?: string }) {
+function SectionHeader({ icon, title, description }: { icon: ReactNode; title: string; description?: string }) {
   return (
     <div className="mb-6">
       <div className="flex items-center gap-2 mb-1">
@@ -132,36 +135,52 @@ export function Settings({ section = "profile" }: { section?: SectionId }) {
         )
 
       // ── Notifications ─────────────────────────────────────────────────────
-      case "notifications":
+      case "notifications":{
+        const NOTIF_ITEMS: { key: keyof typeof notifications; label: string; desc: string; icon: ReactNode }[] = [
+          { key: "email",        label: "Email Notifications",  desc: "Receive notifications via email",                   icon: <Mail className="size-4 text-muted-foreground" /> },
+          { key: "push",         label: "Push Notifications",   desc: "Receive push notifications on your device",          icon: <Bell className="size-4 text-muted-foreground" /> },
+          { key: "sms",          label: "SMS Notifications",    desc: "Receive important alerts via SMS",                   icon: <Phone className="size-4 text-muted-foreground" /> },
+          { key: "weeklyReport", label: "Weekly Report",        desc: "Receive weekly delivery summary report",             icon: <Globe className="size-4 text-muted-foreground" /> },
+        ]
         return (
           <div>
             <SectionHeader icon={<Bell className="size-5" />} title="Notifications" description="Manage the notifications you receive." />
-            <div className="bg-card rounded-lg border divide-y divide-border">
-              {([
-                { key: "email",        label: "Email Notifications",  desc: "Receive notifications via email" },
-                { key: "push",         label: "Push Notifications",   desc: "Receive push notifications on your device" },
-                { key: "sms",          label: "SMS Notifications",    desc: "Receive important alerts via SMS" },
-                { key: "weeklyReport", label: "Weekly Report",        desc: "Receive weekly delivery summary" },
-              ] as { key: keyof typeof notifications; label: string; desc: string }[]).map(({ key, label, desc }) => (
-                <div key={key} className="flex items-center justify-between p-4">
-                  <div>
-                    <p className="font-medium text-sm">{label}</p>
-                    <p className="text-xs text-muted-foreground">{desc}</p>
+
+            <FieldGroup className="w-full">
+              {NOTIF_ITEMS.map(({ key, label, desc, icon }) => (
+                <Field key={key} orientation="horizontal"
+                  className="justify-between rounded-xl border border-border bg-card px-4 py-3.5 shadow-sm hover:bg-accent/30 transition-colors"
+                >
+                  {/* Left: icon + text */}
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="shrink-0 rounded-md bg-muted p-1.5">{icon}</span>
+                    <div className="min-w-0">
+                      <FieldLabel htmlFor={`notif-${key}`} className="text-sm font-medium leading-tight block truncate">
+                        {label}
+                      </FieldLabel>
+                      <p className="text-xs text-muted-foreground mt-0.5 leading-tight">{desc}</p>
+                    </div>
                   </div>
-                  <button
-                    onClick={() => setNotifications(n => ({ ...n, [key]: !n[key] }))}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0 ${notifications[key] ? "bg-primary" : "bg-muted"}`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${notifications[key] ? "translate-x-6" : "translate-x-1"}`} />
-                  </button>
-                </div>
+                  {/* Right: switch */}
+                  <Switch
+                    id={`notif-${key}`}
+                    size="default"
+                    checked={notifications[key]}
+                    onCheckedChange={v => setNotifications(n => ({ ...n, [key]: v }))}
+                    className="shrink-0 ml-4"
+                  />
+                </Field>
               ))}
-            </div>
-            <div className="flex justify-end mt-4">
-              <Button onClick={() => alert("Notification settings saved!")}><Save className="size-4 mr-2" />Save Notifications</Button>
+            </FieldGroup>
+
+            <div className="flex justify-end mt-5">
+              <Button onClick={() => alert("Notification settings saved!")}>
+                <Save className="size-4 mr-2" />Save Notifications
+              </Button>
             </div>
           </div>
         )
+      }
 
       // ── Appearance: Theme & Mode ──────────────────────────────────────────
       case "appearance-theme":

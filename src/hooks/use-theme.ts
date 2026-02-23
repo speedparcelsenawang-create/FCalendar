@@ -105,9 +105,9 @@ export function useTheme() {
     localStorage.setItem("app-zoom", appZoom)
   }, [appZoom])
 
-  // Text size (adjusts base rem so all Tailwind text scales too)
+  // Text size — stored in CSS custom property so DeviceProvider can scale it
   useEffect(() => {
-    document.documentElement.style.fontSize = `${textSize}px`
+    document.documentElement.style.setProperty("--text-size-base", `${textSize}px`)
     localStorage.setItem("text-size", textSize)
   }, [textSize])
 

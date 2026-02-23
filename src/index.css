@@ -43,7 +43,40 @@
 /* Safe area support for notch/island devices */
 html {
   height: 100%;
-  font-size: 100%;
+  /*
+   * Fluid device-aware font-size:
+   *   --text-size-base  → user's chosen size (set by useTheme, default 16px)
+   *   --app-font-scale  → device multiplier  (set by DeviceProvider)
+   *      mobile  < 768px  → 0.875  (~87.5% of user pref)
+   *      tablet  768-1024 → 0.9375 (~93.75%)
+   *      desktop > 1024px → 1.0    (100%)
+   *
+   * clamp() ensures font never goes below 13px or above --text-size-base.
+   */
+  --text-size-base: 16px;   /* fallback; overridden by useTheme */
+  --app-font-scale: 1;       /* overridden by DeviceProvider */
+  font-size: clamp(
+    13px,
+    calc(var(--text-size-base) * var(--app-font-scale)),
+    var(--text-size-base)
+  );
+
+  /* Fluid text scale helpers — use these in components */
+  --fs-2xs: clamp(0.625rem, 1.4vw, 0.6875rem);  /* ~10-11px */
+  --fs-xs:  clamp(0.6875rem, 1.8vw, 0.75rem);   /* ~11-12px */
+  --fs-sm:  clamp(0.75rem,   2vw,   0.875rem);   /* ~12-14px */
+  --fs-md:  clamp(0.875rem,  2.3vw, 1rem);       /* ~14-16px */
+  --fs-lg:  clamp(1rem,      2.6vw, 1.125rem);   /* ~16-18px */
+  --fs-xl:  clamp(1.125rem,  3vw,   1.25rem);    /* ~18-20px */
+  --fs-2xl: clamp(1.25rem,   3.8vw, 1.5rem);     /* ~20-24px */
+  --fs-3xl: clamp(1.5rem,    4.5vw, 1.875rem);   /* ~24-30px */
+
+  /* Fluid spacing helpers */
+  --sp-xs:  clamp(0.25rem, 0.8vw, 0.5rem);
+  --sp-sm:  clamp(0.5rem,  1.2vw, 0.75rem);
+  --sp-md:  clamp(0.75rem, 1.8vw, 1rem);
+  --sp-lg:  clamp(1rem,    2.5vw, 1.5rem);
+  --sp-xl:  clamp(1.5rem,  3.5vw, 2rem);
 }
 
 body {
@@ -647,6 +680,18 @@ body {
     margin-left: 0;
     margin-bottom: 0.5rem;
   }
+
+  /*
+   * Convert fixed-pixel Tailwind JIT classes to fluid rem equivalents
+   * so they scale alongside the html font-size clamp().
+   * Tailwind class names use backslash-escape in CSS but not in HTML.
+   */
+  .text-\[10px\] { font-size: var(--fs-2xs) !important; }
+  .text-\[11px\] { font-size: var(--fs-xs)  !important; }
+  .text-\[12px\] { font-size: var(--fs-sm)  !important; }
+  .text-\[13px\] { font-size: 0.8125rem     !important; }
+  .text-\[14px\] { font-size: var(--fs-md)  !important; }
+  .text-\[15px\] { font-size: 0.9375rem     !important; }
 }
 
 @layer components {
@@ -671,7 +716,138 @@ body {
     background-color: var(--elevate-2);
     transform: translateY(0);
   }
+
+  /* ── Fluid text utilities ─────────────────────────────────── */
+  .text-fluid-2xs  { font-size: var(--fs-2xs); }
+  .text-fluid-xs   { font-size: var(--fs-xs);  }
+  .text-fluid-sm   { font-size: var(--fs-sm);  }
+  .text-fluid-base { font-size: var(--fs-md);  }
+  .text-fluid-lg   { font-size: var(--fs-lg);  }
+  .text-fluid-xl   { font-size: var(--fs-xl);  }
+  .text-fluid-2xl  { font-size: var(--fs-2xl); }
+  .text-fluid-3xl  { font-size: var(--fs-3xl); }
+
+  /* ── Device-tier overrides applied via data-device on <html> ─ */
+  /* Mobile — tighten spacing & compress headings */
+  [data-device="mobile"] .page-header {
+    font-size: var(--fs-xl);
+  }
+  [data-device="mobile"] .page-subheader {
+    font-size: var(--fs-sm);
+  }
+  /* Tablet */
+  [data-device="tablet"] .page-header {
+    font-size: var(--fs-2xl);
+  }
+  [data-device="tablet"] .page-subheader {
+    font-size: var(--fs-md);
+  }
+  /* Desktop */
+  [data-device="desktop"] .page-header {
+    font-size: var(--fs-2xl);
+  }
+  [data-device="desktop"] .page-subheader {
+    font-size: var(--fs-md);
+  }
+
+  /* Touch-device: larger tap targets */
+  [data-touch="true"] button,
+  [data-touch="true"] [role="button"],
+  [data-touch="true"] a {
+    min-height: 2.75rem;
+  }
+
+  /* Fluid padding for page-level containers */
+  .page-pad {
+    padding: var(--sp-md) var(--sp-lg);
+  }
+  [data-device="mobile"] .page-pad {
+    padding: var(--sp-sm) var(--sp-md);
+  }
 }
+
+/* ── PrimeReact InputSwitch — minimal standalone styles ─────── */
+/* We don't import the full PrimeReact CSS; only what InputSwitch needs. */
+.fcal-switch {
+  display: inline-flex !important;
+  align-items: center !important;
+  position: relative !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+}
+.fcal-switch-md { width: 2.75rem !important; height: 1.5rem !important; }   /* 44×24 */
+.fcal-switch-sm { width: 1.75rem !important; height: 1rem  !important; }    /* 28×16 */
+
+.fcal-switch .p-inputswitch-input {
+  position: absolute !important;
+  inset: 0 !important;
+  opacity: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  cursor: pointer !important;
+  margin: 0 !important;
+  z-index: 1 !important;
+}
+
+.fcal-switch .p-inputswitch-slider {
+  position: absolute !important;
+  inset: 0 !important;
+  border-radius: 9999px !important;
+  background: rgba(0, 0, 0, 0.22) !important;
+  transition: background-color 0.2s ease !important;
+}
+.dark .fcal-switch .p-inputswitch-slider {
+  background: rgba(255, 255, 255, 0.22) !important;
+}
+
+/* Thumb */
+.fcal-switch-md .p-inputswitch-slider::before {
+  content: '' !important;
+  position: absolute !important;
+  width: 1.125rem !important;   /* 18px */
+  height: 1.125rem !important;
+  top: 50% !important;
+  left: 3px !important;
+  transform: translateY(-50%) !important;
+  border-radius: 50% !important;
+  background: #ffffff !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.35) !important;
+  transition: left 0.2s ease !important;
+}
+.fcal-switch-sm .p-inputswitch-slider::before {
+  content: '' !important;
+  position: absolute !important;
+  width: 0.625rem !important;   /* 10px */
+  height: 0.625rem !important;
+  top: 50% !important;
+  left: 3px !important;
+  transform: translateY(-50%) !important;
+  border-radius: 50% !important;
+  background: #ffffff !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.25) !important;
+  transition: left 0.2s ease !important;
+}
+
+/* ON state */
+.fcal-switch.p-highlight .p-inputswitch-slider {
+  background: var(--primary) !important;
+}
+.fcal-switch-md.p-highlight .p-inputswitch-slider::before {
+  left: calc(2.75rem - 1.125rem - 3px) !important;   /* trackW - thumbSz - pad */
+}
+.fcal-switch-sm.p-highlight .p-inputswitch-slider::before {
+  left: calc(1.75rem - 0.625rem - 3px) !important;
+}
+
+/* Disabled */
+.fcal-switch.p-disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+.fcal-switch.p-disabled .p-inputswitch-input {
+  cursor: not-allowed !important;
+}
+/* ────────────────────────────────────────────────────────── */
 
 /* Page transition animations */
 @keyframes fadeIn {

@@ -10,6 +10,7 @@ const DeliveryTableDialog = lazy(() => import("@/components/DeliveryTableDialog"
 const MapMarkerPage = lazy(() => import("@/components/MapMarkerPage").then(m => ({ default: m.MapMarkerPage })))
 const Album = lazy(() => import("@/components/Album").then(m => ({ default: m.Album })))
 import { EditModeProvider } from "@/contexts/EditModeContext"
+import { DeviceProvider } from "@/contexts/DeviceContext"
 import { Toaster } from "sonner"
 import { Home, Package, Settings2, Calendar as CalendarIcon, Images, ChevronDown, Truck, Pin } from "lucide-react"
 import {
@@ -85,8 +86,8 @@ function HomePage() {
     <div className="flex flex-1 flex-col gap-4 p-4 md:p-6 max-w-2xl mx-auto w-full overflow-y-auto" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
       {/* Welcome */}
       <div>
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white">Welcome to FCalendar</h1>
-        <p className="text-sm text-muted-foreground mt-1">Daily colour guide for stock operations.</p>
+        <h1 className="text-fluid-xl page-header font-bold text-gray-900 dark:text-white">Welcome to FCalendar</h1>
+        <p className="text-fluid-sm page-subheader text-muted-foreground mt-1">Daily colour guide for stock operations.</p>
       </div>
 
       {/* Pinned Routes */}
@@ -111,9 +112,9 @@ function HomePage() {
                     <Pin className="size-3" />
                   </button>
                   {isKL
-                    ? <img src="/kl-flag.png" className="h-7 w-auto max-w-[40px] object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10" alt="KL" />
+                    ? <img src="/kl-flag.png" className="object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10" style={{ width: 48, height: 30 }} alt="KL" />
                     : isSel
-                    ? <img src="/selangor-flag.png" className="h-7 w-auto max-w-[40px] object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10" alt="Selangor" />
+                    ? <img src="/selangor-flag.png" className="object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10" style={{ width: 48, height: 30 }} alt="Selangor" />
                     : <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
                         <Truck className="size-4 text-primary" />
                       </div>
@@ -237,8 +238,8 @@ function AppContent() {
         return (
           <div className="flex flex-col flex-1 min-h-0 gap-4 p-4 md:p-6">
             <div className="shrink-0">
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">Location</h1>
-              <p className="text-sm text-muted-foreground mt-1">View and manage delivery records.</p>
+              <h1 className="text-fluid-xl page-header font-bold text-gray-900 dark:text-white">Location</h1>
+              <p className="text-fluid-sm page-subheader text-muted-foreground mt-1">View and manage delivery records.</p>
             </div>
             <DeliveryTableDialog />
           </div>
@@ -423,15 +424,17 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
 
 export function App() {
   return (
-    <ErrorBoundary>
-      <SidebarProvider defaultOpen={false}>
-        <EditModeProvider>
-          <AppContent />
-        </EditModeProvider>
-      </SidebarProvider>
-      <PWAInstallPrompt />
-      <Toaster position="bottom-right" richColors closeButton />
-    </ErrorBoundary>
+    <DeviceProvider>
+      <ErrorBoundary>
+        <SidebarProvider defaultOpen={false}>
+          <EditModeProvider>
+            <AppContent />
+          </EditModeProvider>
+        </SidebarProvider>
+        <PWAInstallPrompt />
+        <Toaster position="bottom-right" richColors closeButton />
+      </ErrorBoundary>
+    </DeviceProvider>
   )
 }
 

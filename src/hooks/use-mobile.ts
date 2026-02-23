@@ -1,6 +1,15 @@
 import * as React from "react"
 
-const MOBILE_BREAKPOINT = 768
+export const MOBILE_BREAKPOINT = 768
+export const TABLET_BREAKPOINT = 1024
+
+export type DeviceType = "mobile" | "tablet" | "desktop"
+
+function getDeviceType(width: number): DeviceType {
+  if (width < MOBILE_BREAKPOINT) return "mobile"
+  if (width < TABLET_BREAKPOINT) return "tablet"
+  return "desktop"
+}
 
 export function useIsMobile() {
   const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
@@ -16,4 +25,27 @@ export function useIsMobile() {
   }, [])
 
   return !!isMobile
+}
+
+export function useDeviceType(): DeviceType {
+  const [device, setDevice] = React.useState<DeviceType>(() =>
+    typeof window !== "undefined" ? getDeviceType(window.innerWidth) : "desktop"
+  )
+
+  React.useEffect(() => {
+    const update = () => setDevice(getDeviceType(window.innerWidth))
+    window.addEventListener("resize", update)
+    update()
+    return () => window.removeEventListener("resize", update)
+  }, [])
+
+  return device
+}
+
+export function useIsTablet() {
+  return useDeviceType() === "tablet"
+}
+
+export function useIsDesktop() {
+  return useDeviceType() === "desktop"
 }

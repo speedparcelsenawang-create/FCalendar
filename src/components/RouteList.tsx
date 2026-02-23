@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react"
-import { List, Info, Plus, Check, X, Edit2, Trash2, Search, Settings, Save, ArrowUp, ArrowDown, RotateCcw, Truck, Loader2, Maximize2, Minimize2, StickyNote, Clock, SlidersHorizontal, Pin } from "lucide-react"
+import { List, Info, Plus, Check, X, Edit2, Trash2, Search, Settings, Save, ArrowUp, ArrowDown, RotateCcw, Truck, Loader2, Maximize2, Minimize2, StickyNote, SlidersHorizontal, Pin, PinOff } from "lucide-react"
 import { RowInfoModal } from "./RowInfoModal"
 import { RouteNotesModal, appendChangelog } from "./RouteNotesModal"
 import { useEditMode } from "@/contexts/EditModeContext"
@@ -708,6 +708,16 @@ export function RouteList() {
     <div className="relative font-light flex-1 overflow-y-auto">
       {/* Route List */}
       <div className="mt-4 px-4 max-w-2xl mx-auto" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+        {/* Page header */}
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-base font-bold tracking-tight">Route List</h1>
+            <p className="text-[11px] text-muted-foreground mt-0.5">
+              {filteredRoutes.length} route{filteredRoutes.length !== 1 ? 's' : ''}
+              {(filterRegion !== 'all' || filterShift !== 'all') && <span className="ml-1 text-primary font-medium">· filtered</span>}
+            </p>
+          </div>
+        </div>
         {/* Search + Filter */}
         <div className="mb-5 flex items-center gap-2">
           <div className="relative flex-1">
@@ -813,16 +823,14 @@ export function RouteList() {
           const isSel   = (route.name + " " + route.code).toLowerCase().includes("sel")
           return (
           <div key={route.id} className="w-full">
-            {/* Company-card style */}
             <div
-              className="bg-card rounded-xl ring-1 ring-border/60 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer overflow-hidden relative group flex flex-col justify-between"
-              onClick={() => { setCurrentRouteId(route.id); setDetailDialogOpen(true) }}
+              className="bg-card rounded-2xl ring-1 ring-border/60 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 overflow-hidden relative group flex flex-col"
             >
               {/* Edit settings button — top right, edit mode only */}
               {isEditMode && (
-                <div className="absolute top-2 right-2 z-10" onClick={e => e.stopPropagation()}>
+                <div className="absolute top-3 right-2.5 z-10" onClick={e => e.stopPropagation()}>
                   <button
-                    className="p-1 rounded-lg text-muted-foreground/40 hover:text-primary hover:bg-primary/8 transition-colors"
+                    className="p-1 rounded-lg text-muted-foreground/40 hover:text-primary hover:bg-primary/10 transition-colors"
                     onClick={() => handleEditRoute(route)}
                   >
                     <Settings className="size-3.5" />
@@ -830,83 +838,140 @@ export function RouteList() {
                 </div>
               )}
 
-              {/* Pin button — top left, always visible */}
-              <div className="absolute top-2 left-2 z-10" onClick={e => e.stopPropagation()}>
+              {/* Pin button — top left */}
+              <div className="absolute top-2.5 left-2.5 z-10" onClick={e => e.stopPropagation()}>
                 <button
-                  className={`p-1 rounded-lg transition-colors ${pinnedIds.has(route.id) ? "text-primary bg-primary/10 hover:bg-primary/20" : "text-muted-foreground/30 hover:text-primary hover:bg-primary/8"}`}
-                  title={pinnedIds.has(route.id) ? "Unpin from Home" : "Pin to Home"}
+                  className={`transition-colors duration-200 ${
+                    pinnedIds.has(route.id)
+                      ? 'text-amber-400 hover:text-amber-500'
+                      : 'text-muted-foreground/25 hover:text-amber-400'
+                  }`}
+                  title={pinnedIds.has(route.id) ? 'Unpin from Home' : 'Pin to Home'}
                   onClick={() => togglePin(route)}
                 >
-                  <Pin className="size-3.5" />
+                  {pinnedIds.has(route.id)
+                    ? <PinOff className="size-3.5" />
+                    : <Pin className="size-3.5" />}
                 </button>
               </div>
 
-              {/* Centered info */}
-              <div className="px-4 pt-6 pb-4 text-center flex flex-col items-center gap-2">
+              {/* Card body */}
+              <div className="px-3 pt-7 pb-3 flex flex-col items-center gap-2 flex-1">
+                {/* Flag / icon */}
                 {isKL
-                  ? <img src="/kl-flag.png" className="h-10 w-auto max-w-[52px] object-cover rounded-lg shadow-sm ring-1 ring-black/10 dark:ring-white/10" alt="KL" />
+                  ? <img src="/kl-flag.png"
+                      className="object-cover rounded shadow-sm ring-1 ring-black/15 dark:ring-white/15"
+                      style={{ width: 64, height: 40 }}
+                      alt="KL" />
                   : isSel
-                  ? <img src="/selangor-flag.png" className="h-10 w-auto max-w-[52px] object-cover rounded-lg shadow-sm ring-1 ring-black/10 dark:ring-white/10" alt="Selangor" />
-                  : <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
+                  ? <img src="/selangor-flag.png"
+                      className="object-cover rounded shadow-sm ring-1 ring-black/15 dark:ring-white/15"
+                      style={{ width: 64, height: 40 }}
+                      alt="Selangor" />
+                  : <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
                       <Truck className="size-5 text-primary" />
                     </div>
                 }
-                <h2 className="text-sm font-semibold text-foreground leading-tight line-clamp-2 group-hover:text-primary transition-colors">{route.name}</h2>
-                <p className="text-[11px] font-mono text-muted-foreground">{route.code}</p>
+
+                {/* Name + code */}
+                <div className="text-center w-full">
+                  <h2 className="text-[13px] font-bold text-foreground leading-tight line-clamp-2 group-hover:text-primary transition-colors">{route.name}</h2>
+                  <p className="text-[10px] font-mono text-muted-foreground mt-0.5 tracking-wide">{route.code}</p>
+                </div>
+
               </div>
 
-              {/* Footer — Info + Comment + List buttons */}
-              <div className="flex items-center border-t border-border/50" onClick={e => e.stopPropagation()}>
-                {/* Info button with popover */}
+              {/* Footer — Notes | Info | List */}
+              <div className="flex items-center border-t border-border/40 mt-auto" onClick={e => e.stopPropagation()}>
+                <button
+                  className="flex-1 flex items-center justify-center gap-1 py-2.5 text-amber-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+                  onClick={() => { setNotesRouteId(route.id); setNotesRouteName(route.name); setNotesModalOpen(true) }}
+                >
+                  <StickyNote className="size-3.5" />
+                  <span className="text-[10px] font-medium">Notes</span>
+                </button>
+
+                <div className="w-px h-5 bg-border/50" />
+
                 <Popover>
-                  <PopoverTrigger asChild>
-                    <button className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors">
+                  <PopoverTrigger asChild onClick={e => e.stopPropagation()}>
+                    <button className="flex-1 flex items-center justify-center gap-1 py-2.5 text-sky-500 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-900/20 transition-colors">
                       <Info className="size-3.5" />
-                      <span className="text-[11px] font-medium">Info</span>
+                      <span className="text-[10px] font-medium">Info</span>
                     </button>
                   </PopoverTrigger>
-                  <PopoverContent side="top" align="start" className="w-52 p-3 space-y-2.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Locations</span>
-                      <span className="text-sm font-bold">
-                        {active}<span className="text-xs font-normal text-muted-foreground">/{total}</span>
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Shift</span>
-                      <span className={`text-sm font-bold ${
-                        route.shift === "AM" ? "text-orange-500" : "text-indigo-500"
+                  <PopoverContent side="top" align="center" sideOffset={6} className="w-56 p-0 overflow-hidden rounded-xl" onClick={e => e.stopPropagation()}>
+                    {/* Header */}
+                    <div className={`px-3 py-2.5 flex items-center gap-2 ${
+                      isKL  ? 'bg-blue-500/10 border-b border-blue-200/40 dark:border-blue-800/40'
+                      : isSel ? 'bg-red-500/10 border-b border-red-200/40 dark:border-red-800/40'
+                      : 'bg-primary/8 border-b border-border/60'
+                    }`}>
+                      {isKL
+                        ? <img src="/kl-flag.png" className="object-cover rounded" style={{ width: 32, height: 20 }} alt="KL" />
+                        : isSel
+                        ? <img src="/selangor-flag.png" className="object-cover rounded" style={{ width: 32, height: 20 }} alt="Selangor" />
+                        : <Truck className="size-4 text-primary shrink-0" />
+                      }
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-bold text-foreground leading-tight truncate">{route.name}</p>
+                        <p className="text-[9px] font-mono font-semibold text-primary/70 tracking-wide">{route.code}</p>
+                      </div>
+                      <span className={`ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
+                        route.shift === 'AM'
+                          ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400'
+                          : 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
                       }`}>{route.shift}</span>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Updated</span>
-                      <span className="text-xs text-muted-foreground flex items-center gap-1">
-                        <Clock className="size-3" />{formatRelativeTime(route.updatedAt)}
-                      </span>
+
+                    {/* Stats */}
+                    <div className="px-3 py-2.5 space-y-2">
+                      {/* Active today */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-muted-foreground">Active today</span>
+                        <span className="text-[10px] font-semibold text-foreground">
+                          {active} <span className="font-normal text-muted-foreground/60">/ {total}</span>
+                        </span>
+                      </div>
+
+                      {/* Delivery type breakdown */}
+                      {(['Daily','Weekday','Alt 1','Alt 2'] as const).map(type => {
+                        const count = route.deliveryPoints.filter(p => p.delivery === type).length
+                        if (!count) return null
+                        const dot: Record<string, string> = {
+                          'Daily':   'bg-green-500',
+                          'Weekday': 'bg-blue-500',
+                          'Alt 1':  'bg-orange-500',
+                          'Alt 2':  'bg-purple-500',
+                        }
+                        return (
+                          <div key={type} className="flex items-center justify-between">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dot[type]}`} />
+                              <span className="text-[10px] text-muted-foreground">{type}</span>
+                            </div>
+                            <span className="text-[10px] font-medium text-foreground">{count}</span>
+                          </div>
+                        )
+                      })}
+
+                      {/* Updated */}
+                      <div className="flex items-center justify-between pt-1 border-t border-border/40">
+                        <span className="text-[10px] text-muted-foreground">Updated</span>
+                        <span className="text-[10px] text-muted-foreground/70">{route.updatedAt ? formatRelativeTime(route.updatedAt) : '—'}</span>
+                      </div>
                     </div>
                   </PopoverContent>
                 </Popover>
 
                 <div className="w-px h-5 bg-border/50" />
 
-                {/* Comment button → Notes */}
                 <button
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-amber-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
-                  onClick={() => { setNotesRouteId(route.id); setNotesRouteName(route.name); setNotesModalOpen(true) }}
-                >
-                  <StickyNote className="size-3.5" />
-                  <span className="text-[11px] font-medium">Notes</span>
-                </button>
-
-                <div className="w-px h-5 bg-border/50" />
-
-                {/* List button */}
-                <button
-                  className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-primary/70 hover:text-primary hover:bg-primary/8 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-1 py-2.5 text-primary/70 hover:text-primary hover:bg-primary/8 transition-colors"
                   onClick={() => { setCurrentRouteId(route.id); setDetailDialogOpen(true) }}
                 >
                   <List className="size-3.5" />
-                  <span className="text-[11px] font-medium">List</span>
+                  <span className="text-[10px] font-medium">List</span>
                 </button>
               </div>
             </div>
@@ -921,9 +986,9 @@ export function RouteList() {
                     {/* Header */}
                     <div className="px-4 py-3 border-b border-border shrink-0 bg-background flex items-center gap-3">
                       {(route.name + " " + route.code).toLowerCase().includes("kl")
-                        ? <img src="/kl-flag.png" className="h-7 w-auto max-w-[48px] object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10 shrink-0" alt="KL" />
+                        ? <img src="/kl-flag.png" className="object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10 shrink-0" style={{ width: 44, height: 28 }} alt="KL" />
                         : (route.name + " " + route.code).toLowerCase().includes("sel")
-                        ? <img src="/selangor-flag.png" className="h-7 w-auto max-w-[48px] object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10 shrink-0" alt="Selangor" />
+                        ? <img src="/selangor-flag.png" className="object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10 shrink-0" style={{ width: 44, height: 28 }} alt="Selangor" />
                         : (
                           <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 ring-1 ring-primary/20">
                             <Truck className="size-[17px] text-primary" />
@@ -1168,11 +1233,14 @@ export function RouteList() {
                                 {columns.find(c => c.key === 'action' && c.visible) && (
                                   <td className="px-3 h-11 text-center">
                                     <button
-                                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium bg-muted hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors duration-150"
+                                      className={`inline-flex items-center justify-center p-1 rounded transition-colors duration-150 ${
+                                        isActive
+                                          ? 'text-green-500 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20'
+                                          : 'text-red-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
+                                      }`}
                                       onClick={() => { setSelectedPoint(point); setInfoModalOpen(true) }}
                                     >
-                                      <Info className="size-3" />
-                                      Detail
+                                      <Info className="size-3.5" />
                                     </button>
                                   </td>
                                 )}
@@ -1562,11 +1630,11 @@ export function RouteList() {
         <div className="w-full">
           <Dialog open={addRouteDialogOpen} onOpenChange={setAddRouteDialogOpen}>
             <DialogTrigger asChild>
-              <button className="w-full h-14 rounded-xl border-2 border-dashed border-border hover:border-primary hover:bg-primary/5 transition-all duration-300 flex items-center justify-center gap-2 group">
-                <div className="w-7 h-7 rounded-lg bg-primary/10 group-hover:bg-primary/20 flex items-center justify-center transition-colors">
-                  <Plus className="size-4 text-primary" />
+              <button className="w-full h-full min-h-[140px] rounded-2xl border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 flex flex-col items-center justify-center gap-2 group">
+                <div className="w-9 h-9 rounded-xl bg-primary/10 group-hover:bg-primary/20 flex items-center justify-center transition-colors">
+                  <Plus className="size-5 text-primary" />
                 </div>
-                <span className="text-sm font-medium text-muted-foreground group-hover:text-primary transition-colors">Add New Route</span>
+                <span className="text-xs font-medium text-muted-foreground group-hover:text-primary transition-colors">Add Route</span>
               </button>
             </DialogTrigger>
             <DialogContent>
