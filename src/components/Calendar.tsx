@@ -249,10 +249,10 @@ function MonthView({ events, isEditMode, onAdd, onEdit }: ViewProps) {
     [selectedDate, events])
 
   return (
-    <div className="flex flex-col gap-4 p-4 lg:p-6" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
+    <div className="flex flex-col gap-3 p-3 lg:p-5" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
       <div className="bg-card border border-border rounded-lg shadow overflow-hidden">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/30">
-          <h2 className="text-xl font-semibold">{MONTHS[month]} {year}</h2>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
+          <h2 className="text-base font-semibold">{MONTHS[month]} {year}</h2>
           <div className="flex items-center gap-1">
             <Button variant="outline" size="sm" className="h-8"
               onClick={() => { const t = new Date(); setCurrentDate(t); setSelectedDate(t) }}>
@@ -270,7 +270,7 @@ function MonthView({ events, isEditMode, onAdd, onEdit }: ViewProps) {
         </div>
         <div className="grid grid-cols-7 bg-muted/20 border-b border-border">
           {DAYS.map(day => (
-            <div key={day} className="text-center text-xs font-semibold text-muted-foreground py-3 border-r border-border last:border-r-0">
+            <div key={day} className="text-center text-[10px] font-semibold text-muted-foreground py-2 border-r border-border last:border-r-0">
               {day}
             </div>
           ))}
@@ -278,14 +278,14 @@ function MonthView({ events, isEditMode, onAdd, onEdit }: ViewProps) {
         <div className="grid grid-cols-7">
           {calendarDays.map((day, index) => {
             if (!day.date || !day.day) {
-              return <div key={index} className="relative min-h-[120px] p-2 border-b border-r border-border last:border-r-0 bg-muted/10" />
+              return <div key={index} className="relative min-h-[100px] p-1.5 border-b border-r border-border last:border-r-0 bg-muted/10" />
             }
             const dayEvents = getEventsForDate(events, day.date)
             const todayDate = isToday(day.date)
             const selectedDate_ = isSelected(day.date)
             return (
               <div key={index}
-                className={`relative min-h-[120px] p-2 border-b border-r border-border last:border-r-0 transition-colors bg-background
+                className={`relative min-h-[100px] p-1.5 border-b border-r border-border last:border-r-0 transition-colors bg-background
                   ${todayDate ? "bg-blue-50/50 dark:bg-blue-950/20" : ""}
                   ${selectedDate_ ? "bg-primary/5 ring-2 ring-inset ring-primary/30" : ""}`}>
                 <button
@@ -304,8 +304,8 @@ function MonthView({ events, isEditMode, onAdd, onEdit }: ViewProps) {
                       <Plus className="size-3 text-muted-foreground" />
                     </button>
                   ) : <div className="w-5" />}
-                  <span className={`text-sm font-medium ml-auto
-                    ${todayDate ? "bg-primary text-primary-foreground rounded-full w-7 h-7 flex items-center justify-center text-xs font-bold" : ""}`}>
+                  <span className={`text-xs font-medium ml-auto
+                    ${todayDate ? "bg-primary text-primary-foreground rounded-full w-5 h-5 flex items-center justify-center text-[10px] font-bold" : ""}`}>
                     {day.day}
                   </span>
                 </div>
@@ -330,12 +330,12 @@ function MonthView({ events, isEditMode, onAdd, onEdit }: ViewProps) {
 
       <div className="bg-card border border-border rounded-lg shadow overflow-hidden">
         <button
-          className="w-full flex flex-col lg:flex-row lg:items-center justify-between gap-4 px-6 py-4 border-b border-border bg-muted/30 text-left hover:bg-muted/50 transition-colors"
+          className="w-full flex flex-col lg:flex-row lg:items-center justify-between gap-3 px-4 py-3 border-b border-border bg-muted/30 text-left hover:bg-muted/50 transition-colors"
           onClick={() => setEventsOpen(v => !v)}
         >
           <div className="flex items-center gap-3">
             <ChevronDown className={`size-4 text-muted-foreground transition-transform duration-200 shrink-0 ${eventsOpen ? "rotate-180" : ""}`} />
-            <h3 className="text-lg font-semibold">
+            <h3 className="text-base font-semibold">
               {selectedDate
                 ? selectedDate.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })
                 : "Select a date"}

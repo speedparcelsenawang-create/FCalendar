@@ -186,6 +186,7 @@ function Sidebar({
           data-slot="sidebar"
           data-mobile="true"
           className="bg-sidebar text-sidebar-foreground w-(--sidebar-width) p-0 [&>button]:hidden"
+          onOpenAutoFocus={e => e.preventDefault()}
           style={
             {
               "--sidebar-width": SIDEBAR_WIDTH_MOBILE,

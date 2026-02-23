@@ -815,7 +815,7 @@ export function RouteList() {
           </Popover>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
         {filteredRoutes.map((route) => {
           const total   = route.deliveryPoints.length
           const active  = route.deliveryPoints.filter(p => isDeliveryActive(p.delivery)).length
@@ -824,7 +824,7 @@ export function RouteList() {
           return (
           <div key={route.id} className="w-full">
             <div
-              className="bg-card rounded-2xl ring-1 ring-border/60 shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 overflow-hidden relative group flex flex-col"
+              className="bg-card rounded-2xl ring-1 ring-border/60 shadow-sm active:scale-95 transition-all duration-150 overflow-hidden relative group flex flex-col"
             >
               {/* Edit settings button — top right, edit mode only */}
               {isEditMode && (
@@ -856,33 +856,33 @@ export function RouteList() {
               </div>
 
               {/* Card body */}
-              <div className="px-3 pt-7 pb-3 flex flex-col items-center gap-2 flex-1">
+              <div className="px-3 pt-6 pb-3 flex flex-col items-center gap-2 flex-1">
                 {/* Flag / icon */}
                 {isKL
                   ? <img src="/kl-flag.png"
-                      className="object-cover rounded shadow-sm ring-1 ring-black/15 dark:ring-white/15"
-                      style={{ width: 64, height: 40 }}
+                      className="object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10"
+                      style={{ width: 48, height: 30 }}
                       alt="KL" />
                   : isSel
                   ? <img src="/selangor-flag.png"
-                      className="object-cover rounded shadow-sm ring-1 ring-black/15 dark:ring-white/15"
-                      style={{ width: 64, height: 40 }}
+                      className="object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10"
+                      style={{ width: 48, height: 30 }}
                       alt="Selangor" />
-                  : <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
-                      <Truck className="size-5 text-primary" />
+                  : <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
+                      <Truck className="size-4 text-primary" />
                     </div>
                 }
 
                 {/* Name + code */}
                 <div className="text-center w-full">
-                  <h2 className="text-[13px] font-bold text-foreground leading-tight line-clamp-2 group-hover:text-primary transition-colors">{route.name}</h2>
-                  <p className="text-[10px] font-mono text-muted-foreground mt-0.5 tracking-wide">{route.code}</p>
+                  <h2 className="text-[12px] font-bold text-foreground leading-snug line-clamp-2">{route.name}</h2>
+                  <p className="text-[10px] font-mono text-muted-foreground/60 mt-0.5 tracking-wide">{route.code}</p>
                 </div>
 
               </div>
 
               {/* Footer — Notes | Info | List */}
-              <div className="flex items-center border-t border-border/40 mt-auto" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center border-t border-border/40 mt-auto min-h-[36px]" onClick={e => e.stopPropagation()}>
                 <button
                   className="flex-1 flex items-center justify-center gap-1 py-2.5 text-amber-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
                   onClick={() => { setNotesRouteId(route.id); setNotesRouteName(route.name); setNotesModalOpen(true) }}
