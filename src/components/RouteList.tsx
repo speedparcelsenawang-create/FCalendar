@@ -164,6 +164,7 @@ export function RouteList() {
   const [notesModalOpen, setNotesModalOpen] = useState(false)
   const [notesRouteId, setNotesRouteId] = useState<string>("")
   const [notesRouteName, setNotesRouteName] = useState<string>("")
+  const [infoModalRouteId, setInfoModalRouteId] = useState<string | null>(null)
 
   // Pinned routes stored in localStorage
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(() => {
@@ -635,24 +636,71 @@ export function RouteList() {
     const data = await res.json()
     if (!data.success) throw new Error(data.error || 'Save failed')
     // Record changelog entries per changed route
+    // First pass: detect cross-route moves
+    type MoveInfo = { code: string; name: string; fromId: string; fromName: string; toId: string; toName: string }
+    const moves: MoveInfo[] = []
+    routes.forEach(route => {
+      const old = before.find(r => r.id === route.id)
+      if (!old) return
+      route.deliveryPoints.forEach(p => {
+        if (!old.deliveryPoints.find(o => o.code === p.code)) {
+          // This point is new in this route — check if it was removed from another route
+          before.forEach(oldRoute => {
+            if (oldRoute.id === route.id) return
+            if (oldRoute.deliveryPoints.find(o => o.code === p.code)) {
+              const newFrom = routes.find(r => r.id === oldRoute.id)
+              if (newFrom && !newFrom.deliveryPoints.find(x => x.code === p.code)) {
+                // Confirmed move: was in oldRoute, now in route
+                moves.push({ code: p.code, name: p.name || p.code, fromId: oldRoute.id, fromName: oldRoute.name, toId: route.id, toName: route.name })
+              }
+            }
+          })
+        }
+      })
+    })
+    const movedCodes = new Set(moves.map(m => m.code))
+
     routes.forEach(route => {
       const old = before.find(r => r.id === route.id)
       const changes: string[] = []
       if (!old) {
-        changes.push(`Route "${route.name}" added`)
+        changes.push(`Route "${route.name}" created`)
       } else {
         if (old.name !== route.name) changes.push(`Name changed: "${old.name}" → "${route.name}"`)
         if (old.code !== route.code) changes.push(`Code changed: ${old.code} → ${route.code}`)
         if (old.shift !== route.shift) changes.push(`Shift changed: ${old.shift} → ${route.shift}`)
-        const addedPts = route.deliveryPoints.filter(p => !old.deliveryPoints.find(o => o.code === p.code))
-        const removedPts = old.deliveryPoints.filter(o => !route.deliveryPoints.find(p => p.code === o.code))
+
+        // Moves OUT from this route
+        const movedOut = moves.filter(m => m.fromId === route.id)
+        const movedOutByDest: Record<string, MoveInfo[]> = {}
+        movedOut.forEach(m => { if (!movedOutByDest[m.toId]) movedOutByDest[m.toId] = []; movedOutByDest[m.toId].push(m) })
+        Object.values(movedOutByDest).forEach(group => {
+          const names = group.map(m => m.name).join(", ")
+          changes.push(`Moved ${group.length} location${group.length > 1 ? 's' : ''} to "${group[0].toName}": ${names}`)
+        })
+
+        // Moves INTO this route
+        const movedIn = moves.filter(m => m.toId === route.id)
+        const movedInBySource: Record<string, MoveInfo[]> = {}
+        movedIn.forEach(m => { if (!movedInBySource[m.fromId]) movedInBySource[m.fromId] = []; movedInBySource[m.fromId].push(m) })
+        Object.values(movedInBySource).forEach(group => {
+          const names = group.map(m => m.name).join(", ")
+          changes.push(`Received ${group.length} location${group.length > 1 ? 's' : ''} from "${group[0].fromName}": ${names}`)
+        })
+
+        // Added (not via move)
+        const addedPts = route.deliveryPoints.filter(p => !old.deliveryPoints.find(o => o.code === p.code) && !movedCodes.has(p.code))
+        // Removed (not via move)
+        const removedPts = old.deliveryPoints.filter(o => !route.deliveryPoints.find(p => p.code === o.code) && !movedCodes.has(o.code))
+        // Edited
         const editedPts = route.deliveryPoints.filter(p => {
           const o = old.deliveryPoints.find(x => x.code === p.code)
           return o && (o.name !== p.name || o.delivery !== p.delivery || o.latitude !== p.latitude || o.longitude !== p.longitude)
         })
-        if (addedPts.length) changes.push(`Added ${addedPts.length} location(s): ${addedPts.map(p => p.name || p.code).join(", ")}`)
-        if (removedPts.length) changes.push(`Removed ${removedPts.length} location(s): ${removedPts.map(p => p.name || p.code).join(", ")}`)
-        if (editedPts.length) changes.push(`Edited ${editedPts.length} location(s): ${editedPts.map(p => p.name || p.code).join(", ")}`)
+
+        if (addedPts.length) changes.push(`Added ${addedPts.length} location${addedPts.length > 1 ? 's' : ''}: ${addedPts.map(p => p.name || p.code).join(", ")}`)
+        if (removedPts.length) changes.push(`Removed ${removedPts.length} location${removedPts.length > 1 ? 's' : ''}: ${removedPts.map(p => p.name || p.code).join(", ")}`)
+        if (editedPts.length) changes.push(`Edited ${editedPts.length} location${editedPts.length > 1 ? 's' : ''}: ${editedPts.map(p => p.name || p.code).join(", ")}`)
       }
       changes.forEach(desc => appendChangelog(route.id, desc))
     })
@@ -930,76 +978,13 @@ export function RouteList() {
 
                 <div className="w-px h-5 bg-border/50" />
 
-                <Popover>
-                  <PopoverTrigger asChild onClick={e => e.stopPropagation()}>
-                    <button className="flex-1 flex items-center justify-center gap-1 py-2.5 text-sky-500 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-900/20 transition-colors">
-                      <Info className="size-3.5" />
-                      <span className="text-[10px] font-medium">Info</span>
-                    </button>
-                  </PopoverTrigger>
-                  <PopoverContent side="top" align="center" sideOffset={6} className="w-56 p-0 overflow-hidden rounded-xl" onClick={e => e.stopPropagation()}>
-                    {/* Header */}
-                    <div className={`px-3 py-2.5 flex items-center gap-2 ${
-                      isKL  ? 'bg-blue-500/10 border-b border-blue-200/40 dark:border-blue-800/40'
-                      : isSel ? 'bg-red-500/10 border-b border-red-200/40 dark:border-red-800/40'
-                      : 'bg-primary/8 border-b border-border/60'
-                    }`}>
-                      {isKL
-                        ? <img src="/kl-flag.png" className="object-cover rounded" style={{ width: 32, height: 20 }} alt="KL" />
-                        : isSel
-                        ? <img src="/selangor-flag.png" className="object-cover rounded" style={{ width: 32, height: 20 }} alt="Selangor" />
-                        : <Truck className="size-4 text-primary shrink-0" />
-                      }
-                      <div className="min-w-0">
-                        <p className="text-[11px] font-bold text-foreground leading-tight truncate">{route.name}</p>
-                        <p className="text-[9px] font-mono font-semibold text-primary/70 tracking-wide">{route.code}</p>
-                      </div>
-                      <span className={`ml-auto text-[9px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
-                        route.shift === 'AM'
-                          ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400'
-                          : 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
-                      }`}>{route.shift}</span>
-                    </div>
-
-                    {/* Stats */}
-                    <div className="px-3 py-2.5 space-y-2">
-                      {/* Active today */}
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-muted-foreground">Active today</span>
-                        <span className="text-[10px] font-semibold text-foreground">
-                          {active} <span className="font-normal text-muted-foreground/60">/ {total}</span>
-                        </span>
-                      </div>
-
-                      {/* Delivery type breakdown */}
-                      {(['Daily','Weekday','Alt 1','Alt 2'] as const).map(type => {
-                        const count = route.deliveryPoints.filter(p => p.delivery === type).length
-                        if (!count) return null
-                        const dot: Record<string, string> = {
-                          'Daily':   'bg-green-500',
-                          'Weekday': 'bg-blue-500',
-                          'Alt 1':  'bg-orange-500',
-                          'Alt 2':  'bg-purple-500',
-                        }
-                        return (
-                          <div key={type} className="flex items-center justify-between">
-                            <div className="flex items-center gap-1.5">
-                              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dot[type]}`} />
-                              <span className="text-[10px] text-muted-foreground">{type}</span>
-                            </div>
-                            <span className="text-[10px] font-medium text-foreground">{count}</span>
-                          </div>
-                        )
-                      })}
-
-                      {/* Updated */}
-                      <div className="flex items-center justify-between pt-1 border-t border-border/40">
-                        <span className="text-[10px] text-muted-foreground">Updated</span>
-                        <span className="text-[10px] text-muted-foreground/70">{route.updatedAt ? formatRelativeTime(route.updatedAt) : '—'}</span>
-                      </div>
-                    </div>
-                  </PopoverContent>
-                </Popover>
+                <button
+                  className="flex-1 flex items-center justify-center gap-1 py-2.5 text-sky-500 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-900/20 transition-colors"
+                  onClick={e => { e.stopPropagation(); setInfoModalRouteId(route.id) }}
+                >
+                  <Info className="size-3.5" />
+                  <span className="text-[10px] font-medium">Info</span>
+                </button>
 
                 <div className="w-px h-5 bg-border/50" />
 
@@ -2215,6 +2200,82 @@ export function RouteList() {
         routeId={notesRouteId}
         routeName={notesRouteName}
       />
+
+      {/* Info modal — rendered once outside the card loop */}
+      {(() => {
+        const infoRoute = routes.find(r => r.id === infoModalRouteId)
+        if (!infoRoute) return null
+        const infoKL  = (infoRoute.name + " " + infoRoute.code).toLowerCase().includes("kl")
+        const infoSel = (infoRoute.name + " " + infoRoute.code).toLowerCase().includes("sel")
+        const infoTotal  = infoRoute.deliveryPoints.length
+        const infoActive = infoRoute.deliveryPoints.filter(p => isDeliveryActive(p.delivery)).length
+        return (
+          <Dialog open={!!infoModalRouteId} onOpenChange={open => { if (!open) setInfoModalRouteId(null) }}>
+            <DialogContent className="p-0 gap-0 overflow-hidden rounded-2xl max-w-xs w-[88vw]">
+              {/* Header */}
+              <div className={`px-4 py-3 flex items-center gap-3 ${
+                infoKL  ? 'bg-blue-500/10 border-b border-blue-200/40 dark:border-blue-800/40'
+                : infoSel ? 'bg-red-500/10 border-b border-red-200/40 dark:border-red-800/40'
+                : 'bg-primary/8 border-b border-border/60'
+              }`}>
+                {infoKL
+                  ? <img src="/kl-flag.png" className="object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10" style={{ width: 40, height: 25 }} alt="KL" />
+                  : infoSel
+                  ? <img src="/selangor-flag.png" className="object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10" style={{ width: 40, height: 25 }} alt="Selangor" />
+                  : <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center ring-1 ring-primary/20 shrink-0"><Truck className="size-4 text-primary" /></div>
+                }
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-foreground leading-tight truncate">{infoRoute.name}</p>
+                  <p className="text-[10px] font-mono text-muted-foreground/70 tracking-wide">{infoRoute.code}</p>
+                </div>
+                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
+                  infoRoute.shift === 'AM'
+                    ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400'
+                    : 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
+                }`}>{infoRoute.shift}</span>
+              </div>
+
+              {/* Stats */}
+              <div className="px-4 py-3 space-y-2.5">
+                {/* Active today */}
+                <div className="flex items-center justify-between">
+                  <span className="text-xs text-muted-foreground">Active today</span>
+                  <span className="text-xs font-semibold text-foreground">
+                    {infoActive} <span className="font-normal text-muted-foreground/60">/ {infoTotal}</span>
+                  </span>
+                </div>
+
+                {/* Progress bar */}
+                <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div className="h-full rounded-full bg-green-500 transition-all" style={{ width: infoTotal ? `${(infoActive / infoTotal) * 100}%` : '0%' }} />
+                </div>
+
+                {/* Delivery type breakdown */}
+                {(['Daily','Weekday','Alt 1','Alt 2'] as const).map(type => {
+                  const count = infoRoute.deliveryPoints.filter(p => p.delivery === type).length
+                  if (!count) return null
+                  const dot: Record<string, string> = { 'Daily': 'bg-green-500', 'Weekday': 'bg-blue-500', 'Alt 1': 'bg-orange-500', 'Alt 2': 'bg-purple-500' }
+                  return (
+                    <div key={type} className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${dot[type]}`} />
+                        <span className="text-xs text-muted-foreground">{type}</span>
+                      </div>
+                      <span className="text-xs font-medium text-foreground">{count}</span>
+                    </div>
+                  )
+                })}
+
+                {/* Updated */}
+                <div className="flex items-center justify-between pt-1 border-t border-border/40">
+                  <span className="text-xs text-muted-foreground">Updated</span>
+                  <span className="text-xs text-muted-foreground/70">{infoRoute.updatedAt ? formatRelativeTime(infoRoute.updatedAt) : '—'}</span>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        )
+      })()}
     </div>
   )
 }

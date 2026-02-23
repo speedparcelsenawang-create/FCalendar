@@ -158,6 +158,7 @@ export function RouteNotesModal({ open, onOpenChange, routeId, routeName }: Prop
               </span>
             )}
           </button>
+
         </div>
 
         <div className="h-px bg-border/50 mx-4 mt-2 shrink-0" />
@@ -217,6 +218,7 @@ export function RouteNotesModal({ open, onOpenChange, routeId, routeName }: Prop
               </div>
             </div>
           ) : (
+            // changelog
             <div className="px-4 py-3 space-y-2">
               {changelog.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10 text-muted-foreground gap-2">
