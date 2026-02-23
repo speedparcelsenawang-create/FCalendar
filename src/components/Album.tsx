@@ -1,5 +1,8 @@
-import { useState, useEffect } from "react"
-import { ImageIcon, X, ChevronLeft, ChevronRight, Loader2 } from "lucide-react"
+import { useState, useEffect, useRef } from "react"
+import { ImageIcon, LayoutGrid, Loader2 } from "lucide-react"
+import "lightgallery/css/lightgallery.css"
+import "lightgallery/css/lg-thumbnail.css"
+import "lightgallery/css/lg-zoom.css"
 
 interface PlanoImage {
   id: string
@@ -25,12 +28,34 @@ interface FlatImage extends PlanoImage {
   rowTitle: string
 }
 
+type GridSize = 2 | 3 | 4 | 6 | 8
+
+const GRID_OPTIONS: { value: GridSize; label: string }[] = [
+  { value: 2, label: "2" },
+  { value: 3, label: "3" },
+  { value: 4, label: "4" },
+  { value: 6, label: "6" },
+  { value: 8, label: "8" },
+]
+
+const gridClass: Record<GridSize, string> = {
+  2: "grid-cols-2",
+  3: "grid-cols-3",
+  4: "grid-cols-2 sm:grid-cols-4",
+  6: "grid-cols-3 sm:grid-cols-4 md:grid-cols-6",
+  8: "grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8",
+}
+
+const GALLERY_ID = "album-lightgallery"
+
 export function Album() {
   const [pages, setPages] = useState<PlanoPage[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
   const [filterPage, setFilterPage] = useState<string>("all")
+  const [gridSize, setGridSize] = useState<GridSize>(4)
+  const [showGridPicker, setShowGridPicker] = useState(false)
+  const lgInstanceRef = useRef<any>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -66,25 +91,51 @@ export function Album() {
 
   const pageNames = pages.map(p => p.name)
 
-  const openLightbox = (index: number) => setLightboxIndex(index)
-  const closeLightbox = () => setLightboxIndex(null)
-  const goPrev = () => setLightboxIndex(i => (i !== null && i > 0 ? i - 1 : i))
-  const goNext = () =>
-    setLightboxIndex(i =>
-      i !== null && i < filteredImages.length - 1 ? i + 1 : i
-    )
-
-  // Keyboard navigation
+  // Initialize / reinitialize lightgallery whenever filtered images change
   useEffect(() => {
-    if (lightboxIndex === null) return
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === "ArrowLeft") goPrev()
-      if (e.key === "ArrowRight") goNext()
-      if (e.key === "Escape") closeLightbox()
+    if (filteredImages.length === 0) return
+
+    const init = async () => {
+      try {
+        const { default: lightGallery } = await import("lightgallery")
+        const { default: lgThumbnail } = await import("lightgallery/plugins/thumbnail")
+        const { default: lgZoom } = await import("lightgallery/plugins/zoom")
+
+        await new Promise(resolve => setTimeout(resolve, 200))
+
+        // Destroy previous instance
+        if (lgInstanceRef.current?.destroy) {
+          lgInstanceRef.current.destroy()
+          lgInstanceRef.current = null
+        }
+
+        const el = document.getElementById(GALLERY_ID)
+        if (!el) return
+        const links = el.querySelectorAll("a")
+        if (links.length === 0) return
+
+        lgInstanceRef.current = lightGallery(el, {
+          plugins: [lgThumbnail, lgZoom],
+          speed: 500,
+          thumbnail: true,
+          animateThumb: false,
+          allowMediaOverlap: true,
+          toggleThumb: true,
+        })
+      } catch (err) {
+        console.error("LightGallery init error:", err)
+      }
     }
-    window.addEventListener("keydown", handler)
-    return () => window.removeEventListener("keydown", handler)
-  }, [lightboxIndex])
+
+    init()
+
+    return () => {
+      if (lgInstanceRef.current?.destroy) {
+        lgInstanceRef.current.destroy()
+        lgInstanceRef.current = null
+      }
+    }
+  }, [filteredImages])
 
   if (isLoading) {
     return (
@@ -112,20 +163,51 @@ export function Album() {
     )
   }
 
-  const activeLightboxImg =
-    lightboxIndex !== null ? filteredImages[lightboxIndex] : null
-
   return (
     <div
       className="flex flex-col flex-1 min-h-0 overflow-y-auto"
       style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
     >
       {/* Header */}
-      <div className="px-4 pt-5 pb-3 max-w-5xl mx-auto w-full">
-        <h1 className="text-xl font-bold">Album</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          {allImages.length} images across {pages.length} pages
-        </p>
+      <div className="px-4 pt-5 pb-3 max-w-5xl mx-auto w-full flex items-start justify-between gap-2">
+        <div>
+          <h1 className="text-xl font-bold">Album</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            {allImages.length} images across {pages.length} pages
+          </p>
+        </div>
+
+        {/* Grid size picker */}
+        <div className="relative">
+          <button
+            onClick={() => setShowGridPicker(v => !v)}
+            className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-muted text-muted-foreground hover:bg-muted-foreground/20 text-xs font-medium transition-colors"
+          >
+            <LayoutGrid className="size-3.5" />
+            Grid {gridSize}
+          </button>
+          {showGridPicker && (
+            <>
+              {/* backdrop */}
+              <div className="fixed inset-0 z-10" onClick={() => setShowGridPicker(false)} />
+              <div className="absolute right-0 top-9 z-20 bg-popover border border-border rounded-xl shadow-lg p-2 flex gap-1">
+                {GRID_OPTIONS.map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => { setGridSize(opt.value); setShowGridPicker(false) }}
+                    className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${
+                      gridSize === opt.value
+                        ? "bg-primary text-primary-foreground"
+                        : "hover:bg-muted text-muted-foreground"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Page filter chips */}
@@ -157,17 +239,21 @@ export function Album() {
         </div>
       )}
 
-      {/* Image grid */}
+      {/* Image grid — lightgallery container */}
       <div className="px-4 max-w-5xl mx-auto w-full">
         {filteredImages.length === 0 ? (
           <p className="text-sm text-muted-foreground text-center py-12">No images in this page.</p>
         ) : (
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-1.5">
-            {filteredImages.map((img, idx) => (
-              <button
+          <div
+            id={GALLERY_ID}
+            className={`grid gap-1.5 ${gridClass[gridSize]}`}
+          >
+            {filteredImages.map(img => (
+              <a
                 key={img.id}
-                onClick={() => openLightbox(idx)}
-                className="relative group aspect-square rounded-xl overflow-hidden bg-muted ring-1 ring-border/40 shadow-sm hover:ring-primary/50 hover:shadow-md transition-all"
+                href={img.url}
+                data-sub-html={`<h4>${img.title || ""}</h4><p>${img.description || ""}${img.pageName ? ` · ${img.pageName}` : ""}</p>`}
+                className="relative group aspect-square rounded-xl overflow-hidden bg-muted ring-1 ring-border/40 shadow-sm hover:ring-primary/50 hover:shadow-md transition-all block"
               >
                 <img
                   src={img.url}
@@ -191,70 +277,11 @@ export function Album() {
                 <span className="absolute top-1.5 left-1.5 bg-black/50 text-white text-[9px] px-1.5 py-0.5 rounded-md font-medium truncate max-w-[70%] opacity-0 group-hover:opacity-100 transition-opacity">
                   {img.pageName}
                 </span>
-              </button>
+              </a>
             ))}
           </div>
         )}
       </div>
-
-      {/* Lightbox */}
-      {activeLightboxImg && (
-        <div
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
-          onClick={closeLightbox}
-        >
-          {/* Close */}
-          <button
-            onClick={closeLightbox}
-            className="absolute top-4 right-4 z-10 size-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
-          >
-            <X className="size-5" />
-          </button>
-
-          {/* Prev */}
-          {lightboxIndex! > 0 && (
-            <button
-              onClick={e => { e.stopPropagation(); goPrev() }}
-              className="absolute left-3 z-10 size-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
-            >
-              <ChevronLeft className="size-6" />
-            </button>
-          )}
-
-          {/* Image */}
-          <div className="flex flex-col items-center max-w-[90vw] max-h-[90vh]" onClick={e => e.stopPropagation()}>
-            <img
-              src={activeLightboxImg.url}
-              alt={activeLightboxImg.title}
-              className="max-w-full max-h-[75vh] object-contain rounded-lg shadow-2xl"
-            />
-            {(activeLightboxImg.title || activeLightboxImg.description) && (
-              <div className="mt-3 text-center">
-                {activeLightboxImg.title && (
-                  <p className="text-white font-semibold text-sm">{activeLightboxImg.title}</p>
-                )}
-                {activeLightboxImg.description && (
-                  <p className="text-white/60 text-xs mt-0.5">{activeLightboxImg.description}</p>
-                )}
-                <p className="text-white/40 text-xs mt-1">{activeLightboxImg.pageName} · {activeLightboxImg.rowTitle}</p>
-              </div>
-            )}
-            <p className="text-white/30 text-xs mt-2">
-              {lightboxIndex! + 1} / {filteredImages.length}
-            </p>
-          </div>
-
-          {/* Next */}
-          {lightboxIndex! < filteredImages.length - 1 && (
-            <button
-              onClick={e => { e.stopPropagation(); goNext() }}
-              className="absolute right-3 z-10 size-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
-            >
-              <ChevronRight className="size-6" />
-            </button>
-          )}
-        </div>
-      )}
     </div>
   )
 }

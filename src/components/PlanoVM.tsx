@@ -470,10 +470,14 @@ export function PlanoVM() {
           {isEditMode && (
             <div className="flex justify-end gap-2">
               {hasUnsavedChanges && (
-                <Button variant="outline" onClick={saveChanges} disabled={isSaving}>
+                <Button
+                  onClick={saveChanges}
+                  disabled={isSaving}
+                  className="bg-green-600 hover:bg-green-700 text-white gap-2"
+                >
                   {isSaving
-                    ? <Loader2 className="size-4 mr-2 animate-spin" />
-                    : <Save className="size-4 mr-2" />}
+                    ? <Loader2 className="size-4 animate-spin" />
+                    : <Save className="size-4" />}
                   {isSaving ? 'Saving...' : 'Save'}
                 </Button>
               )}

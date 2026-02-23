@@ -1,9 +1,8 @@
-import { useState, useMemo, useEffect } from "react"
-import { ChevronLeft, ChevronRight, ChevronDown, Plus, Pencil, Trash2 } from "lucide-react"
+import { useState, useMemo, useEffect, useRef } from "react"
+import { ChevronLeft, ChevronRight, ChevronDown, Plus, Pencil, Trash2, Loader2, Save } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { useEditMode } from "@/contexts/EditModeContext"
 import { toast } from "sonner"
 
 // ─── TYPES ───────────────────────────────────────────────────────────────────
@@ -656,9 +655,12 @@ async function apiDeleteEvent(id: number): Promise<boolean> {
 // ─── MAIN EXPORT ─────────────────────────────────────────────────────────────
 
 export function Calendar({ view = "month" }: { view?: "month" | "week" | "day" }) {
-  const { isEditMode } = useEditMode()
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
+  const [isDirty, setIsDirty] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const savedEventsRef = useRef<Event[]>([])
+  const tempIdRef = useRef(-1)
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingEvent, setEditingEvent] = useState<Event | null>(null)
@@ -668,58 +670,91 @@ export function Calendar({ view = "month" }: { view?: "month" | "week" | "day" }
   useEffect(() => {
     apiFetchEvents().then(data => {
       setEvents(data)
+      savedEventsRef.current = data
       setLoading(false)
     })
   }, [])
 
   function openAdd(date: Date) {
-    if (!isEditMode) return
     setEditingEvent(null)
     setAddDate(date)
     setDialogOpen(true)
   }
 
   function openEdit(event: Event) {
-    if (!isEditMode) return
     setEditingEvent(event)
     setAddDate(null)
     setDialogOpen(true)
   }
 
-  async function handleSave(data: { id?: number; title: string; date: Date; type: EventType }) {
+  // Local-only: track changes without hitting the API
+  function handleSave(data: { id?: number; title: string; date: Date; type: EventType }) {
     const isEdit = data.id !== undefined
-
-    // Optimistic: add new event immediately with a temp negative id
-    const tempId = -Date.now()
-    const tempEvent: Event = {
-      id: tempId,
-      title: data.title,
-      date: data.date,
-      type: data.type,
-      color: TYPE_COLORS[data.type] ?? "bg-blue-500",
+    if (isEdit) {
+      setEvents(prev => prev.map(e =>
+        e.id === data.id
+          ? { ...e, title: data.title, date: data.date, type: data.type, color: TYPE_COLORS[data.type] ?? "bg-blue-500" }
+          : e
+      ))
+    } else {
+      const tempId = tempIdRef.current--
+      setEvents(prev => [...prev, {
+        id: tempId,
+        title: data.title,
+        date: data.date,
+        type: data.type,
+        color: TYPE_COLORS[data.type] ?? "bg-blue-500",
+      }])
     }
-    if (!isEdit) setEvents(prev => [...prev, tempEvent])
-
-    const saved = await apiSaveEvent(data)
-    if (!saved) {
-      // Rollback optimistic add
-      if (!isEdit) setEvents(prev => prev.filter(e => e.id !== tempId))
-      toast.error("Failed to save event. Please try again.")
-      return
-    }
-    setEvents(prev =>
-      isEdit
-        ? prev.map(e => (e.id === data.id ? saved : e))
-        : prev.map(e => (e.id === tempId ? saved : e))
-    )
+    setIsDirty(true)
   }
 
-  async function handleDelete(id: number) {
-    const ok = await apiDeleteEvent(id)
-    if (ok) setEvents(prev => prev.filter(e => e.id !== id))
+  function handleDelete(id: number) {
+    setEvents(prev => prev.filter(e => e.id !== id))
+    setIsDirty(true)
   }
 
-  const viewProps: ViewProps = { events, isEditMode, onAdd: openAdd, onEdit: openEdit }
+  // Commit all pending changes to the API
+  async function handleSaveAll() {
+    setIsSaving(true)
+    try {
+      const savedIds = new Set(savedEventsRef.current.map(e => e.id))
+      const currentPositiveIds = new Set(events.filter(e => e.id > 0).map(e => e.id))
+
+      // Deleted: was in DB, no longer in current list
+      const toDelete = savedEventsRef.current.filter(e => !currentPositiveIds.has(e.id))
+      // New: negative temp ID = never saved
+      const toCreate = events.filter(e => e.id < 0)
+      // Edited: positive ID, exists in both, but data changed
+      const toEdit = events.filter(e => {
+        if (e.id < 0 || !savedIds.has(e.id)) return false
+        const s = savedEventsRef.current.find(x => x.id === e.id)!
+        return s.title !== e.title || s.type !== e.type || toDateInputValue(s.date) !== toDateInputValue(e.date)
+      })
+
+      for (const e of toDelete) await apiDeleteEvent(e.id)
+      for (const e of toEdit)   await apiSaveEvent({ id: e.id, title: e.title, date: e.date, type: e.type })
+
+      const createdMap = new Map<number, Event>()
+      for (const e of toCreate) {
+        const saved = await apiSaveEvent({ title: e.title, date: e.date, type: e.type })
+        if (saved) createdMap.set(e.id, saved)
+      }
+
+      // Refresh from DB to get canonical state
+      const fresh = await apiFetchEvents()
+      savedEventsRef.current = fresh
+      setEvents(fresh)
+      setIsDirty(false)
+      toast.success("Calendar saved!")
+    } catch {
+      toast.error("Failed to save changes. Please try again.")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const viewProps: ViewProps = { events, isEditMode: true, onAdd: openAdd, onEdit: openEdit }
 
   if (loading) {
     return (
@@ -730,10 +765,24 @@ export function Calendar({ view = "month" }: { view?: "month" | "week" | "day" }
   }
 
   return (
-    <>
+    <div className="relative flex flex-col flex-1 min-h-0">
       {view === "week" && <WeekView {...viewProps} />}
       {view === "day"  && <DayView  {...viewProps} />}
       {view !== "week" && view !== "day" && <MonthView {...viewProps} />}
+
+      {/* Floating green Save button – appears whenever there are unsaved changes */}
+      {isDirty && (
+        <div className="fixed bottom-6 right-6 z-50">
+          <Button
+            onClick={handleSaveAll}
+            disabled={isSaving}
+            className="bg-green-600 hover:bg-green-700 text-white shadow-xl gap-2 h-10 px-5 rounded-full"
+          >
+            {isSaving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
+            {isSaving ? "Saving…" : "Save Changes"}
+          </Button>
+        </div>
+      )}
 
       <EventFormDialog
         open={dialogOpen}
@@ -743,7 +792,7 @@ export function Calendar({ view = "month" }: { view?: "month" | "week" | "day" }
         onSave={handleSave}
         onDelete={handleDelete}
       />
-    </>
+    </div>
   )
 }
 
