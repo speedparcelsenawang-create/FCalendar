@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react"
-import { List, Info, Plus, Check, X, Edit2, Trash2, Search, Settings, Save, ArrowUp, ArrowDown, RotateCcw, Truck, Loader2, Maximize2, Minimize2, StickyNote, SlidersHorizontal, Pin, PinOff } from "lucide-react"
+import { List, Info, Plus, Check, X, Edit2, Trash2, Search, Settings, Save, ArrowUp, ArrowDown, RotateCcw, Truck, Loader2, Maximize2, Minimize2, StickyNote, SlidersHorizontal, Pin, PinOff, LayoutGrid } from "lucide-react"
 import { RowInfoModal } from "./RowInfoModal"
 import { RouteNotesModal, appendChangelog } from "./RouteNotesModal"
 import { useEditMode } from "@/contexts/EditModeContext"
@@ -151,6 +151,14 @@ export function RouteList() {
   const [searchQuery, setSearchQuery] = useState("")
   const [filterRegion, setFilterRegion] = useState<"all" | "KL" | "Sel">("all")
   const [filterShift, setFilterShift] = useState<"all" | "AM" | "PM">("all")
+
+  // Card columns — synced with Settings Display
+  const [cardCols, setCardCols] = useState<string>(() => localStorage.getItem('fcalendar_card_cols') || '2')
+  useEffect(() => {
+    const sync = () => setCardCols(localStorage.getItem('fcalendar_card_cols') || '2')
+    window.addEventListener('fcalendar_card_cols_changed', sync)
+    return () => window.removeEventListener('fcalendar_card_cols_changed', sync)
+  }, [])
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [detailFullscreen, setDetailFullscreen] = useState(false)
   const [notesModalOpen, setNotesModalOpen] = useState(false)
@@ -707,7 +715,7 @@ export function RouteList() {
   return (
     <div className="relative font-light flex-1 overflow-y-auto">
       {/* Route List */}
-      <div className="mt-4 px-4 max-w-2xl mx-auto" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+      <div className="mt-4 px-4" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
         {/* Page header */}
         <div className="mb-4 flex items-center justify-between">
           <div>
@@ -813,9 +821,38 @@ export function RouteList() {
               </div>
             </PopoverContent>
           </Popover>
+
+          {/* Card Columns quick toggle */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <button className="h-11 w-11 flex items-center justify-center rounded-xl ring-1 ring-border/60 shadow-sm bg-card text-muted-foreground hover:bg-muted transition-colors">
+                <LayoutGrid className="size-4" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-48 p-3 space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Card Columns</p>
+              <div className="grid grid-cols-4 gap-1.5">
+                {(["2","3","4","auto"] as const).map(c => (
+                  <button key={c}
+                    onClick={() => { localStorage.setItem('fcalendar_card_cols', c); setCardCols(c); window.dispatchEvent(new Event('fcalendar_card_cols_changed')) }}
+                    className={`flex flex-col items-center py-1.5 rounded-md border text-[10px] font-semibold transition-all ${
+                      cardCols === c ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-primary/50'
+                    }`}
+                  >
+                    {c === 'auto' ? '≡' : c}
+                  </button>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+        <div className={`grid gap-2.5 ${
+          cardCols === '2' ? 'grid-cols-2' :
+          cardCols === '3' ? 'grid-cols-3' :
+          cardCols === '4' ? 'grid-cols-2 sm:grid-cols-4' :
+          'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5'
+        }`}>
         {filteredRoutes.map((route) => {
           const total   = route.deliveryPoints.length
           const active  = route.deliveryPoints.filter(p => isDeliveryActive(p.delivery)).length

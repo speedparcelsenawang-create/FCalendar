@@ -83,7 +83,7 @@ function HomePage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 md:p-6 max-w-2xl mx-auto w-full overflow-y-auto" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
+    <div className="flex flex-1 flex-col gap-4 p-4 md:p-6 max-w-3xl mx-auto w-full overflow-y-auto" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
       {/* Welcome */}
       <div>
         <h1 className="text-fluid-xl page-header font-bold text-gray-900 dark:text-white">Welcome to FCalendar</h1>

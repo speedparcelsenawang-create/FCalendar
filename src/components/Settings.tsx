@@ -85,6 +85,14 @@ export function Settings({ section = "profile" }: { section?: SectionId }) {
   const [mapZoom, setMapZoom] = useState(() => { try { const v = localStorage.getItem(LS_DEFAULT_VIEW); if (v) return String(JSON.parse(v).zoom)     } catch { /**/ } return MAP_FALLBACK.zoom })
   const [mapSaved, setMapSaved] = useState(false)
 
+  // Card columns
+  const [cardCols, setCardCols] = useState(() => localStorage.getItem('fcalendar_card_cols') || '2')
+  const updateCardCols = (v: string) => {
+    localStorage.setItem('fcalendar_card_cols', v)
+    setCardCols(v)
+    window.dispatchEvent(new Event('fcalendar_card_cols_changed'))
+  }
+
   const handleSaveMap = () => {
     const latN = parseFloat(mapLat), lngN = parseFloat(mapLng), zoomN = parseInt(mapZoom, 10)
     if (isNaN(latN) || isNaN(lngN) || isNaN(zoomN)) return
@@ -256,12 +264,12 @@ export function Settings({ section = "profile" }: { section?: SectionId }) {
           </div>
         )
 
-      // ── Appearance: Display (Zoom + Text Size) ────────────────────────────
       case "appearance-display":
         return (
           <div>
-            <SectionHeader icon={<ZoomIn className="size-5" />} title="Display" description="UI scale and app text size." />
+            <SectionHeader icon={<ZoomIn className="size-5" />} title="Display" description="UI scale, text size and card layout." />
             <div className="space-y-8">
+
               {/* App Zoom */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -269,14 +277,40 @@ export function Settings({ section = "profile" }: { section?: SectionId }) {
                     <label className="text-sm font-medium">App Zoom</label>
                     <p className="text-xs text-muted-foreground mt-0.5">Overall application display scale.</p>
                   </div>
-                  <span className="text-sm font-mono font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-md">{appZoom}%</span>
+                  <span className="text-sm font-mono font-bold text-primary bg-primary/10 px-2.5 py-1 rounded-md min-w-[3.5rem] text-center">{appZoom}%</span>
                 </div>
+                {/* Slider */}
+                <input
+                  type="range" min="80" max="120" step="5"
+                  value={appZoom}
+                  onChange={e => setAppZoom(e.target.value as AppZoom)}
+                  className="w-full accent-primary h-2 rounded-full cursor-pointer"
+                />
+                <div className="flex justify-between text-[10px] text-muted-foreground/60">
+                  <span>80%</span><span>90%</span><span>100%</span><span>110%</span><span>120%</span>
+                </div>
+                {/* Quick presets */}
                 <div className="flex gap-1.5 flex-wrap">
-                  {(["80","85","90","95","100","105","110","115","120"] as AppZoom[]).map(z => (
+                  {(["80","90","95","100","105","110","120"] as AppZoom[]).map(z => (
                     <button key={z} onClick={() => setAppZoom(z)}
-                      className={`flex-1 min-w-[3.5rem] py-2 rounded-md border text-xs font-semibold transition-all ${appZoom === z ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"}`}
+                      className={`flex-1 min-w-[3rem] py-1.5 rounded-md border text-xs font-semibold transition-all ${appZoom === z ? "bg-primary text-primary-foreground border-primary" : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"}`}
                     >{z}%</button>
                   ))}
+                </div>
+                {/* Zoom indicator */}
+                <div className="p-3 rounded-lg bg-muted/40 border flex items-center gap-3">
+                  <div className="relative flex items-end gap-1 h-8">
+                    {(["80","90","100","110","120"] as AppZoom[]).map(z => (
+                      <div key={z}
+                        className={`rounded-sm transition-all duration-200 ${appZoom === z ? 'bg-primary' : 'bg-muted-foreground/20'}`}
+                        style={{ width: 8, height: `${(parseInt(z) - 70) / 50 * 100}%`, minHeight: 4 }}
+                      />
+                    ))}
+                  </div>
+                  <div>
+                    <p className="text-xs font-semibold">{parseInt(appZoom) < 100 ? 'Zoomed out' : parseInt(appZoom) > 100 ? 'Zoomed in' : 'Default size'}</p>
+                    <p className="text-[10px] text-muted-foreground">Changes apply instantly to the whole app</p>
+                  </div>
                 </div>
               </div>
 
@@ -309,6 +343,43 @@ export function Settings({ section = "profile" }: { section?: SectionId }) {
                   <p style={{ fontSize: `${textSize}px` }}>Current text size ({textSize}px) — The quick brown fox.</p>
                 </div>
               </div>
+
+              <Separator />
+
+              {/* Card Columns */}
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium">Route Card Columns</label>
+                  <p className="text-xs text-muted-foreground mt-0.5">Number of cards per row on Route List page.</p>
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  {[
+                    { v: '2', label: '2', desc: 'Large cards' },
+                    { v: '3', label: '3', desc: 'Medium cards' },
+                    { v: '4', label: '4', desc: 'Small cards' },
+                    { v: 'auto', label: 'Auto', desc: 'Responsive' },
+                  ].map(o => (
+                    <button key={o.v} onClick={() => updateCardCols(o.v)}
+                      className={`flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl border transition-all ${
+                        cardCols === o.v ? 'bg-primary text-primary-foreground border-primary shadow-md' : 'border-border text-muted-foreground hover:border-primary/40 hover:bg-muted/50'
+                      }`}
+                    >
+                      <div className={`grid gap-0.5 w-full ${
+                        o.v === '2' ? 'grid-cols-2' : o.v === '3' ? 'grid-cols-3' : 'grid-cols-4'
+                      }`}>
+                        {Array.from({ length: o.v === 'auto' ? 4 : parseInt(o.v) }).map((_, i) => (
+                          <div key={i} className={`h-2.5 rounded-sm ${
+                            cardCols === o.v ? 'bg-primary-foreground/40' : 'bg-muted-foreground/20'
+                          }`} />
+                        ))}
+                      </div>
+                      <span className="text-xs font-bold">{o.label}</span>
+                      <span className="text-[9px] opacity-70 text-center leading-tight">{o.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
             </div>
           </div>
         )
