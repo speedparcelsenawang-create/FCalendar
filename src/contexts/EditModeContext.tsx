@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useRef, type ReactNode } from "react"
+import { createContext, useContext, useState, useRef, useCallback, type ReactNode } from "react"
 import { Toast } from "primereact/toast"
 
 interface EditModeContextType {
@@ -27,9 +27,9 @@ export function EditModeProvider({ children }: { children: ReactNode }) {
     saveHandlerRef.current = handler
   }
 
-  const registerDiscardHandler = (handler: () => void) => {
+  const registerDiscardHandler = useCallback((handler: () => void) => {
     discardHandlerRef.current = handler
-  }
+  }, [])
 
   const saveChanges = async () => {
     if (saveHandlerRef.current) {

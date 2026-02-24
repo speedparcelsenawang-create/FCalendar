@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from "react"
 import QrScanner from "qr-scanner"
-import { Plus, Trash2, QrCode, ExternalLink, Pencil, Link2, ImageUp, X, ScanLine, CheckCircle2, Loader2, AlertCircle, Check, CameraOff, Camera } from "lucide-react"
+import { Plus, Trash2, QrCode, ExternalLink, Pencil, Link2, ImageUp, X, ScanLine, CheckCircle2, Loader2, AlertCircle, Check, Camera } from "lucide-react"
 import "lightgallery/css/lightgallery.css"
 import "lightgallery/css/lg-zoom.css"
+import "lightgallery/css/lg-thumbnail.css"
 import { Toast } from "primereact/toast"
+import noImageSrc from "../../icon/noimage.jpeg"
 import {
   Dialog,
   DialogContent,
@@ -101,10 +103,12 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
         avatarLGInstance.current.destroy()
         avatarLGInstance.current = null
       }
+      const { default: lgThumbnail } = await import('lightgallery/plugins/thumbnail')
       avatarLGInstance.current = lightGallery(avatarGalleryRef.current, {
-        plugins: [lgZoom],
+        plugins: [lgZoom, lgThumbnail],
         speed: 300,
         download: false,
+        thumbnail: true,
       })
     }
     init()
@@ -213,8 +217,8 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
 
   return (
     <>
-      <Toast ref={uploadToastRef} position="top-right" />
-      <Toast ref={toastRef} position="top-right" />
+      <Toast ref={uploadToastRef} position="top-right" appendTo={document.body} style={{ zIndex: 999999 }} />
+      <Toast ref={toastRef} position="top-right" appendTo={document.body} style={{ zIndex: 999999 }} />
 
       <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm rounded-2xl p-0 overflow-hidden gap-0 border-border">
@@ -236,9 +240,7 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
                 {avatarImageUrl ? (
                   <img src={avatarImageUrl} alt={point.name} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                    <CameraOff className="size-5 text-white/80" />
-                  </div>
+                  <img src={noImageSrc} alt="No image" className="w-full h-full object-cover" />
                 )}
                 <div className="absolute inset-0 bg-black/40 rounded-full opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
                   <Camera className="size-4 text-white" />
@@ -263,8 +265,8 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
                   </button>
                 </>
               ) : (
-                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shrink-0 shadow">
-                  <CameraOff className="size-5 text-white/80" />
+                <div className="w-11 h-11 rounded-full overflow-hidden shrink-0 shadow">
+                  <img src={noImageSrc} alt="No image" className="w-full h-full object-cover" />
                 </div>
               )
             )}

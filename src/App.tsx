@@ -12,7 +12,7 @@ const Album = lazy(() => import("@/components/Album").then(m => ({ default: m.Al
 import { EditModeProvider } from "@/contexts/EditModeContext"
 import { DeviceProvider } from "@/contexts/DeviceContext"
 import { Toaster } from "sonner"
-import { Home, Package, Settings2, Calendar as CalendarIcon, Images, ChevronDown, Truck, Pin } from "lucide-react"
+import { Home, Package, Settings2, Calendar as CalendarIcon, Images, ChevronDown, Truck, Pin, PinOff } from "lucide-react"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -102,27 +102,33 @@ function HomePage() {
               const isKL  = (r.name + " " + r.code).toLowerCase().includes("kl")
               const isSel = (r.name + " " + r.code).toLowerCase().includes("sel")
               return (
-                <div key={r.id} className="relative bg-card rounded-xl ring-1 ring-border/60 shadow-sm flex flex-col items-center gap-1.5 px-3 py-3 text-center">
-                  {/* Unpin */}
-                  <button
-                    className="absolute top-1.5 right-1.5 p-0.5 rounded-md text-primary/50 hover:text-destructive hover:bg-destructive/10 transition-colors"
-                    title="Unpin"
-                    onClick={() => unpin(r.id)}
-                  >
-                    <Pin className="size-3" />
-                  </button>
-                  {isKL
-                    ? <img src="/kl-flag.png" className="object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10" style={{ width: 48, height: 30 }} alt="KL" />
-                    : isSel
-                    ? <img src="/selangor-flag.png" className="object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10" style={{ width: 48, height: 30 }} alt="Selangor" />
-                    : <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
-                        <Truck className="size-4 text-primary" />
-                      </div>
-                  }
-                  <p className="text-xs font-semibold text-foreground leading-tight line-clamp-2">{r.name}</p>
-                  <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${r.shift === "AM" ? "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400" : "bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400"}`}>
-                    {r.shift}
-                  </span>
+                <div key={r.id} className="bg-card rounded-xl ring-1 ring-border/60 shadow-sm flex flex-col overflow-hidden">
+                  {/* Card body */}
+                  <div className="flex flex-col items-center gap-2 px-3 pt-4 pb-3">
+                    {isKL
+                      ? <img src="/kl-flag.png" className="object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10" style={{ width: 48, height: 30 }} alt="KL" />
+                      : isSel
+                      ? <img src="/selangor-flag.png" className="object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10" style={{ width: 48, height: 30 }} alt="Selangor" />
+                      : <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
+                          <Truck className="size-4 text-primary" />
+                        </div>
+                    }
+                    <p className="text-xs font-semibold text-foreground leading-tight line-clamp-2 text-center">{r.name}</p>
+                    <span className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full text-white tracking-wide ${
+                      r.shift === 'AM' ? 'bg-blue-500' : r.shift === 'PM' ? 'bg-orange-600' : 'bg-muted text-muted-foreground'
+                    }`}>{r.shift || '—'}</span>
+                  </div>
+                  {/* Footer */}
+                  <div className="flex items-center justify-between border-t border-border/40 bg-muted/30 px-3 py-1.5">
+                    <span className="text-[10px] font-mono text-muted-foreground">{r.code}</span>
+                    <button
+                      className="p-0.5 rounded text-muted-foreground/50 hover:text-destructive transition-colors"
+                      title="Unpin"
+                      onClick={() => unpin(r.id)}
+                    >
+                      <PinOff className="size-3" />
+                    </button>
+                  </div>
                 </div>
               )
             })}

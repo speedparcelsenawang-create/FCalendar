@@ -449,7 +449,7 @@ export function NotesChangelog() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div
-      className="flex flex-1 flex-col gap-4 p-4 md:p-6 max-w-3xl mx-auto w-full overflow-y-auto"
+      className="flex flex-1 flex-col gap-4 p-4 md:p-6 max-w-5xl mx-auto w-full overflow-y-auto"
       style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
     >
       {/* Header */}
@@ -463,16 +463,16 @@ export function NotesChangelog() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 rounded-lg bg-muted p-1 w-fit">
+      <div className="flex gap-4 border-b border-border">
         {(["notes", "changelog"] as Tab[]).map(t => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={`
-              flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-all
+              flex items-center gap-1.5 pb-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px bg-transparent border-x-transparent border-t-transparent
               ${tab === t
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"}
+                ? "border-b-primary text-primary"
+                : "border-b-transparent text-muted-foreground"}
             `}
           >
             {t === "notes" ? <StickyNote className="size-3.5" /> : <History className="size-3.5" />}

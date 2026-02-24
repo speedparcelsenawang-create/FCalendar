@@ -6,51 +6,35 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { StickyNote, History, Plus, Trash2, Clock } from "lucide-react"
+import { StickyNote, History, Plus, Trash2, Clock, Loader2 } from "lucide-react"
 
 export interface RouteNote {
   id: string
   text: string
-  createdAt: string
+  created_at: string
 }
 
 export interface RouteChangelog {
   id: string
-  description: string
-  createdAt: string
+  text: string
+  created_at: string
 }
 
-function storageKey(type: "notes" | "changelog", routeId: string) {
-  return `fcalendar_${type}_${routeId}`
-}
-
-export function loadNotes(routeId: string): RouteNote[] {
+export async function appendChangelog(routeId: string, description: string): Promise<void> {
   try {
-    const raw = localStorage.getItem(storageKey("notes", routeId))
-    return raw ? JSON.parse(raw) : []
-  } catch { return [] }
-}
-
-export function loadChangelog(routeId: string): RouteChangelog[] {
-  try {
-    const raw = localStorage.getItem(storageKey("changelog", routeId))
-    return raw ? JSON.parse(raw) : []
-  } catch { return [] }
-}
-
-export function appendChangelog(routeId: string, description: string) {
-  const existing = loadChangelog(routeId)
-  const entry: RouteChangelog = {
-    id: crypto.randomUUID(),
-    description,
-    createdAt: new Date().toISOString(),
+    await fetch('/api/route-notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: crypto.randomUUID(),
+        routeId,
+        type: 'changelog',
+        text: description,
+      }),
+    })
+  } catch {
+    // silently fail — changelog is non-critical
   }
-  const updated = [entry, ...existing].slice(0, 100) // keep max 100
-  localStorage.setItem(storageKey("changelog", routeId), JSON.stringify(updated))
-}
-
-function saveNotes(routeId: string, notes: RouteNote[]) {
-  localStorage.setItem(storageKey("notes", routeId), JSON.stringify(notes))
 }
 
 function formatTime(iso: string) {
@@ -86,35 +70,61 @@ export function RouteNotesModal({ open, onOpenChange, routeId, routeName }: Prop
   const [notes, setNotes] = useState<RouteNote[]>([])
   const [changelog, setChangelog] = useState<RouteChangelog[]>([])
   const [input, setInput] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
-  // Load from localStorage when modal opens
+  // Load from API when modal opens
   useEffect(() => {
-    if (open) {
-      setNotes(loadNotes(routeId))
-      setChangelog(loadChangelog(routeId))
-    }
+    if (!open) return
+    setLoading(true)
+    fetch(`/api/route-notes?routeId=${encodeURIComponent(routeId)}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          setNotes(data.notes ?? [])
+          setChangelog(data.changelog ?? [])
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
   }, [open, routeId])
 
-  const addNote = () => {
+  const addNote = async () => {
     const text = input.trim()
     if (!text) return
-    const note: RouteNote = {
+    setSaving(true)
+    const newNote: RouteNote = {
       id: crypto.randomUUID(),
       text,
-      createdAt: new Date().toISOString(),
+      created_at: new Date().toISOString(),
     }
-    const updated = [note, ...notes]
-    setNotes(updated)
-    saveNotes(routeId, updated)
-    setInput("")
-    textareaRef.current?.focus()
+    try {
+      await fetch('/api/route-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: newNote.id, routeId, type: 'note', text }),
+      })
+      setNotes(prev => [newNote, ...prev])
+      setInput("")
+      textareaRef.current?.focus()
+    } catch {
+      // handle silently
+    } finally {
+      setSaving(false)
+    }
   }
 
-  const deleteNote = (id: string) => {
-    const updated = notes.filter(n => n.id !== id)
-    setNotes(updated)
-    saveNotes(routeId, updated)
+  const deleteNote = async (id: string) => {
+    setNotes(prev => prev.filter(n => n.id !== id))
+    try {
+      await fetch(`/api/route-notes?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+    } catch {
+      // revert on failure
+      const res = await fetch(`/api/route-notes?routeId=${encodeURIComponent(routeId)}`)
+      const data = await res.json()
+      if (data.success) setNotes(data.notes ?? [])
+    }
   }
 
   return (
@@ -165,7 +175,11 @@ export function RouteNotesModal({ open, onOpenChange, routeId, routeName }: Prop
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto min-h-0">
-          {tab === "notes" ? (
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="size-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : tab === "notes" ? (
             <div className="flex flex-col h-full">
               {/* Note list */}
               <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
@@ -181,7 +195,7 @@ export function RouteNotesModal({ open, onOpenChange, routeId, routeName }: Prop
                       <p className="text-sm text-foreground whitespace-pre-wrap pr-6">{note.text}</p>
                       <p className="text-[10px] text-muted-foreground mt-1.5 flex items-center gap-1">
                         <Clock className="size-2.5" />
-                        <span title={formatExact(note.createdAt)}>{formatTime(note.createdAt)}</span>
+                        <span title={formatExact(note.created_at)}>{formatTime(note.created_at)}</span>
                       </p>
                       <button
                         onClick={() => deleteNote(note.id)}
@@ -211,9 +225,10 @@ export function RouteNotesModal({ open, onOpenChange, routeId, routeName }: Prop
                   size="sm"
                   className="w-full h-8 text-xs"
                   onClick={addNote}
-                  disabled={!input.trim()}
+                  disabled={!input.trim() || saving}
                 >
-                  <Plus className="size-3.5 mr-1" /> Add Note
+                  {saving ? <Loader2 className="size-3.5 mr-1 animate-spin" /> : <Plus className="size-3.5 mr-1" />}
+                  Add Note
                 </Button>
               </div>
             </div>
@@ -235,10 +250,10 @@ export function RouteNotesModal({ open, onOpenChange, routeId, routeName }: Prop
                       {i < changelog.length - 1 && <div className="w-px flex-1 bg-border/50 mt-1 mb-0" style={{ minHeight: "20px" }} />}
                     </div>
                     <div className="flex-1 pb-3">
-                      <p className="text-[12px] text-foreground leading-snug">{entry.description}</p>
+                      <p className="text-[12px] text-foreground leading-snug">{entry.text}</p>
                       <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
                         <Clock className="size-2.5" />
-                        <span title={formatExact(entry.createdAt)}>{formatTime(entry.createdAt)}</span>
+                        <span title={formatExact(entry.created_at)}>{formatTime(entry.created_at)}</span>
                       </p>
                     </div>
                   </div>
