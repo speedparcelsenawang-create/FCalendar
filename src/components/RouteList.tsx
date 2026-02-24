@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react"
-import { List, Info, Plus, Check, X, Edit2, Trash2, Search, Settings, Save, ArrowUp, ArrowDown, RotateCcw, Truck, Loader2, Maximize2, Minimize2, StickyNote, SlidersHorizontal, Pin, PinOff, LayoutGrid, MoreVertical } from "lucide-react"
+import { List, Info, Plus, Check, X, Edit2, Trash2, Search, Settings, Save, ArrowUp, ArrowDown, Truck, Loader2, Maximize2, Minimize2, StickyNote, SlidersHorizontal, Pin, PinOff, LayoutGrid, MoreVertical } from "lucide-react"
 import { RowInfoModal } from "./RowInfoModal"
 import { RouteNotesModal, appendChangelog } from "./RouteNotesModal"
 import { useEditMode } from "@/contexts/EditModeContext"
@@ -225,7 +225,6 @@ export function RouteList() {
         const parsed: SavedRowOrder[] = JSON.parse(stored)
         if (Array.isArray(parsed) && parsed.length > 0) {
           setSavedRowOrders(parsed)
-          setSavedRowOrderOnce(true)
         }
       }
     } catch {}
@@ -334,7 +333,6 @@ export function RouteList() {
     pts.map((p, i) => ({ code: p.code, position: String(i + 1), name: p.name, delivery: p.delivery }))
   const [draftRowOrder, setDraftRowOrder] = useState<RowOrderEntry[]>([])
   const [savedRowOrders, setSavedRowOrders] = useState<SavedRowOrder[]>([])
-  const [savedRowOrderOnce, setSavedRowOrderOnce] = useState(false)
   const rowOrderDirty = useMemo(() => {
     const orig = buildRowEntries(deliveryPoints)
     return JSON.stringify(draftRowOrder.map(r => r.code)) !== JSON.stringify(orig.map(r => r.code))
@@ -380,18 +378,6 @@ export function RouteList() {
     setRowOrderError(isDup ? `Position ${val} is already used` : '')
   }
 
-  const applyRowPositions = () => {
-    const positions = draftRowOrder.map(r => parseInt(r.position))
-    const hasDup = positions.length !== new Set(positions).size
-    const hasEmpty = draftRowOrder.some(r => r.position === '')
-    if (hasDup) { setRowOrderError('Duplicate position numbers'); return }
-    if (hasEmpty) { setRowOrderError('All rows must have a position'); return }
-    const sorted = [...draftRowOrder].sort((a, b) => parseInt(a.position) - parseInt(b.position))
-    const reindexed = sorted.map((r, i) => ({ ...r, position: String(i + 1) }))
-    setDraftRowOrder(reindexed)
-    setRowOrderError('')
-  }
-
   const saveRowOrder = async () => {
     const positions = draftRowOrder.map(r => parseInt(r.position))
     const hasDup = positions.length !== new Set(positions).size
@@ -415,7 +401,6 @@ export function RouteList() {
       try { localStorage.setItem('fcalendar_my_sorts', JSON.stringify(updated)) } catch {}
       return updated
     })
-    setSavedRowOrderOnce(true)
     setRowOrderError('')
   }
 
