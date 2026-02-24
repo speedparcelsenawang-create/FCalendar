@@ -2,6 +2,147 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* ── PrimeReact Toast — full theme override ──────────────────────────────── */
+.p-toast {
+  width: 22rem;
+  opacity: 1;
+}
+
+/* Entry animation — slide in from right */
+@keyframes p-toast-in {
+  from { opacity: 0; transform: translateX(100%); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes p-toast-out {
+  from { opacity: 1; transform: translateX(0); max-height: 200px; margin-bottom: 0.75rem; }
+  to   { opacity: 0; transform: translateX(110%); max-height: 0;   margin-bottom: 0; }
+}
+
+.p-toast-message {
+  border-radius: 0.875rem;
+  overflow: hidden;
+  box-shadow: 0 8px 24px -4px rgba(0,0,0,0.12), 0 2px 8px -2px rgba(0,0,0,0.08);
+  border: 1px solid var(--border);
+  background: var(--card);
+  margin-bottom: 0.65rem;
+  animation: p-toast-in 0.32s cubic-bezier(0.34, 1.4, 0.64, 1) forwards;
+}
+
+.p-toast-message-enter {
+  opacity: 0;
+  transform: translateX(100%);
+}
+.p-toast-message-enter-active {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 0.3s ease, transform 0.32s cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+.p-toast-message-exit {
+  opacity: 1;
+  transform: translateX(0);
+  max-height: 200px;
+}
+.p-toast-message-exit-active {
+  opacity: 0;
+  transform: translateX(110%);
+  max-height: 0;
+  margin-bottom: 0 !important;
+  transition: opacity 0.25s ease, transform 0.25s ease, max-height 0.3s ease, margin-bottom 0.3s ease;
+}
+
+.p-toast-message-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1rem 1rem 1rem;
+  position: relative;
+}
+
+/* Severity left border accent */
+.p-toast-message-success { border-left: 4px solid #22c55e !important; }
+.p-toast-message-info    { border-left: 4px solid #3b82f6 !important; }
+.p-toast-message-warn    { border-left: 4px solid #f59e0b !important; }
+.p-toast-message-error   { border-left: 4px solid #ef4444 !important; }
+
+/* Icon circle */
+.p-toast-message-icon {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.9rem;
+}
+.p-toast-message-success .p-toast-message-icon {
+  background: #dcfce7;
+  color: #16a34a;
+}
+.p-toast-message-info .p-toast-message-icon {
+  background: #dbeafe;
+  color: #2563eb;
+}
+.p-toast-message-warn .p-toast-message-icon {
+  background: #fef3c7;
+  color: #d97706;
+}
+.p-toast-message-error .p-toast-message-icon {
+  background: #fee2e2;
+  color: #dc2626;
+}
+.dark .p-toast-message-success .p-toast-message-icon { background: #14532d40; color: #4ade80; }
+.dark .p-toast-message-info    .p-toast-message-icon { background: #1e3a5f40; color: #60a5fa; }
+.dark .p-toast-message-warn    .p-toast-message-icon { background: #7c280040 ; color: #fbbf24; }
+.dark .p-toast-message-error   .p-toast-message-icon { background: #7f1d1d40; color: #f87171; }
+
+/* Text */
+.p-toast-message-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding-right: 0.5rem;
+}
+.p-toast-summary {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--foreground);
+  line-height: 1.4;
+}
+.p-toast-detail {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Close button */
+.p-toast-icon-close {
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 0.4rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted-foreground);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  margin-top: -0.1rem;
+  transition: background 0.15s, color 0.15s;
+}
+.p-toast-icon-close:hover {
+  background: var(--muted);
+  color: var(--foreground);
+}
+.p-toast-icon-close .p-icon {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
 /* Sidebar search field */
 .sidebar-search {
   transition: box-shadow 0.2s ease, border-color 0.2s ease;

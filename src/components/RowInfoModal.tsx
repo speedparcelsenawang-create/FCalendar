@@ -3,6 +3,7 @@ import QrScanner from "qr-scanner"
 import { Plus, Trash2, QrCode, ExternalLink, Pencil, Link2, ImageUp, X, ScanLine, CheckCircle2, Loader2, AlertCircle, Check, CameraOff, Camera } from "lucide-react"
 import "lightgallery/css/lightgallery.css"
 import "lightgallery/css/lg-zoom.css"
+import { Toast } from "primereact/toast"
 import {
   Dialog,
   DialogContent,
@@ -50,6 +51,11 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
   const [showQRDialog, setShowQRDialog] = useState(false)
   const [qrTab, setQrTab] = useState<"url" | "media">("url")
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // PrimeReact Toast refs
+  const uploadToastRef = useRef<any>(null)
+  const toastRef = useRef<any>(null)
+  const [pendingUrl, setPendingUrl] = useState<string | null>(null)
 
   // Avatar image state
   const [avatarImageUrl, setAvatarImageUrl] = useState("") // selected display image
@@ -128,7 +134,6 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
     return data.data.url as string
   }
 
-  const [pendingUrl, setPendingUrl] = useState<string | null>(null)
   const [scannedUrl, setScannedUrl] = useState<string | null>(null)
   const [isScanning, setIsScanning] = useState(false)
   const [qrDecodeStatus, setQrDecodeStatus] = useState<"idle" | "decoding" | "decoded" | "failed">("idle")
@@ -180,8 +185,13 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
     setDrafts(prev => prev.map((d, idx) => idx === i ? { ...d, [field]: val } : d))
 
   const handleSave = () => {
-    onSave?.({ ...point, descriptions: drafts.filter(d => d.key.trim() !== ""), qrCodeImageUrl, qrCodeDestinationUrl, avatarImageUrl, avatarImages })
-    setIsEditing(false)
+    try {
+      onSave?.({ ...point, descriptions: drafts.filter(d => d.key.trim() !== ""), qrCodeImageUrl, qrCodeDestinationUrl, avatarImageUrl, avatarImages })
+      setIsEditing(false)
+      toastRef.current?.show({ severity: "success", summary: "Saved", detail: "Changes saved successfully.", life: 5000 })
+    } catch {
+      toastRef.current?.show({ severity: "error", summary: "Error", detail: "Failed to save. Please try again.", life: 5000 })
+    }
   }
 
   const handleCancel = () => {
@@ -202,7 +212,11 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <>
+      <Toast ref={uploadToastRef} position="top-right" />
+      <Toast ref={toastRef} position="top-right" />
+
+      <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm rounded-2xl p-0 overflow-hidden gap-0 border-border">
         {/* Header */}
         <DialogHeader className="px-5 pt-5 pb-4 border-b border-border bg-background">
@@ -536,17 +550,26 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
                             const files = Array.from(e.target.files ?? [])
                             if (!files.length) return
                             setAvatarUploading(true)
+                            uploadToastRef.current?.clear()
+                            uploadToastRef.current?.show({
+                              severity: "info",
+                              summary: `Uploading ${files.length} image${files.length > 1 ? "s" : ""}…`,
+                              sticky: true,
+                            })
                             try {
                               const urls: string[] = []
                               for (const file of files) {
                                 const url = await uploadToImgBB(file)
                                 urls.push(url)
                               }
+                              uploadToastRef.current?.clear()
+                              toastRef.current?.show({ severity: "success", summary: "Upload berjaya", detail: `${urls.length} imej dimuat naik.`, life: 5000 })
                               const next = [...dialogImages, ...urls].slice(0, 8)
                               setDialogImages(next)
                               if (!dialogSelected && next.length > 0) setDialogSelected(next[0])
                             } catch {
-                              alert("Upload failed. Please try again.")
+                              uploadToastRef.current?.clear()
+                              toastRef.current?.show({ severity: "error", summary: "Upload gagal", detail: "Sila cuba semula.", life: 5000 })
                             } finally {
                               setAvatarUploading(false)
                               if (avatarFileRef.current) avatarFileRef.current.value = ""
@@ -749,25 +772,24 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
             </DialogContent>
           </Dialog>
 
-          {/* Confirmation dialog (for nav buttons) */}
+          {/* Confirmation dialog (open external link) */}
           <Dialog open={!!pendingUrl} onOpenChange={(o) => { if (!o) setPendingUrl(null) }}>
-            <DialogContent className="max-w-xs rounded-2xl">
+            <DialogContent className="max-w-sm rounded-2xl">
               <DialogHeader>
                 <DialogTitle className="text-base">Open Link?</DialogTitle>
                 <DialogDescription asChild>
-                  <div className="space-y-1.5">
-                    <p className="text-sm text-gray-500">You will be taken to an external app or website.</p>
-                    <p className="text-xs font-mono break-all bg-gray-100 dark:bg-neutral-800 text-gray-600 dark:text-gray-300 rounded-lg px-2.5 py-1.5">
+                  <div className="space-y-2 mt-1">
+                    <p className="text-sm text-muted-foreground">You will be taken to an external app or website.</p>
+                    <p className="text-xs font-mono break-all bg-muted text-muted-foreground rounded-xl px-3 py-2">
                       {pendingUrl}
                     </p>
                   </div>
                 </DialogDescription>
               </DialogHeader>
-              <DialogFooter className="flex gap-2 justify-end">
-                <Button variant="outline" size="sm" onClick={() => setPendingUrl(null)}>
-                  Cancel
-                </Button>
-                <Button size="sm" onClick={confirmOpen}>
+              <DialogFooter className="flex gap-2 justify-end mt-2">
+                <Button variant="outline" onClick={() => setPendingUrl(null)}>Cancel</Button>
+                <Button onClick={confirmOpen}>
+                  <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
                   Open
                 </Button>
               </DialogFooter>
@@ -832,5 +854,6 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
         )}
       </DialogContent>
     </Dialog>
+    </>
   )
 }

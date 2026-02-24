@@ -1,5 +1,8 @@
 import { StrictMode } from "react"
 import { createRoot } from "react-dom/client"
+import { PrimeReactProvider } from "primereact/api"
+import "primereact/resources/themes/lara-light-blue/theme.css"
+import "primereact/resources/primereact.min.css"
 
 import "./index.css"
 import App from "./App.tsx"
@@ -35,7 +38,9 @@ import { FONT_OPTIONS } from "./hooks/use-theme"
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    <PrimeReactProvider>
+      <App />
+    </PrimeReactProvider>
   </StrictMode>
 )
 

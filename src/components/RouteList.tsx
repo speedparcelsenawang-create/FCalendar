@@ -284,7 +284,7 @@ export function RouteList() {
   const [pendingCellEdits, setPendingCellEdits] = useState<Set<string>>(new Set())
 
   // ── Settings Modal ────────────────────────────────────────────────
-  type ColumnKey = 'no' | 'code' | 'name' | 'delivery' | 'action'
+  type ColumnKey = 'no' | 'code' | 'name' | 'delivery' | 'km' | 'lat' | 'lng' | 'action'
 
   interface ColumnDef {
     key: ColumnKey
@@ -293,11 +293,14 @@ export function RouteList() {
   }
 
   const DEFAULT_COLUMNS: ColumnDef[] = [
-    { key: 'no',       label: 'No',       visible: true },
-    { key: 'code',     label: 'Code',     visible: true },
-    { key: 'name',     label: 'Name',     visible: true },
-    { key: 'delivery', label: 'Delivery', visible: true },
-    { key: 'action',   label: 'Action',   visible: true },
+    { key: 'no',       label: 'No',        visible: true  },
+    { key: 'code',     label: 'Code',      visible: true  },
+    { key: 'name',     label: 'Name',      visible: true  },
+    { key: 'delivery', label: 'Delivery',  visible: true  },
+    { key: 'km',       label: 'KM',        visible: false },
+    { key: 'lat',      label: 'Latitude',  visible: false },
+    { key: 'lng',      label: 'Longitude', visible: false },
+    { key: 'action',   label: 'Action',    visible: true  },
   ]
 
   interface SavedRowOrder {
@@ -907,11 +910,11 @@ export function RouteList() {
           return (
           <div key={route.id} className="w-full">
             <div
-              className="bg-card rounded-2xl ring-1 ring-border/60 shadow-sm active:scale-95 transition-all duration-150 overflow-hidden relative group flex flex-col"
+              className="bg-card rounded-xl ring-1 ring-border/60 shadow-sm active:scale-[0.97] transition-all duration-150 overflow-hidden relative group flex flex-col"
             >
               {/* Edit settings button — top right, edit mode only */}
               {isEditMode && (
-                <div className="absolute top-3 right-2.5 z-10" onClick={e => e.stopPropagation()}>
+                <div className="absolute top-2.5 right-2.5 z-10" onClick={e => e.stopPropagation()}>
                   <button
                     className="p-1 rounded-lg text-muted-foreground/40 hover:text-primary hover:bg-primary/10 transition-colors"
                     onClick={() => handleEditRoute(route)}
@@ -938,60 +941,73 @@ export function RouteList() {
                 </button>
               </div>
 
-              {/* Card body */}
-              <div className="px-3 pt-6 pb-3 flex flex-col items-center gap-2 flex-1">
-                {/* Flag / icon */}
-                {isKL
-                  ? <img src="/kl-flag.png"
-                      className="object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10"
-                      style={{ width: 48, height: 30 }}
-                      alt="KL" />
-                  : isSel
-                  ? <img src="/selangor-flag.png"
-                      className="object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10"
-                      style={{ width: 48, height: 30 }}
-                      alt="Selangor" />
-                  : <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
-                      <Truck className="size-4 text-primary" />
-                    </div>
-                }
-
-                {/* Name + code */}
-                <div className="text-center w-full">
-                  <h2 className="text-[12px] font-bold text-foreground leading-snug line-clamp-2">{route.name}</h2>
-                  <p className="text-[10px] font-mono text-muted-foreground/60 mt-0.5 tracking-wide">{route.code}</p>
+              {/* Card body — icon + name + code */}
+              <div className="px-4 pt-8 pb-4 flex flex-col items-center gap-3 flex-1">
+                {/* Logo / flag */}
+                <div className="flex items-center justify-center w-12 h-12">
+                  {isKL
+                    ? <img src="/kl-flag.png"
+                        className="object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10"
+                        style={{ width: 56, height: 35 }}
+                        alt="KL" />
+                    : isSel
+                    ? <img src="/selangor-flag.png"
+                        className="object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10"
+                        style={{ width: 56, height: 35 }}
+                        alt="Selangor" />
+                    : <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
+                        <Truck className="size-5 text-primary" />
+                      </div>
+                  }
                 </div>
 
+                {/* Name */}
+                <div className="text-center w-full">
+                  <h2 className="text-[13px] font-semibold text-foreground leading-snug line-clamp-2">{route.name}</h2>
+                  <p className="text-[11px] font-mono text-muted-foreground/60 mt-1 tracking-wide capitalize">{route.code}</p>
+                </div>
+              </div>
+
+              {/* Details row — shift + delivery count */}
+              <div className="flex items-center justify-between border-t border-border/40 bg-muted/30 px-3 py-2" onClick={e => e.stopPropagation()}>
+                <div className="flex flex-col items-start">
+                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">Shift</span>
+                  <span className="text-[11px] font-medium text-foreground">{route.shift || '—'}</span>
+                </div>
+                <div className="flex flex-col items-end">
+                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-semibold">Points</span>
+                  <span className="text-[11px] font-medium text-foreground">{route.deliveryPoints.length}</span>
+                </div>
               </div>
 
               {/* Footer — Notes | Info | List */}
-              <div className="flex items-center border-t border-border/40 mt-auto min-h-[36px]" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center border-t border-border/40 min-h-[34px]" onClick={e => e.stopPropagation()}>
                 <button
-                  className="flex-1 flex items-center justify-center gap-1 py-2.5 text-amber-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-1 py-2 text-amber-500 hover:text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
                   onClick={() => { setNotesRouteId(route.id); setNotesRouteName(route.name); setNotesModalOpen(true) }}
                 >
-                  <StickyNote className="size-3.5" />
-                  <span className="text-[10px] font-medium">Notes</span>
+                  <StickyNote className="size-3" />
+                  <span className="text-[9px] font-semibold uppercase tracking-wide">Notes</span>
                 </button>
 
-                <div className="w-px h-5 bg-border/50" />
+                <div className="w-px h-4 bg-border/50" />
 
                 <button
-                  className="flex-1 flex items-center justify-center gap-1 py-2.5 text-sky-500 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-900/20 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-1 py-2 text-sky-500 hover:text-sky-600 hover:bg-sky-50 dark:hover:bg-sky-900/20 transition-colors"
                   onClick={e => { e.stopPropagation(); setInfoModalRouteId(route.id) }}
                 >
-                  <Info className="size-3.5" />
-                  <span className="text-[10px] font-medium">Info</span>
+                  <Info className="size-3" />
+                  <span className="text-[9px] font-semibold uppercase tracking-wide">Info</span>
                 </button>
 
-                <div className="w-px h-5 bg-border/50" />
+                <div className="w-px h-4 bg-border/50" />
 
                 <button
-                  className="flex-1 flex items-center justify-center gap-1 py-2.5 text-primary/70 hover:text-primary hover:bg-primary/8 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-1 py-2 text-primary/70 hover:text-primary hover:bg-primary/8 transition-colors"
                   onClick={() => { setCurrentRouteId(route.id); setDetailDialogOpen(true) }}
                 >
-                  <List className="size-3.5" />
-                  <span className="text-[10px] font-medium">List</span>
+                  <List className="size-3" />
+                  <span className="text-[9px] font-semibold uppercase tracking-wide">List</span>
                 </button>
               </div>
             </div>
@@ -1030,7 +1046,7 @@ export function RouteList() {
                     </div>
                     {/* Table */}
                     <div className="flex-1 overflow-auto scroll-smooth">
-                          <table className="border-collapse text-[12px] whitespace-nowrap min-w-max w-full">
+                          <table className="border-collapse text-[12px] whitespace-nowrap min-w-max w-full text-center">
                             <thead className="bg-muted/70 sticky top-0 z-10 backdrop-blur-sm">
                               <tr className="border-b border-border">
                                 {isEditMode && (
@@ -1043,12 +1059,9 @@ export function RouteList() {
                                     />
                                   </th>
                                 )}
-                                {columns.filter(c => c.visible && c.key !== 'action').map(col => (
+                                {columns.filter(c => c.visible && c.key !== 'action' && !((c.key === 'lat' || c.key === 'lng') && !isEditMode)).map(col => (
                                   <th key={col.key} className="px-3 h-9 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{col.label}</th>
                                 ))}
-                                <th className="px-3 h-9 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Km</th>
-                                {isEditMode && <th className="px-3 h-9 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Latitude</th>}
-                                {isEditMode && <th className="px-3 h-9 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Longitude</th>}
                                 {columns.find(c => c.key === 'action' && c.visible) && (
                                   <th className="px-3 h-9 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Action</th>
                                 )}
@@ -1197,52 +1210,60 @@ export function RouteList() {
                                       )}
                                     </td>
                                   )
+                                  if (col.key === 'km') return (
+                                    <td key="km" className="px-3 h-11 text-center">
+                                      <TooltipProvider delayDuration={100}>
+                                        <Tooltip
+                                          open={openKmTooltip === point.code}
+                                          onOpenChange={(open) => setOpenKmTooltip(open ? point.code : null)}
+                                        >
+                                          <TooltipTrigger
+                                            type="button"
+                                            className="text-[11px] font-medium text-muted-foreground cursor-help tabular-nums"
+                                            onClick={() => setOpenKmTooltip(prev => prev === point.code ? null : point.code)}
+                                          >
+                                            {hasCoords && distInfo ? formatKm(distInfo.display) : ''}
+                                          </TooltipTrigger>
+                                          <TooltipContent side="top" className="text-xs max-w-[220px] text-center z-[9999]">
+                                            {segmentLabel}
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      </TooltipProvider>
+                                    </td>
+                                  )
+                                  if (col.key === 'lat') {
+                                    if (!isEditMode) return null
+                                    return (
+                                      <td key="lat" className="px-3 h-11 text-center font-mono">
+                                        <Popover open={isEditMode && !!popoverOpen[`${point.code}-latitude`]} onOpenChange={(open) => { if (!isEditMode) return; if (!open) cancelEdit(); setPopoverOpen({ [`${point.code}-latitude`]: open }) }}>
+                                          <PopoverTrigger asChild>
+                                            <button className="hover:bg-accent px-3 py-1 rounded flex items-center justify-center gap-1.5 group font-mono mx-auto text-[11px]" onClick={() => startEdit(point.code, 'latitude', point.latitude.toFixed(4))}>
+                                              <span className={pendingCellEdits.has(`${point.code}-latitude`) ? 'text-amber-600 dark:text-amber-400 font-semibold' : ''}>{point.latitude.toFixed(4)}</span><Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                                            </button>
+                                          </PopoverTrigger>
+                                          <PopoverContent className="w-64"><div className="space-y-3"><div className="space-y-2"><label className="text-sm font-medium">Latitude</label><Input className="text-center font-mono" type="number" step="0.0001" value={editValue} onChange={(e) => setEditValue(e.target.value)} placeholder="Enter latitude" autoFocus onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit() }} /></div><div className="flex gap-2"><Button size="sm" onClick={saveEdit} className="flex-1"><Check className="size-4 mr-1" /> Save</Button><Button size="sm" variant="outline" onClick={cancelEdit} className="flex-1"><X className="size-4 mr-1" /> Cancel</Button></div></div></PopoverContent>
+                                        </Popover>
+                                      </td>
+                                    )
+                                  }
+                                  if (col.key === 'lng') {
+                                    if (!isEditMode) return null
+                                    return (
+                                      <td key="lng" className="px-3 h-11 text-center font-mono">
+                                        <Popover open={isEditMode && !!popoverOpen[`${point.code}-longitude`]} onOpenChange={(open) => { if (!isEditMode) return; if (!open) cancelEdit(); setPopoverOpen({ [`${point.code}-longitude`]: open }) }}>
+                                          <PopoverTrigger asChild>
+                                            <button className="hover:bg-accent px-3 py-1 rounded flex items-center justify-center gap-1.5 group font-mono mx-auto text-[11px]" onClick={() => startEdit(point.code, 'longitude', point.longitude.toFixed(4))}>
+                                              <span className={pendingCellEdits.has(`${point.code}-longitude`) ? 'text-amber-600 dark:text-amber-400 font-semibold' : ''}>{point.longitude.toFixed(4)}</span><Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
+                                            </button>
+                                          </PopoverTrigger>
+                                          <PopoverContent className="w-64"><div className="space-y-3"><div className="space-y-2"><label className="text-sm font-medium">Longitude</label><Input className="text-center font-mono" type="number" step="0.0001" value={editValue} onChange={(e) => setEditValue(e.target.value)} placeholder="Enter longitude" autoFocus onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit() }} /></div><div className="flex gap-2"><Button size="sm" onClick={saveEdit} className="flex-1"><Check className="size-4 mr-1" /> Save</Button><Button size="sm" variant="outline" onClick={cancelEdit} className="flex-1"><X className="size-4 mr-1" /> Cancel</Button></div></div></PopoverContent>
+                                        </Popover>
+                                      </td>
+                                    )
+                                  }
                                   if (col.key === 'action') return null
                                   return null
                                 })}
-                                <td className="px-3 h-11 text-center">
-                                  <TooltipProvider delayDuration={100}>
-                                    <Tooltip
-                                      open={openKmTooltip === point.code}
-                                      onOpenChange={(open) => setOpenKmTooltip(open ? point.code : null)}
-                                    >
-                                      <TooltipTrigger
-                                        type="button"
-                                        className="text-[11px] font-medium text-muted-foreground cursor-help tabular-nums"
-                                        onClick={() => setOpenKmTooltip(prev => prev === point.code ? null : point.code)}
-                                      >
-                                        {hasCoords && distInfo ? formatKm(distInfo.display) : ''}
-                                      </TooltipTrigger>
-                                      <TooltipContent side="top" className="text-xs max-w-[220px] text-center z-[9999]">
-                                        {segmentLabel}
-                                      </TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                </td>
-                                {isEditMode && (
-                                  <td className="px-3 h-11 text-center font-mono">
-                                    <Popover open={isEditMode && !!popoverOpen[`${point.code}-latitude`]} onOpenChange={(open) => { if (!isEditMode) return; if (!open) cancelEdit(); setPopoverOpen({ [`${point.code}-latitude`]: open }) }}>
-                                      <PopoverTrigger asChild>
-                                        <button className="hover:bg-accent px-3 py-1 rounded flex items-center justify-center gap-1.5 group font-mono mx-auto text-[11px]" onClick={() => startEdit(point.code, 'latitude', point.latitude.toFixed(4))}>
-                                          <span className={pendingCellEdits.has(`${point.code}-latitude`) ? 'text-amber-600 dark:text-amber-400 font-semibold' : ''}>{point.latitude.toFixed(4)}</span><Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-                                        </button>
-                                      </PopoverTrigger>
-                                      <PopoverContent className="w-64"><div className="space-y-3"><div className="space-y-2"><label className="text-sm font-medium">Latitude</label><Input className="text-center font-mono" type="number" step="0.0001" value={editValue} onChange={(e) => setEditValue(e.target.value)} placeholder="Enter latitude" autoFocus onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit() }} /></div><div className="flex gap-2"><Button size="sm" onClick={saveEdit} className="flex-1"><Check className="size-4 mr-1" /> Save</Button><Button size="sm" variant="outline" onClick={cancelEdit} className="flex-1"><X className="size-4 mr-1" /> Cancel</Button></div></div></PopoverContent>
-                                    </Popover>
-                                  </td>
-                                )}
-                                {isEditMode && (
-                                  <td className="px-3 h-11 text-center font-mono">
-                                    <Popover open={isEditMode && !!popoverOpen[`${point.code}-longitude`]} onOpenChange={(open) => { if (!isEditMode) return; if (!open) cancelEdit(); setPopoverOpen({ [`${point.code}-longitude`]: open }) }}>
-                                      <PopoverTrigger asChild>
-                                        <button className="hover:bg-accent px-3 py-1 rounded flex items-center justify-center gap-1.5 group font-mono mx-auto text-[11px]" onClick={() => startEdit(point.code, 'longitude', point.longitude.toFixed(4))}>
-                                          <span className={pendingCellEdits.has(`${point.code}-longitude`) ? 'text-amber-600 dark:text-amber-400 font-semibold' : ''}>{point.longitude.toFixed(4)}</span><Edit2 className="size-3 opacity-0 group-hover:opacity-50 transition-opacity" />
-                                        </button>
-                                      </PopoverTrigger>
-                                      <PopoverContent className="w-64"><div className="space-y-3"><div className="space-y-2"><label className="text-sm font-medium">Longitude</label><Input className="text-center font-mono" type="number" step="0.0001" value={editValue} onChange={(e) => setEditValue(e.target.value)} placeholder="Enter longitude" autoFocus onKeyDown={(e) => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit() }} /></div><div className="flex gap-2"><Button size="sm" onClick={saveEdit} className="flex-1"><Check className="size-4 mr-1" /> Save</Button><Button size="sm" variant="outline" onClick={cancelEdit} className="flex-1"><X className="size-4 mr-1" /> Cancel</Button></div></div></PopoverContent>
-                                    </Popover>
-                                  </td>
-                                )}
                                 {columns.find(c => c.key === 'action' && c.visible) && (
                                   <td className="px-3 h-11 text-center">
                                     <button
@@ -1891,7 +1912,9 @@ export function RouteList() {
               <div className="p-4 space-y-3">
                 <p className="text-sm text-muted-foreground">Toggle visibility and reorder columns.</p>
                 <div className="space-y-2">
-                  {draftColumns.map((col, idx) => (
+                  {draftColumns.map((col, idx) => {
+                    if ((col.key === 'lat' || col.key === 'lng') && !isEditMode) return null
+                    return (
                     <div key={col.key} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/20">
                       <input
                         type="checkbox"
@@ -1925,7 +1948,8 @@ export function RouteList() {
                         </Button>
                       </div>
                     </div>
-                  ))}
+                    )
+                  })}
                 </div>
               </div>
             )}

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useRef, type ReactNode } from "react"
-import { toast } from "sonner"
+import { Toast } from "primereact/toast"
 
 interface EditModeContextType {
   isEditMode: boolean
@@ -21,6 +21,7 @@ export function EditModeProvider({ children }: { children: ReactNode }) {
   const [isSaving, setIsSaving] = useState(false)
   const saveHandlerRef = useRef<(() => Promise<void>) | null>(null)
   const discardHandlerRef = useRef<(() => void) | null>(null)
+  const toastRef = useRef<any>(null)
 
   const registerSaveHandler = (handler: () => Promise<void>) => {
     saveHandlerRef.current = handler
@@ -36,9 +37,9 @@ export function EditModeProvider({ children }: { children: ReactNode }) {
       try {
         await saveHandlerRef.current()
         setHasUnsavedChanges(false)
-        toast.success('Saved successfully!')
+        toastRef.current?.show({ severity: "success", summary: "Saved", detail: "Changes saved successfully.", life: 5000 })
       } catch (e) {
-        toast.error('Save failed: ' + (e instanceof Error ? e.message : 'Unknown error'))
+        toastRef.current?.show({ severity: "error", summary: "Save failed", detail: e instanceof Error ? e.message : "Unknown error", life: 5000 })
       } finally {
         setIsSaving(false)
       }
@@ -68,6 +69,7 @@ export function EditModeProvider({ children }: { children: ReactNode }) {
         registerDiscardHandler,
       }}
     >
+      <Toast ref={toastRef} position="top-right" />
       {children}
     </EditModeContext.Provider>
   )
