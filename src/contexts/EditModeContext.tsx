@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useRef, useCallback, type ReactNode } from "react"
-import { Toast } from "primereact/toast"
+import { toast } from "sonner"
+import { AlertCircle } from "lucide-react"
 
 interface EditModeContextType {
   isEditMode: boolean
@@ -21,7 +22,6 @@ export function EditModeProvider({ children }: { children: ReactNode }) {
   const [isSaving, setIsSaving] = useState(false)
   const saveHandlerRef = useRef<(() => Promise<void>) | null>(null)
   const discardHandlerRef = useRef<(() => void) | null>(null)
-  const toastRef = useRef<any>(null)
 
   const registerSaveHandler = (handler: () => Promise<void>) => {
     saveHandlerRef.current = handler
@@ -37,9 +37,13 @@ export function EditModeProvider({ children }: { children: ReactNode }) {
       try {
         await saveHandlerRef.current()
         setHasUnsavedChanges(false)
-        toastRef.current?.show({ severity: "success", summary: "Saved", detail: "Changes saved successfully.", life: 5000 })
+        // Success toast is shown by the individual save handler
       } catch (e) {
-        toastRef.current?.show({ severity: "error", summary: "Save failed", detail: e instanceof Error ? e.message : "Unknown error", life: 5000 })
+        toast.error("Save failed", {
+          description: e instanceof Error ? e.message : "Unknown error. Please try again.",
+          icon: <AlertCircle className="size-4" />,
+          duration: 6000,
+        })
       } finally {
         setIsSaving(false)
       }
@@ -69,7 +73,6 @@ export function EditModeProvider({ children }: { children: ReactNode }) {
         registerDiscardHandler,
       }}
     >
-      <Toast ref={toastRef} position="top-right" />
       {children}
     </EditModeContext.Provider>
   )

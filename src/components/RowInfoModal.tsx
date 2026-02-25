@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react"
 import QrScanner from "qr-scanner"
 import { Plus, Trash2, QrCode, ExternalLink, Pencil, Link2, ImageUp, X, ScanLine, CheckCircle2, Loader2, AlertCircle, Check, Camera } from "lucide-react"
+import { toast } from "sonner"
 import "lightgallery/css/lightgallery.css"
 import "lightgallery/css/lg-zoom.css"
 import "lightgallery/css/lg-thumbnail.css"
-import { Toast } from "primereact/toast"
 import noImageSrc from "../../icon/noimage.jpeg"
 import {
   Dialog,
@@ -55,8 +55,6 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // PrimeReact Toast refs
-  const uploadToastRef = useRef<any>(null)
-  const toastRef = useRef<any>(null)
   const [pendingUrl, setPendingUrl] = useState<string | null>(null)
 
   // Avatar image state
@@ -192,9 +190,17 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
     try {
       onSave?.({ ...point, descriptions: drafts.filter(d => d.key.trim() !== ""), qrCodeImageUrl, qrCodeDestinationUrl, avatarImageUrl, avatarImages })
       setIsEditing(false)
-      toastRef.current?.show({ severity: "success", summary: "Saved", detail: "Changes saved successfully.", life: 5000 })
+      toast.success("Changes saved", {
+        description: `${point.name || point.code} updated successfully.`,
+        icon: <CheckCircle2 className="size-4 text-primary" />,
+        duration: 3000,
+      })
     } catch {
-      toastRef.current?.show({ severity: "error", summary: "Error", detail: "Failed to save. Please try again.", life: 5000 })
+      toast.error("Failed to save", {
+        description: "Please try again.",
+        icon: <AlertCircle className="size-4" />,
+        duration: 4000,
+      })
     }
   }
 
@@ -217,9 +223,6 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
 
   return (
     <>
-      <Toast ref={uploadToastRef} position="top-right" appendTo={document.body} style={{ zIndex: 999999 }} />
-      <Toast ref={toastRef} position="top-right" appendTo={document.body} style={{ zIndex: 999999 }} />
-
       <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm rounded-2xl p-0 overflow-hidden gap-0 border-border">
         {/* Header */}
@@ -552,26 +555,32 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
                             const files = Array.from(e.target.files ?? [])
                             if (!files.length) return
                             setAvatarUploading(true)
-                            uploadToastRef.current?.clear()
-                            uploadToastRef.current?.show({
-                              severity: "info",
-                              summary: `Uploading ${files.length} image${files.length > 1 ? "s" : ""}…`,
-                              sticky: true,
-                            })
+                            const uploadToastId = toast.loading(
+                              `Uploading ${files.length} image${files.length > 1 ? "s" : ""}…`,
+                              { duration: Infinity }
+                            )
                             try {
                               const urls: string[] = []
                               for (const file of files) {
                                 const url = await uploadToImgBB(file)
                                 urls.push(url)
                               }
-                              uploadToastRef.current?.clear()
-                              toastRef.current?.show({ severity: "success", summary: "Upload berjaya", detail: `${urls.length} imej dimuat naik.`, life: 5000 })
+                              toast.dismiss(uploadToastId)
+                              toast.success("Upload berjaya", {
+                                description: `${urls.length} imej dimuat naik.`,
+                                icon: <CheckCircle2 className="size-4 text-primary" />,
+                                duration: 3000,
+                              })
                               const next = [...dialogImages, ...urls].slice(0, 8)
                               setDialogImages(next)
                               if (!dialogSelected && next.length > 0) setDialogSelected(next[0])
                             } catch {
-                              uploadToastRef.current?.clear()
-                              toastRef.current?.show({ severity: "error", summary: "Upload gagal", detail: "Sila cuba semula.", life: 5000 })
+                              toast.dismiss(uploadToastId)
+                              toast.error("Upload gagal", {
+                                description: "Sila cuba semula.",
+                                icon: <AlertCircle className="size-4" />,
+                                duration: 4000,
+                              })
                             } finally {
                               setAvatarUploading(false)
                               if (avatarFileRef.current) avatarFileRef.current.value = ""

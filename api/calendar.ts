@@ -4,6 +4,9 @@ import { sql } from '../lib/db';
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Allow CORS for local dev
   res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') return res.status(204).end();
 
   try {
     // Create table if not exists
@@ -17,11 +20,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       )
     `;
 
-    // ── Auto-delete events older than 2 months ──────────────────────────────
-    // Runs on every request so cleanup happens passively without a cron job
+    // ── Auto-delete events older than 1 year ──────────────────────────────
+    // Runs passively on every request
     await sql`
       DELETE FROM calendar_events
-      WHERE event_date < CURRENT_DATE - INTERVAL '2 months'
+      WHERE event_date < CURRENT_DATE - INTERVAL '1 year'
     `;
 
     // ── GET — return all events ─────────────────────────────────────────────

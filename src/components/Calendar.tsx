@@ -1,9 +1,10 @@
-import { useState, useMemo, useEffect, useRef } from "react"
-import { ChevronLeft, ChevronRight, ChevronDown, Plus, Pencil, Trash2, Loader2, Save } from "lucide-react"
+import { useState, useMemo, useEffect } from "react"
+import { ChevronLeft, ChevronRight, ChevronDown, Plus, Pencil, Trash2, Loader2, CalendarCheck, CalendarPlus, CalendarX, WifiOff, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
+import { useEditMode } from "@/contexts/EditModeContext"
 
 // ─── TYPES ───────────────────────────────────────────────────────────────────
 
@@ -104,8 +105,8 @@ interface EventFormDialogProps {
   onClose: () => void
   initialDate?: Date | null
   event?: Event | null
-  onSave: (data: { id?: number; title: string; date: Date; type: EventType }) => void
-  onDelete?: (id: number) => void
+  onSave: (data: { id?: number; title: string; date: Date; type: EventType }) => void | Promise<void>
+  onDelete?: (id: number) => void | Promise<void>
 }
 
 function EventFormDialog({ open, onClose, initialDate, event, onSave, onDelete }: EventFormDialogProps) {
@@ -595,6 +596,156 @@ function DayView({ events, isEditMode, onAdd, onEdit }: ViewProps) {
   )
 }
 
+// ─── LIST VIEW ────────────────────────────────────────────────────────────────
+
+function ListView({ events, isEditMode, onAdd, onEdit }: ViewProps) {
+  const [currentDate, setCurrentDate] = useState(new Date())
+
+  // Build a 60-day window: today → today+59
+  const windowStart = useMemo(() => {
+    const d = new Date(currentDate)
+    d.setHours(0, 0, 0, 0)
+    return d
+  }, [currentDate])
+
+  const days = useMemo(() => {
+    return Array.from({ length: 60 }, (_, i) => {
+      const d = new Date(windowStart)
+      d.setDate(windowStart.getDate() + i)
+      return d
+    })
+  }, [windowStart])
+
+  // Only days that have events
+  const eventDays = useMemo(() => {
+    return days
+      .map(day => ({ day, evts: getEventsForDate(events, day) }))
+      .filter(x => x.evts.length > 0)
+  }, [days, events])
+
+  const today = new Date()
+  const TYPE_BORDER: Record<EventType, string> = {
+    meeting:  "border-l-blue-500",
+    deadline: "border-l-red-500",
+    event:    "border-l-purple-500",
+    reminder: "border-l-green-500",
+  }
+  const TYPE_BG: Record<EventType, string> = {
+    meeting:  "bg-blue-50 dark:bg-blue-950/30",
+    deadline: "bg-red-50 dark:bg-red-950/30",
+    event:    "bg-purple-50 dark:bg-purple-950/30",
+    reminder: "bg-green-50 dark:bg-green-950/30",
+  }
+  const TYPE_BADGE: Record<EventType, string> = {
+    meeting:  "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300",
+    deadline: "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+    event:    "bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300",
+    reminder: "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300",
+  }
+
+  const windowLabel = useMemo(() => {
+    const end = new Date(windowStart)
+    end.setDate(windowStart.getDate() + 59)
+    const s = windowStart.toLocaleDateString("en-MY", { day: "2-digit", month: "short", year: "numeric" })
+    const e = end.toLocaleDateString("en-MY", { day: "2-digit", month: "short", year: "numeric" })
+    return `${s} – ${e}`
+  }, [windowStart])
+
+  return (
+    <div className="flex flex-col flex-1 min-h-0 p-4 lg:p-6 gap-4">
+      <div className="bg-card border border-border rounded-lg shadow overflow-hidden flex flex-col flex-1 min-h-0">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-border bg-muted/30 shrink-0">
+          <h2 className="text-base font-semibold truncate">{windowLabel}</h2>
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="sm" className="h-8" onClick={() => setCurrentDate(new Date())}>Today</Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8"
+              onClick={() => { const d = new Date(currentDate); d.setDate(d.getDate() - 60); setCurrentDate(d) }}>
+              <ChevronLeft className="size-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8"
+              onClick={() => { const d = new Date(currentDate); d.setDate(d.getDate() + 60); setCurrentDate(d) }}>
+              <ChevronRight className="size-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* List body */}
+        <div className="flex-1 overflow-auto min-h-0">
+          {eventDays.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 gap-3 text-muted-foreground">
+              <div className="size-12 rounded-full bg-muted/60 flex items-center justify-center">
+                <ChevronRight className="size-5 opacity-40" />
+              </div>
+              <p className="text-sm font-medium">No events in this period</p>
+              <p className="text-xs opacity-60">Try navigating to a different range</p>
+              {isEditMode && (
+                <Button size="sm" variant="outline" className="mt-1" onClick={() => onAdd(new Date())}>
+                  <Plus className="size-3.5 mr-1" /> Add Event
+                </Button>
+              )}
+            </div>
+          ) : (
+            <table className="w-full border-collapse text-sm">
+              <tbody>
+                {eventDays.map(({ day, evts }) => {
+                  const isToday = isSameDay(day, today)
+                  const dayLabel = day.toLocaleDateString("en-MY", { weekday: "short", day: "2-digit", month: "short", year: "numeric" })
+                  return evts.map((evt, evtIdx) => (
+                    <tr key={`${day.toISOString()}-${evt.id}`}
+                      className={`group border-b border-border/50 last:border-b-0 transition-colors
+                        ${isEditMode ? "cursor-pointer hover:bg-muted/40" : ""}
+                        ${TYPE_BG[evt.type]}`}
+                      onClick={() => { if (isEditMode) onEdit(evt) }}
+                    >
+                      {/* Date column — only show on first event of the day */}
+                      <td className={`align-top w-[140px] px-4 py-3 shrink-0 border-r border-border/40 ${evtIdx > 0 ? "opacity-0 select-none" : ""}`}>
+                        <div className="flex flex-col gap-0.5">
+                          <span className={`text-xs font-bold ${isToday ? "text-primary" : "text-foreground"}`}>
+                            {isToday ? "Today" : day.toLocaleDateString("en-MY", { weekday: "short" })}
+                          </span>
+                          <span className={`text-[11px] ${isToday ? "text-primary/80" : "text-muted-foreground"}`}>
+                            {day.toLocaleDateString("en-MY", { day: "2-digit", month: "short", year: "numeric" })}
+                          </span>
+                        </div>
+                        {evtIdx === 0 && isEditMode && (
+                          <button
+                            onClick={e => { e.stopPropagation(); onAdd(day) }}
+                            className="mt-1.5 flex items-center gap-0.5 text-[10px] text-muted-foreground hover:text-primary transition-colors px-1 py-0.5 rounded hover:bg-primary/10"
+                          >
+                            <Plus className="size-2.5" /> Add
+                          </button>
+                        )}
+                      </td>
+                      {/* Color bar */}
+                      <td className={`w-1 p-0 border-l-4 ${TYPE_BORDER[evt.type]}`} />
+                      {/* Event title + type */}
+                      <td className="px-4 py-3 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-foreground group-hover:text-primary transition-colors flex-1 truncate">
+                            {evt.title}
+                          </span>
+                          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${TYPE_BADGE[evt.type]}`}>
+                            {TYPE_LABELS[evt.type]}
+                          </span>
+                          {isEditMode && <Pencil className="size-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+      <div className="bg-card border border-border rounded-lg px-6 py-3 flex items-center shrink-0">
+        <Legend />
+      </div>
+    </div>
+  )
+}
+
 // ─── API HELPERS ─────────────────────────────────────────────────────────────
 
 type ApiRow = { id: number; title: string; event_date: string; type: EventType }
@@ -652,25 +803,56 @@ async function apiDeleteEvent(id: number): Promise<boolean> {
   }
 }
 
+// ─── SEED DATA ───────────────────────────────────────────────────────────────
+
+function getSeedEvents(): Array<{ title: string; date: Date; type: EventType }> {
+  const today = new Date()
+  const d = (offset: number) => {
+    const x = new Date(today)
+    x.setDate(today.getDate() + offset)
+    return x
+  }
+  return [
+    { title: "Team Meeting",          date: d(0),   type: "meeting"  },
+    { title: "Delivery Briefing",     date: d(1),   type: "meeting"  },
+    { title: "Route Submission",      date: d(2),   type: "deadline" },
+    { title: "Monthly Review",        date: d(5),   type: "event"    },
+    { title: "Vehicle Maintenance",   date: d(7),   type: "reminder" },
+    { title: "Q2 Planning Session",   date: d(10),  type: "meeting"  },
+    { title: "Inventory Deadline",    date: d(14),  type: "deadline" },
+    { title: "Staff Training Day",    date: d(18),  type: "event"    },
+    { title: "Safety Inspection",     date: d(-3),  type: "reminder" },
+    { title: "Driver KPI Review",     date: d(-7),  type: "meeting"  },
+  ]
+}
+
 // ─── MAIN EXPORT ─────────────────────────────────────────────────────────────
 
-export function Calendar({ view = "month" }: { view?: "month" | "week" | "day" }) {
+export function Calendar({ view = "month" }: { view?: "month" | "week" | "day" | "list" }) {
+  const { isEditMode } = useEditMode()
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
-  const [isDirty, setIsDirty] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
-  const savedEventsRef = useRef<Event[]>([])
-  const tempIdRef = useRef(-1)
+  const [saving, setSaving] = useState(false)
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingEvent, setEditingEvent] = useState<Event | null>(null)
   const [addDate, setAddDate] = useState<Date | null>(null)
 
-  // Load events from database on mount
+  // Load events – seed example data if DB is empty
   useEffect(() => {
-    apiFetchEvents().then(data => {
-      setEvents(data)
-      savedEventsRef.current = data
+    apiFetchEvents().then(async data => {
+      if (data.length === 0) {
+        // Seed example events so the calendar isn't blank on first launch
+        const seeds = getSeedEvents()
+        const created: Event[] = []
+        for (const s of seeds) {
+          const saved = await apiSaveEvent({ title: s.title, date: s.date, type: s.type })
+          if (saved) created.push(saved)
+        }
+        setEvents(created)
+      } else {
+        setEvents(data)
+      }
       setLoading(false)
     })
   }, [])
@@ -687,79 +869,83 @@ export function Calendar({ view = "month" }: { view?: "month" | "week" | "day" }
     setDialogOpen(true)
   }
 
-  // Local-only: track changes without hitting the API
-  function handleSave(data: { id?: number; title: string; date: Date; type: EventType }) {
-    const isEdit = data.id !== undefined
-    if (isEdit) {
-      setEvents(prev => prev.map(e =>
-        e.id === data.id
-          ? { ...e, title: data.title, date: data.date, type: data.type, color: TYPE_COLORS[data.type] ?? "bg-blue-500" }
-          : e
-      ))
-    } else {
-      const tempId = tempIdRef.current--
-      setEvents(prev => [...prev, {
-        id: tempId,
-        title: data.title,
-        date: data.date,
-        type: data.type,
-        color: TYPE_COLORS[data.type] ?? "bg-blue-500",
-      }])
-    }
-    setIsDirty(true)
-  }
-
-  function handleDelete(id: number) {
-    setEvents(prev => prev.filter(e => e.id !== id))
-    setIsDirty(true)
-  }
-
-  // Commit all pending changes to the API
-  async function handleSaveAll() {
-    setIsSaving(true)
+  // Auto-save to API immediately on every change
+  async function handleSave(data: { id?: number; title: string; date: Date; type: EventType }) {
+    setSaving(true)
+    const dateLabel = data.date.toLocaleDateString("en-MY", { day: "2-digit", month: "short", year: "numeric" })
+    const typeLabel = TYPE_LABELS[data.type] ?? data.type
     try {
-      const savedIds = new Set(savedEventsRef.current.map(e => e.id))
-      const currentPositiveIds = new Set(events.filter(e => e.id > 0).map(e => e.id))
-
-      // Deleted: was in DB, no longer in current list
-      const toDelete = savedEventsRef.current.filter(e => !currentPositiveIds.has(e.id))
-      // New: negative temp ID = never saved
-      const toCreate = events.filter(e => e.id < 0)
-      // Edited: positive ID, exists in both, but data changed
-      const toEdit = events.filter(e => {
-        if (e.id < 0 || !savedIds.has(e.id)) return false
-        const s = savedEventsRef.current.find(x => x.id === e.id)!
-        return s.title !== e.title || s.type !== e.type || toDateInputValue(s.date) !== toDateInputValue(e.date)
-      })
-
-      for (const e of toDelete) await apiDeleteEvent(e.id)
-      for (const e of toEdit)   await apiSaveEvent({ id: e.id, title: e.title, date: e.date, type: e.type })
-
-      const createdMap = new Map<number, Event>()
-      for (const e of toCreate) {
-        const saved = await apiSaveEvent({ title: e.title, date: e.date, type: e.type })
-        if (saved) createdMap.set(e.id, saved)
+      const saved = await apiSaveEvent(data)
+      if (!saved) {
+        toast.error("Failed to save event", {
+          description: `"${data.title}" could not be saved. Try again.`,
+          icon: <AlertCircle className="size-4" />,
+          duration: 5000,
+        })
+        return
       }
-
-      // Refresh from DB to get canonical state
-      const fresh = await apiFetchEvents()
-      savedEventsRef.current = fresh
-      setEvents(fresh)
-      setIsDirty(false)
-      toast.success("Calendar saved!")
+      if (data.id !== undefined) {
+        setEvents(prev => prev.map(e => e.id === data.id ? saved : e))
+        toast.success("Event updated", {
+          description: `"${data.title}" · ${typeLabel} · ${dateLabel}`,
+          icon: <CalendarCheck className="size-4 text-primary" />,
+          duration: 3000,
+        })
+      } else {
+        setEvents(prev => [...prev, saved])
+        toast.success("Event added", {
+          description: `"${data.title}" · ${typeLabel} · ${dateLabel}`,
+          icon: <CalendarPlus className="size-4 text-primary" />,
+          duration: 3000,
+        })
+      }
     } catch {
-      toast.error("Failed to save changes. Please try again.")
+      toast.error("Network error", {
+        description: "Could not reach the server. Event not saved.",
+        icon: <WifiOff className="size-4" />,
+        duration: 5000,
+      })
     } finally {
-      setIsSaving(false)
+      setSaving(false)
     }
   }
 
-  const viewProps: ViewProps = { events, isEditMode: true, onAdd: openAdd, onEdit: openEdit }
+  async function handleDelete(id: number) {
+    const target = events.find(e => e.id === id)
+    setSaving(true)
+    try {
+      const ok = await apiDeleteEvent(id)
+      if (ok) {
+        setEvents(prev => prev.filter(e => e.id !== id))
+        toast.success("Event removed", {
+          description: target ? `"${target.title}" has been deleted.` : "Event has been deleted.",
+          icon: <CalendarX className="size-4 text-primary" />,
+          duration: 3000,
+        })
+      } else {
+        toast.error("Failed to delete", {
+          description: target ? `"${target.title}" could not be removed.` : "Event could not be removed.",
+          icon: <AlertCircle className="size-4" />,
+          duration: 5000,
+        })
+      }
+    } catch {
+      toast.error("Network error", {
+        description: "Could not reach the server. Event not deleted.",
+        icon: <WifiOff className="size-4" />,
+        duration: 5000,
+      })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const viewProps: ViewProps = { events, isEditMode, onAdd: openAdd, onEdit: openEdit }
 
   if (loading) {
     return (
-      <div className="flex flex-1 items-center justify-center p-8 text-muted-foreground text-sm">
-        Loading calendar…
+      <div className="flex flex-1 items-center justify-center p-8 text-muted-foreground text-sm gap-2">
+        <Loader2 className="size-4 animate-spin" /> Loading calendar…
       </div>
     )
   }
@@ -768,19 +954,15 @@ export function Calendar({ view = "month" }: { view?: "month" | "week" | "day" }
     <div className="relative flex flex-col flex-1 min-h-0">
       {view === "week" && <WeekView {...viewProps} />}
       {view === "day"  && <DayView  {...viewProps} />}
-      {view !== "week" && view !== "day" && <MonthView {...viewProps} />}
+      {view === "list" && <ListView {...viewProps} />}
+      {view !== "week" && view !== "day" && view !== "list" && <MonthView {...viewProps} />}
 
-      {/* Floating green Save button – appears whenever there are unsaved changes */}
-      {isDirty && (
-        <div className="fixed bottom-6 right-6 z-50">
-          <Button
-            onClick={handleSaveAll}
-            disabled={isSaving}
-            className="bg-green-600 hover:bg-green-700 text-white shadow-xl gap-2 h-10 px-5 rounded-full"
-          >
-            {isSaving ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-            {isSaving ? "Saving…" : "Save Changes"}
-          </Button>
+      {/* Saving spinner overlay */}
+      {saving && (
+        <div className="fixed bottom-6 right-6 z-50 pointer-events-none">
+          <div className="flex items-center gap-2 bg-background/80 backdrop-blur-sm border border-border rounded-full px-4 py-2 shadow-lg text-sm text-muted-foreground">
+            <Loader2 className="size-3.5 animate-spin" /> Saving…
+          </div>
         </div>
       )}
 

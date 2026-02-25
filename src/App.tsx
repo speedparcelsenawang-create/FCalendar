@@ -12,7 +12,7 @@ const Album = lazy(() => import("@/components/Album").then(m => ({ default: m.Al
 import { EditModeProvider } from "@/contexts/EditModeContext"
 import { DeviceProvider } from "@/contexts/DeviceContext"
 import { Toaster } from "sonner"
-import { Home, Package, Settings2, Calendar as CalendarIcon, Images, ChevronDown, Truck, Pin, PinOff } from "lucide-react"
+import { Home, Package, Settings2, Calendar as CalendarIcon, Images, ChevronDown, Truck, Pin, PinOff, LayoutList, List } from "lucide-react"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -51,7 +51,7 @@ function ColorDot({ color }: { color: string }) {
   )
 }
 
-function HomePage() {
+function HomePage({ onNavigate }: { onNavigate: (page: string) => void }) {
   const [tableOpen, setTableOpen] = useState(true)
   const [tableExpanded, setTableExpanded] = useState(false)
   const [legendOpen, setLegendOpen] = useState(false)
@@ -83,52 +83,55 @@ function HomePage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 md:p-6 max-w-3xl mx-auto w-full overflow-y-auto" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}>
+    <div className="flex flex-1 flex-col gap-6 p-4 md:p-8 max-w-3xl mx-auto w-full overflow-y-auto" style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}>
       {/* Welcome */}
-      <div>
-        <h1 className="text-fluid-xl page-header font-bold text-gray-900 dark:text-white">Welcome to FCalendar</h1>
+      <div className="pt-1">
+        <h1 className="text-[clamp(0.9375rem,3vw,1.125rem)] font-bold text-gray-900 dark:text-white">Welcome to FCalendar</h1>
         <p className="text-fluid-sm page-subheader text-muted-foreground mt-1">Daily colour guide for stock operations.</p>
       </div>
 
       {/* Pinned Routes */}
       {pinnedRoutes.length > 0 && (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2.5">
           <div className="flex items-center gap-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
             <Pin className="size-3" />
             Pinned Routes
           </div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {pinnedRoutes.map(r => {
+          <div className="rounded-xl ring-1 ring-border/60 overflow-hidden shadow-sm bg-card">
+            {pinnedRoutes.map((r, i) => {
               const isKL  = (r.name + " " + r.code).toLowerCase().includes("kl")
               const isSel = (r.name + " " + r.code).toLowerCase().includes("sel")
               return (
-                <div key={r.id} className="bg-card rounded-xl ring-1 ring-border/60 shadow-sm flex flex-col overflow-hidden">
-                  {/* Card body */}
-                  <div className="flex flex-col items-center gap-2 px-3 pt-4 pb-3">
-                    {isKL
-                      ? <img src="/kl-flag.png" className="object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10" style={{ width: 48, height: 30 }} alt="KL" />
-                      : isSel
-                      ? <img src="/selangor-flag.png" className="object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10" style={{ width: 48, height: 30 }} alt="Selangor" />
-                      : <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
-                          <Truck className="size-4 text-primary" />
-                        </div>
-                    }
-                    <p className="text-xs font-semibold text-foreground leading-tight line-clamp-2 text-center">{r.name}</p>
-                    <span className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full text-white tracking-wide ${
-                      r.shift === 'AM' ? 'bg-blue-500' : r.shift === 'PM' ? 'bg-orange-600' : 'bg-muted text-muted-foreground'
-                    }`}>{r.shift || '—'}</span>
-                  </div>
-                  {/* Footer */}
-                  <div className="flex items-center justify-between border-t border-border/40 bg-muted/30 px-3 py-1.5">
-                    <span className="text-[10px] font-mono text-muted-foreground">{r.code}</span>
-                    <button
-                      className="p-0.5 rounded text-muted-foreground/50 hover:text-destructive transition-colors"
-                      title="Unpin"
-                      onClick={() => unpin(r.id)}
-                    >
-                      <PinOff className="size-3" />
-                    </button>
-                  </div>
+                <div key={r.id} className={`flex items-center gap-3 px-3 py-2.5 ${i !== 0 ? "border-t border-border/40" : ""}`}>
+                  {/* Flag / icon */}
+                  {isKL
+                    ? <img src="/kl-flag.png" className="shrink-0 object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10" style={{ width: 32, height: 20 }} alt="KL" />
+                    : isSel
+                    ? <img src="/selangor-flag.png" className="shrink-0 object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10" style={{ width: 32, height: 20 }} alt="Selangor" />
+                    : <div className="shrink-0 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
+                        <Truck className="size-3.5 text-primary" />
+                      </div>
+                  }
+                  {/* Name */}
+                  <p className="flex-1 text-xs font-semibold text-foreground leading-tight line-clamp-1 min-w-0">{r.name}</p>
+                  {/* Code */}
+                  <span className="shrink-0 text-[10px] font-mono text-muted-foreground">{r.code}</span>
+                  {/* Shift badge */}
+                  <span className={`shrink-0 px-2 py-0.5 text-[10px] font-bold rounded-full text-white tracking-wide ${
+                    r.shift === 'AM' ? 'bg-blue-500' : r.shift === 'PM' ? 'bg-orange-600' : 'bg-muted text-muted-foreground'
+                  }`}>{r.shift || '—'}</span>
+                  {/* View button */}
+                  <button
+                    className="shrink-0 flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                    title="Open route table"
+                    onClick={() => {
+                      sessionStorage.setItem('fcalendar_open_route', r.id)
+                      onNavigate('route-list')
+                    }}
+                  >
+                    <List className="size-3" />
+                    View
+                  </button>
                 </div>
               )
             })}
@@ -258,6 +261,8 @@ function AppContent() {
         return <Calendar view="week" />
       case "calendar-day":
         return <Calendar view="day" />
+      case "calendar-list":
+        return <Calendar view="list" />
       case "calendar":
         return <Calendar view="month" />
       case "settings":
@@ -281,7 +286,7 @@ function AppContent() {
         return <Album />
       case "home":
       default:
-        return <HomePage />
+        return <HomePage onNavigate={handlePageChange} />
     }
   }
 
@@ -299,6 +304,8 @@ function AppContent() {
         return { parent: { label: "Calendar", icon: CalendarIcon }, current: "Week View" }
       case "calendar-day":
         return { parent: { label: "Calendar", icon: CalendarIcon }, current: "Day View" }
+      case "calendar-list":
+        return { parent: { label: "Calendar", icon: CalendarIcon }, current: "List View" }
       case "calendar":
         return { parent: { label: "Calendar", icon: CalendarIcon }, current: "Month View" }
       case "settings":
@@ -383,6 +390,31 @@ function AppContent() {
               })()}
             </BreadcrumbList>
           </Breadcrumb>
+
+          {/* Calendar view cycle button — single multi-state button */}
+          {["calendar","calendar-month","calendar-week","calendar-day","calendar-list"].includes(currentPage) && (() => {
+            const VIEWS = ["calendar-month", "calendar-week", "calendar-day", "calendar-list"] as const
+            const LABELS: Record<string, string> = {
+              "calendar-month": "Month",
+              "calendar-week":  "Week",
+              "calendar-day":   "Day",
+              "calendar-list":  "List",
+            }
+            const active = currentPage === "calendar" ? "calendar-month" : currentPage
+            const currentIdx = VIEWS.indexOf(active as typeof VIEWS[number])
+            const nextView = VIEWS[(currentIdx + 1) % VIEWS.length]
+            return (
+              <button
+                onClick={() => handlePageChange(nextView)}
+                className="flex items-center gap-1.5 shrink-0 h-8 px-3 rounded-lg border border-border bg-muted/40 hover:bg-muted/70 text-xs font-semibold text-foreground transition-all duration-150 shadow-sm"
+              >
+                {active === "calendar-list" && <LayoutList className="size-3 shrink-0" />}
+                {LABELS[active]}
+                <ChevronDown className="size-3 shrink-0 text-muted-foreground" />
+              </button>
+            )
+          })()}
+
         </header>
         <Suspense fallback={<div className="flex flex-1 items-center justify-center p-8 text-muted-foreground">Loading…</div>}>
           <div className={`flex flex-col flex-1 min-h-0 ${isTransitioning ? "page-fade-out" : "page-fade-in animate-in slide-in-from-bottom-4"}`}>
@@ -438,7 +470,27 @@ export function App() {
           </EditModeProvider>
         </SidebarProvider>
         <PWAInstallPrompt />
-        <Toaster position="bottom-right" richColors closeButton />
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            classNames: {
+              toast:
+                "!border !border-border !bg-background !text-foreground !shadow-xl !rounded-xl",
+              title: "!text-foreground !font-semibold !text-sm",
+              description: "!text-muted-foreground !text-xs",
+              success:
+                "!border-green-500/50 [&_[data-icon]]:!text-green-500 [&_[data-icon]_svg]:!stroke-green-500 [&_[data-icon]_svg]:!text-green-500",
+              error:
+                "!border-red-500/50 [&_[data-icon]]:!text-red-500 [&_[data-icon]_svg]:!stroke-red-500 [&_[data-icon]_svg]:!text-red-500",
+              warning:
+                "!border-amber-400/50 [&_[data-icon]]:!text-amber-500 [&_[data-icon]_svg]:!stroke-amber-500 [&_[data-icon]_svg]:!text-amber-500",
+              info:
+                "!border-sky-400/50 [&_[data-icon]]:!text-sky-500 [&_[data-icon]_svg]:!stroke-sky-500 [&_[data-icon]_svg]:!text-sky-500",
+              loader:
+                "!border-primary/40 [&_[data-icon]]:!text-primary",
+            },
+          }}
+        />
       </ErrorBoundary>
     </DeviceProvider>
   )

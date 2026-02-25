@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react"
-import { List, Info, Plus, Check, X, Edit2, Trash2, Search, Settings, Save, ArrowUp, ArrowDown, Truck, Loader2, Maximize2, Minimize2, StickyNote, SlidersHorizontal, Pin, PinOff, LayoutGrid, MoreVertical } from "lucide-react"
+import { List, Info, Plus, Check, X, Edit2, Trash2, Search, Settings, Save, ArrowUp, ArrowDown, Truck, Loader2, Maximize2, Minimize2, StickyNote, SlidersHorizontal, Pin, PinOff, LayoutGrid, MoreVertical, CheckCircle2, MapPin, Route, AlertCircle, WifiOff } from "lucide-react"
+import { toast } from "sonner"
 import { RowInfoModal } from "./RowInfoModal"
 import { RouteNotesModal, appendChangelog } from "./RouteNotesModal"
 import { useEditMode } from "@/contexts/EditModeContext"
@@ -171,7 +172,7 @@ export function RouteList() {
   const [notesModalOpen, setNotesModalOpen] = useState(false)
   const [notesRouteId, setNotesRouteId] = useState<string>("")
   const [notesRouteName, setNotesRouteName] = useState<string>("")
-  const [infoModalRouteId, setInfoModalRouteId] = useState<string | null>(null)
+  const [notesInitialTab, setNotesInitialTab] = useState<"notes" | "changelog" | "info">("notes")
 
   // Pinned routes stored in localStorage
   const [pinnedIds, setPinnedIds] = useState<Set<string>>(() => {
@@ -217,7 +218,18 @@ export function RouteList() {
     fetchRoutes()
   }, [fetchRoutes])
 
-  // Load My Sort List from localStorage on mount
+  // Listen for external open-route events (e.g. from pinned route on home page)
+  // Check after routes finish loading so the dialog can find the route
+  useEffect(() => {
+    if (isLoading) return
+    const pending = sessionStorage.getItem('fcalendar_open_route')
+    if (pending) {
+      sessionStorage.removeItem('fcalendar_open_route')
+      setCurrentRouteId(pending)
+      setDetailDialogOpen(true)
+    }
+  }, [isLoading])
+
   useEffect(() => {
     try {
       const stored = localStorage.getItem('fcalendar_my_sorts')
@@ -556,6 +568,7 @@ export function RouteList() {
     
     if (newPoint.code) {
       setDeliveryPoints(prev => [...prev, newPoint])
+      const label = newPoint.name ? `"${newPoint.name}" (${newPoint.code})` : newPoint.code
       setNewPoint({
         code: "",
         name: "",
@@ -566,6 +579,11 @@ export function RouteList() {
       })
       setCodeError("")
       setAddPointDialogOpen(false)
+      toast.success("Location added", {
+        description: `${label} · ${newPoint.delivery} · remember to save`,
+        icon: <MapPin className="size-4 text-primary" />,
+        duration: 3000,
+      })
     }
   }
 
@@ -585,11 +603,17 @@ export function RouteList() {
   }
 
   const handleDeleteRows = () => {
+    const count = pendingSelectedRows.length
     setDeliveryPoints(prev => prev.filter(point => !pendingSelectedRows.includes(point.code)))
     setDeleteConfirmOpen(false)
     setActionModalOpen(false)
     setPendingSelectedRows([])
     setSelectedRows([])
+    toast.success(`${count} location${count !== 1 ? 's' : ''} removed`, {
+      description: "Remember to save your changes.",
+      icon: <Trash2 className="size-4 text-primary" />,
+      duration: 3000,
+    })
   }
 
   const handleMoveRows = () => {
@@ -609,11 +633,18 @@ export function RouteList() {
         return route
       }))
       
+      const count = pendingSelectedRows.length
+      const destName = routes.find(r => r.id === selectedTargetRoute)?.name ?? "another route"
       setMoveDialogOpen(false)
       setActionModalOpen(false)
       setPendingSelectedRows([])
       setSelectedRows([])
       setSelectedTargetRoute("")
+      toast.success(`${count} location${count !== 1 ? 's' : ''} moved`, {
+        description: `Moved to "${destName}" · remember to save.`,
+        icon: <Route className="size-4 text-primary" />,
+        duration: 3000,
+      })
     }
   }
 
@@ -626,7 +657,11 @@ export function RouteList() {
     if (!editingRoute) return
     
     if (!editingRoute.name || !editingRoute.code) {
-      alert("Name and Code are required!")
+      toast.error("Name and Code are required", {
+        description: "Please fill in both fields before saving.",
+        icon: <AlertCircle className="size-4" />,
+        duration: 4000,
+      })
       return
     }
 
@@ -635,7 +670,13 @@ export function RouteList() {
       r.id === editingRoute.id ? editingRoute : r
     ))
     setEditRouteDialogOpen(false)
+    const saved = editingRoute
     setEditingRoute(null)
+    toast.success("Route updated", {
+      description: `"${saved.name}" (${saved.code}) · remember to save.`,
+      icon: <CheckCircle2 className="size-4 text-primary" />,
+      duration: 3000,
+    })
   }
 
   const doSave = useCallback(async () => {
@@ -721,6 +762,11 @@ export function RouteList() {
     setPendingCellEdits(new Set())
     // Re-fetch from server so UI mirrors exactly what was persisted
     await fetchRoutes(currentRouteId)
+    toast.success("Changes saved", {
+      description: `All route data has been saved successfully.`,
+      icon: <Save className="size-4 text-primary" />,
+      duration: 3000,
+    })
   }, [routes, fetchRoutes, currentRouteId])
 
   useEffect(() => {
@@ -762,10 +808,15 @@ export function RouteList() {
     if (!routeToDelete) return
     
     if (routes.length <= 1) {
-      alert("Cannot delete the last route!")
+      toast.error("Cannot delete the last route", {
+        description: "At least one route must remain.",
+        icon: <AlertCircle className="size-4" />,
+        duration: 4000,
+      })
       return
     }
 
+    const deleted = routeToDelete
     setHasUnsavedChanges(true)
     setRoutes(prev => prev.filter(r => r.id !== routeToDelete.id))
     setDeleteRouteConfirmOpen(false)
@@ -778,6 +829,11 @@ export function RouteList() {
         setCurrentRouteId(remainingRoutes[0].id)
       }
     }
+    toast.success("Route removed", {
+      description: `"${deleted.name}" (${deleted.code}) · remember to save.`,
+      icon: <Trash2 className="size-4 text-primary" />,
+      duration: 3000,
+    })
   }
 
   if (isLoading) {
@@ -792,12 +848,12 @@ export function RouteList() {
   return (
     <div className="relative font-light flex-1 overflow-y-auto">
       {/* Route List */}
-      <div className="mt-4 px-4" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+      <div className="p-4 md:p-6" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
         {/* Page header */}
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h1 className="text-base font-bold tracking-tight">Route List</h1>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
+            <h1 className="text-fluid-xl page-header font-bold text-gray-900 dark:text-white">Route List</h1>
+            <p className="text-fluid-sm page-subheader text-muted-foreground mt-1">
               {filteredRoutes.length} route{filteredRoutes.length !== 1 ? 's' : ''}
               {(filterRegion !== 'all' || filterShift !== 'all') && <span className="ml-1 text-primary font-medium">· filtered</span>}
             </p>
@@ -899,101 +955,49 @@ export function RouteList() {
             </PopoverContent>
           </Popover>
 
-          {/* Card Columns quick toggle */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <button className="h-11 w-11 flex items-center justify-center rounded-xl ring-1 ring-border/60 shadow-sm bg-card text-muted-foreground hover:bg-muted transition-colors">
-                <LayoutGrid className="size-4" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-48 p-3 space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Card Columns</p>
-              <div className="grid grid-cols-4 gap-1.5">
-                {(["2","3","4","auto"] as const).map(c => (
-                  <button key={c}
-                    onClick={() => { localStorage.setItem('fcalendar_card_cols', c); setCardCols(c); window.dispatchEvent(new Event('fcalendar_card_cols_changed')) }}
-                    className={`flex flex-col items-center py-1.5 rounded-md border text-[10px] font-semibold transition-all ${
-                      cardCols === c ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-primary/50'
-                    }`}
-                  >
-                    {c === 'auto' ? '≡' : c}
-                  </button>
-                ))}
-              </div>
-            </PopoverContent>
-          </Popover>
         </div>
 
-        <div className={`grid gap-2.5 ${
-          cardCols === '2' ? 'grid-cols-2' :
-          cardCols === '3' ? 'grid-cols-3' :
-          cardCols === '4' ? 'grid-cols-2 sm:grid-cols-4' :
-          'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5'
-        }`}>
-        {filteredRoutes.map((route) => {
+        <div className="rounded-xl ring-1 ring-border/60 overflow-hidden shadow-sm bg-card">
+        {filteredRoutes.map((route, routeIndex) => {
           const isKL    = (route.name + " " + route.code).toLowerCase().includes("kl")
           const isSel   = (route.name + " " + route.code).toLowerCase().includes("sel")
           return (
-          <div key={route.id} className="w-full">
-            <div
-              className="bg-card rounded-xl ring-1 ring-border/60 shadow-sm active:scale-[0.97] transition-all duration-150 overflow-hidden relative group flex flex-col"
-            >
-
-              {/* Card body — icon + name + shift badge */}
-              <div className="px-4 pt-4 pb-4 flex flex-col items-center gap-3 flex-1">
-                {/* Logo / flag */}
-                <div className="flex items-center justify-center w-12 h-12">
-                  {isKL
-                    ? <img src="/kl-flag.png"
-                        className="object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10"
-                        style={{ width: 56, height: 35 }}
-                        alt="KL" />
-                    : isSel
-                    ? <img src="/selangor-flag.png"
-                        className="object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10"
-                        style={{ width: 56, height: 35 }}
-                        alt="Selangor" />
-                    : <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
-                        <Truck className="size-5 text-primary" />
-                      </div>
-                  }
-                </div>
-
-                {/* Name + Shift badge */}
-                <div className="text-center w-full">
-                  <h2 className="text-[13px] font-semibold text-foreground leading-snug line-clamp-2">{route.name}</h2>
-                  <div className="flex justify-center mt-1.5">
-                    <span className={`px-2.5 py-0.5 text-[10px] font-bold rounded-full text-white tracking-wide ${
-                      route.shift === 'AM'
-                        ? 'bg-blue-500'
-                        : route.shift === 'PM'
-                        ? 'bg-orange-600'
-                        : 'bg-muted text-muted-foreground'
-                    }`}>{route.shift || '—'}</span>
+          <div key={route.id}>
+            {/* Row */}
+            <div className={`flex items-center gap-3 px-3 py-2.5 ${routeIndex !== 0 ? "border-t border-border/40" : ""}`}>
+              {isKL
+                ? <img src="/kl-flag.png" className="shrink-0 object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10" style={{ width: 48, height: 30 }} alt="KL" />
+                : isSel
+                ? <img src="/selangor-flag.png" className="shrink-0 object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10" style={{ width: 48, height: 30 }} alt="Selangor" />
+                : <div className="shrink-0 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
+                    <Truck className="size-3.5 text-primary" />
                   </div>
+              }
+              <div className="flex-1 min-w-0 flex flex-col gap-0.5">
+                <div className="flex items-center gap-1.5">
+                  <p className="text-xs font-semibold text-foreground line-clamp-1 min-w-0">{route.name}</p>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-mono text-muted-foreground">{route.code}</span>
+                  <span className={`shrink-0 px-1 py-px text-[9px] font-bold rounded text-white tracking-wide ${
+                    route.shift === 'AM' ? 'bg-blue-500' : route.shift === 'PM' ? 'bg-orange-600' : 'bg-muted text-muted-foreground'
+                  }`}>{route.shift || '—'}</span>
                 </div>
               </div>
-
-              {/* Details row — code + location count + 3-dot menu */}
-              <div className="flex items-center justify-between border-t border-border/40 bg-muted/30 px-3 py-2" onClick={e => e.stopPropagation()}>
-                <div className="flex flex-col items-start">
-                  <span className="text-[10px] font-semibold text-foreground">{route.code}</span>
-                  <span className="text-[9px] font-semibold text-muted-foreground">{route.deliveryPoints.length} location{route.deliveryPoints.length !== 1 ? 's' : ''}</span>
-                </div>
+              <div className="shrink-0 flex items-center gap-0.5">
+                <button
+                  className="p-2 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                  title="List"
+                  onClick={() => { setCurrentRouteId(route.id); setDetailDialogOpen(true) }}
+                ><List className="size-5" /></button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
-                      <MoreVertical className="size-4" />
+                    <button className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                      <MoreVertical className="size-5" />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-40">
-                    <DropdownMenuItem onClick={() => { setCurrentRouteId(route.id); setDetailDialogOpen(true) }}>
-                      <List className="size-3.5 mr-2" />List
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => { setNotesRouteId(route.id); setNotesRouteName(route.name); setNotesModalOpen(true) }}>
-                      <StickyNote className="size-3.5 mr-2" />Notes
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setInfoModalRouteId(route.id)}>
+                  <DropdownMenuContent align="end" className="w-44">
+                    <DropdownMenuItem onClick={() => { setNotesRouteId(route.id); setNotesRouteName(route.name); setNotesInitialTab("info"); setNotesModalOpen(true) }}>
                       <Info className="size-3.5 mr-2" />Info
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
@@ -1662,16 +1666,16 @@ export function RouteList() {
           </div>
         )}
         
-        {/* Add New Route Card */}
+        {/* Add New Route Row */}
         {isEditMode && (
-        <div className="w-full">
+        <div className="border-t border-border/40 rounded-b-xl overflow-hidden bg-card ring-1 ring-border/60 shadow-sm">
           <Dialog open={addRouteDialogOpen} onOpenChange={setAddRouteDialogOpen}>
             <DialogTrigger asChild>
-              <button className="w-full h-full min-h-[140px] rounded-2xl border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 flex flex-col items-center justify-center gap-2 group">
-                <div className="w-9 h-9 rounded-xl bg-primary/10 group-hover:bg-primary/20 flex items-center justify-center transition-colors">
-                  <Plus className="size-5 text-primary" />
+              <button className="w-full flex items-center gap-3 px-3 py-2.5 text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors">
+                <div className="shrink-0 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <Plus className="size-3.5 text-primary" />
                 </div>
-                <span className="text-xs font-medium text-muted-foreground group-hover:text-primary transition-colors">Add Route</span>
+                <span className="text-xs font-medium">Add Route</span>
               </button>
             </DialogTrigger>
             <DialogContent>
@@ -2250,83 +2254,10 @@ export function RouteList() {
         onOpenChange={(open) => { if (!open) setNotesModalOpen(false) }}
         routeId={notesRouteId}
         routeName={notesRouteName}
+        initialTab={notesInitialTab}
+        routeInfo={routes.find(r => r.id === notesRouteId)}
       />
 
-      {/* Info modal — rendered once outside the card loop */}
-      {(() => {
-        const infoRoute = routes.find(r => r.id === infoModalRouteId)
-        if (!infoRoute) return null
-        const infoKL  = (infoRoute.name + " " + infoRoute.code).toLowerCase().includes("kl")
-        const infoSel = (infoRoute.name + " " + infoRoute.code).toLowerCase().includes("sel")
-        const infoTotal  = infoRoute.deliveryPoints.length
-        const infoActive = infoRoute.deliveryPoints.filter(p => isDeliveryActive(p.delivery)).length
-        return (
-          <Dialog open={!!infoModalRouteId} onOpenChange={open => { if (!open) setInfoModalRouteId(null) }}>
-            <DialogContent className="p-0 gap-0 overflow-hidden rounded-2xl max-w-xs w-[88vw]">
-              {/* Header */}
-              <div className={`px-4 py-3 flex items-center gap-3 ${
-                infoKL  ? 'bg-blue-500/10 border-b border-blue-200/40 dark:border-blue-800/40'
-                : infoSel ? 'bg-red-500/10 border-b border-red-200/40 dark:border-red-800/40'
-                : 'bg-primary/8 border-b border-border/60'
-              }`}>
-                {infoKL
-                  ? <img src="/kl-flag.png" className="object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10" style={{ width: 40, height: 25 }} alt="KL" />
-                  : infoSel
-                  ? <img src="/selangor-flag.png" className="object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10" style={{ width: 40, height: 25 }} alt="Selangor" />
-                  : <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center ring-1 ring-primary/20 shrink-0"><Truck className="size-4 text-primary" /></div>
-                }
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-bold text-foreground leading-tight truncate">{infoRoute.name}</p>
-                  <p className="text-[10px] font-mono text-muted-foreground/70 tracking-wide">{infoRoute.code}</p>
-                </div>
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full shrink-0 ${
-                  infoRoute.shift === 'AM'
-                    ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400'
-                    : 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400'
-                }`}>{infoRoute.shift}</span>
-              </div>
-
-              {/* Stats */}
-              <div className="px-4 py-3 space-y-2.5">
-                {/* Active today */}
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">Active today</span>
-                  <span className="text-xs font-semibold text-foreground">
-                    {infoActive} <span className="font-normal text-muted-foreground/60">/ {infoTotal}</span>
-                  </span>
-                </div>
-
-                {/* Progress bar */}
-                <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
-                  <div className="h-full rounded-full bg-green-500 transition-all" style={{ width: infoTotal ? `${(infoActive / infoTotal) * 100}%` : '0%' }} />
-                </div>
-
-                {/* Delivery type breakdown */}
-                {(['Daily','Weekday','Alt 1','Alt 2'] as const).map(type => {
-                  const count = infoRoute.deliveryPoints.filter(p => p.delivery === type).length
-                  if (!count) return null
-                  const dot: Record<string, string> = { 'Daily': 'bg-green-500', 'Weekday': 'bg-blue-500', 'Alt 1': 'bg-orange-500', 'Alt 2': 'bg-purple-500' }
-                  return (
-                    <div key={type} className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className={`w-2 h-2 rounded-full shrink-0 ${dot[type]}`} />
-                        <span className="text-xs text-muted-foreground">{type}</span>
-                      </div>
-                      <span className="text-xs font-medium text-foreground">{count}</span>
-                    </div>
-                  )
-                })}
-
-                {/* Updated */}
-                <div className="flex items-center justify-between pt-1 border-t border-border/40">
-                  <span className="text-xs text-muted-foreground">Updated</span>
-                  <span className="text-xs text-muted-foreground/70">{infoRoute.updatedAt ? formatRelativeTime(infoRoute.updatedAt) : '—'}</span>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        )
-      })()}
     </div>
   )
 }

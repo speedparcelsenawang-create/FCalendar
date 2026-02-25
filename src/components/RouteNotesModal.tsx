@@ -6,7 +6,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { StickyNote, History, Plus, Trash2, Clock, Loader2 } from "lucide-react"
+import { StickyNote, History, Plus, Trash2, Clock, Loader2, CheckCircle2, AlertCircle, Info } from "lucide-react"
+import { toast } from "sonner"
 
 export interface RouteNote {
   id: string
@@ -37,6 +38,39 @@ export async function appendChangelog(routeId: string, description: string): Pro
   }
 }
 
+interface DeliveryPoint { delivery: string }
+interface RouteInfo {
+  code: string
+  shift: string
+  deliveryPoints: DeliveryPoint[]
+  updatedAt?: string
+}
+
+function isDeliveryActive(delivery: string, date: Date = new Date()): boolean {
+  const day = date.getDay()
+  const dateNum = date.getDate()
+  switch (delivery) {
+    case 'Daily':   return true
+    case 'Alt 1':   return dateNum % 2 !== 0
+    case 'Alt 2':   return dateNum % 2 === 0
+    case 'Weekday': return day <= 4
+    default:        return true
+  }
+}
+
+function formatRelativeTime(dateStr?: string): string {
+  if (!dateStr) return 'Never'
+  const diff = Date.now() - new Date(dateStr).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1)   return 'Just now'
+  if (mins < 60)  return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24)   return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  if (days < 30)  return `${days}d ago`
+  return new Date(dateStr).toLocaleDateString('en-MY', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
 function formatTime(iso: string) {
   const d = new Date(iso)
   const diff = Date.now() - d.getTime()
@@ -63,16 +97,23 @@ interface Props {
   onOpenChange: (open: boolean) => void
   routeId: string
   routeName: string
+  routeInfo?: RouteInfo
+  initialTab?: "notes" | "changelog" | "info"
 }
 
-export function RouteNotesModal({ open, onOpenChange, routeId, routeName }: Props) {
-  const [tab, setTab] = useState<"notes" | "changelog">("notes")
+export function RouteNotesModal({ open, onOpenChange, routeId, routeName, routeInfo, initialTab }: Props) {
+  const [tab, setTab] = useState<"notes" | "changelog" | "info">(initialTab ?? "notes")
   const [notes, setNotes] = useState<RouteNote[]>([])
   const [changelog, setChangelog] = useState<RouteChangelog[]>([])
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Reset tab when initialTab changes (e.g. opened via Info button)
+  useEffect(() => {
+    if (open) setTab(initialTab ?? "notes")
+  }, [open, initialTab])
 
   // Load from API when modal opens
   useEffect(() => {
@@ -108,22 +149,42 @@ export function RouteNotesModal({ open, onOpenChange, routeId, routeName }: Prop
       setNotes(prev => [newNote, ...prev])
       setInput("")
       textareaRef.current?.focus()
+      toast.success("Note added", {
+        description: text.length > 60 ? text.slice(0, 60) + "…" : text,
+        icon: <CheckCircle2 className="size-4 text-primary" />,
+        duration: 3000,
+      })
     } catch {
-      // handle silently
+      toast.error("Failed to save note", {
+        description: "Could not reach the server. Please try again.",
+        icon: <AlertCircle className="size-4" />,
+        duration: 4000,
+      })
     } finally {
       setSaving(false)
     }
   }
 
   const deleteNote = async (id: string) => {
+    const target = notes.find(n => n.id === id)
     setNotes(prev => prev.filter(n => n.id !== id))
     try {
       await fetch(`/api/route-notes?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+      toast.success("Note deleted", {
+        description: target ? (target.text.length > 60 ? target.text.slice(0, 60) + "…" : target.text) : "Note has been removed.",
+        icon: <Trash2 className="size-4 text-primary" />,
+        duration: 3000,
+      })
     } catch {
       // revert on failure
       const res = await fetch(`/api/route-notes?routeId=${encodeURIComponent(routeId)}`)
       const data = await res.json()
       if (data.success) setNotes(data.notes ?? [])
+      toast.error("Failed to delete note", {
+        description: "Could not reach the server. Note has been restored.",
+        icon: <AlertCircle className="size-4" />,
+        duration: 4000,
+      })
     }
   }
 
@@ -168,7 +229,19 @@ export function RouteNotesModal({ open, onOpenChange, routeId, routeName }: Prop
               </span>
             )}
           </button>
-
+          {routeInfo && (
+            <button
+              onClick={() => setTab("info")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                tab === "info"
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:bg-muted"
+              }`}
+            >
+              <Info className="size-3.5" />
+              Info
+            </button>
+          )}
         </div>
 
         <div className="h-px bg-border/50 mx-4 mt-2 shrink-0" />
@@ -232,7 +305,7 @@ export function RouteNotesModal({ open, onOpenChange, routeId, routeName }: Prop
                 </Button>
               </div>
             </div>
-          ) : (
+          ) : tab === "changelog" ? (
             // changelog
             <div className="px-4 py-3 space-y-2">
               {changelog.length === 0 ? (
@@ -244,7 +317,6 @@ export function RouteNotesModal({ open, onOpenChange, routeId, routeName }: Prop
               ) : (
                 changelog.map((entry, i) => (
                   <div key={entry.id} className="flex gap-3 items-start">
-                    {/* Timeline dot */}
                     <div className="flex flex-col items-center shrink-0 mt-1">
                       <div className={`size-2 rounded-full ${i === 0 ? "bg-primary" : "bg-border"}`} />
                       {i < changelog.length - 1 && <div className="w-px flex-1 bg-border/50 mt-1 mb-0" style={{ minHeight: "20px" }} />}
@@ -260,7 +332,51 @@ export function RouteNotesModal({ open, onOpenChange, routeId, routeName }: Prop
                 ))
               )}
             </div>
-          )}
+          ) : routeInfo ? (
+            // info tab
+            <div className="px-4 py-4 space-y-3">
+              {/* Active today */}
+              {(() => {
+                const total = routeInfo.deliveryPoints.length
+                const active = routeInfo.deliveryPoints.filter(p => isDeliveryActive(p.delivery)).length
+                return (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">Active today</span>
+                      <span className="text-xs font-semibold text-foreground">
+                        {active} <span className="font-normal text-muted-foreground/60">/ {total}</span>
+                      </span>
+                    </div>
+                    <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full rounded-full bg-green-500 transition-all" style={{ width: total ? `${(active / total) * 100}%` : '0%' }} />
+                    </div>
+                  </>
+                )
+              })()}
+
+              {/* Delivery type breakdown */}
+              {(['Daily','Weekday','Alt 1','Alt 2'] as const).map(type => {
+                const count = routeInfo.deliveryPoints.filter(p => p.delivery === type).length
+                if (!count) return null
+                const dot: Record<string, string> = { 'Daily': 'bg-green-500', 'Weekday': 'bg-blue-500', 'Alt 1': 'bg-orange-500', 'Alt 2': 'bg-purple-500' }
+                return (
+                  <div key={type} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full shrink-0 ${dot[type]}`} />
+                      <span className="text-xs text-muted-foreground">{type}</span>
+                    </div>
+                    <span className="text-xs font-medium text-foreground">{count}</span>
+                  </div>
+                )
+              })}
+
+              {/* Updated */}
+              <div className="flex items-center justify-between pt-1 border-t border-border/40">
+                <span className="text-xs text-muted-foreground">Last updated</span>
+                <span className="text-xs text-muted-foreground/70">{formatRelativeTime(routeInfo.updatedAt)}</span>
+              </div>
+            </div>
+          ) : null}
         </div>
       </DialogContent>
     </Dialog>
