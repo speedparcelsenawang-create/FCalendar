@@ -51,14 +51,9 @@ const data = {
           page: "calendar-month",
         },
         {
-          title: "Week View",
+          title: "Rooster",
           url: "#",
-          page: "calendar-week",
-        },
-        {
-          title: "Day View",
-          url: "#",
-          page: "calendar-day",
+          page: "rooster",
         },
       ],
     },

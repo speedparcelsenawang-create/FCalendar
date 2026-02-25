@@ -9,6 +9,7 @@ const PlanoVM = lazy(() => import("@/components/PlanoVM").then(m => ({ default: 
 const DeliveryTableDialog = lazy(() => import("@/components/DeliveryTableDialog").then(m => ({ default: m.DeliveryTableDialog })))
 const MapMarkerPage = lazy(() => import("@/components/MapMarkerPage").then(m => ({ default: m.MapMarkerPage })))
 const Album = lazy(() => import("@/components/Album").then(m => ({ default: m.Album })))
+const Rooster = lazy(() => import("@/components/Rooster").then(m => ({ default: m.Rooster })))
 import { EditModeProvider } from "@/contexts/EditModeContext"
 import { DeviceProvider } from "@/contexts/DeviceContext"
 import { Toaster } from "sonner"
@@ -258,6 +259,8 @@ function AppContent() {
         return <Calendar view="list" />
       case "calendar":
         return <Calendar view="month" />
+      case "rooster":
+        return <Rooster />
       case "settings":
       case "settings-profile":
         return <Settings section="profile" />
@@ -301,6 +304,8 @@ function AppContent() {
         return { parent: { label: "Calendar", icon: CalendarIcon }, current: "List View" }
       case "calendar":
         return { parent: { label: "Calendar", icon: CalendarIcon }, current: "Month View" }
+      case "rooster":
+        return { parent: { label: "Calendar", icon: CalendarIcon }, current: "Rooster" }
       case "settings":
       case "settings-profile":
         return { parent: { label: "Settings", icon: Settings2 }, current: "Profile" }
