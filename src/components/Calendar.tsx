@@ -690,7 +690,6 @@ function ListView({ events, isEditMode, onAdd, onEdit }: ViewProps) {
               <tbody>
                 {eventDays.map(({ day, evts }) => {
                   const isToday = isSameDay(day, today)
-                  const dayLabel = day.toLocaleDateString("en-MY", { weekday: "short", day: "2-digit", month: "short", year: "numeric" })
                   return evts.map((evt, evtIdx) => (
                     <tr key={`${day.toISOString()}-${evt.id}`}
                       className={`group border-b border-border/50 last:border-b-0 transition-colors

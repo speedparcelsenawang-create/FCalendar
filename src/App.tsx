@@ -12,7 +12,7 @@ const Album = lazy(() => import("@/components/Album").then(m => ({ default: m.Al
 import { EditModeProvider } from "@/contexts/EditModeContext"
 import { DeviceProvider } from "@/contexts/DeviceContext"
 import { Toaster } from "sonner"
-import { Home, Package, Settings2, Calendar as CalendarIcon, Images, ChevronDown, Truck, Pin, PinOff, LayoutList, List } from "lucide-react"
+import { Home, Package, Settings2, Calendar as CalendarIcon, Images, ChevronDown, Truck, Pin, LayoutList, List } from "lucide-react"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -74,13 +74,6 @@ function HomePage({ onNavigate }: { onNavigate: (page: string) => void }) {
       window.removeEventListener("focus", sync)
     }
   }, [])
-
-  function unpin(id: string) {
-    const updated = pinnedRoutes.filter(r => r.id !== id)
-    localStorage.setItem("fcalendar_pinned_routes", JSON.stringify(updated))
-    setPinnedRoutes(updated)
-    window.dispatchEvent(new Event("fcalendar_pins_changed"))
-  }
 
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:p-8 max-w-3xl mx-auto w-full overflow-y-auto" style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}>

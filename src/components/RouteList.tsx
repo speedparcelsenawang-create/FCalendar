@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from "react"
-import { List, Info, Plus, Check, X, Edit2, Trash2, Search, Settings, Save, ArrowUp, ArrowDown, Truck, Loader2, Maximize2, Minimize2, StickyNote, SlidersHorizontal, Pin, PinOff, LayoutGrid, MoreVertical, CheckCircle2, MapPin, Route, AlertCircle, WifiOff } from "lucide-react"
+import { List, Info, Plus, Check, X, Edit2, Trash2, Search, Settings, Save, ArrowUp, ArrowDown, Truck, Loader2, Maximize2, Minimize2, SlidersHorizontal, Pin, PinOff, MoreVertical, CheckCircle2, MapPin, Route, AlertCircle } from "lucide-react"
 import { toast } from "sonner"
 import { RowInfoModal } from "./RowInfoModal"
 import { RouteNotesModal, appendChangelog } from "./RouteNotesModal"
@@ -66,21 +66,6 @@ function isDeliveryActive(delivery: DeliveryPoint['delivery'], date: Date = new 
     case 'Weekday': return dayOfWeek <= 4       // Sun(0) – Thu(4)
     default:        return true
   }
-}
-
-function formatRelativeTime(dateStr?: string): string {
-  if (!dateStr) return 'Never'
-  const diff = Date.now() - new Date(dateStr).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1)   return 'Just now'
-  if (mins < 60)  return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24)   return `${hrs}h ago`
-  const days = Math.floor(hrs / 24)
-  if (days < 30)  return `${days}d ago`
-  const months = Math.floor(days / 30)
-  if (months < 12) return `${months}mo ago`
-  return `${Math.floor(months / 12)}y ago`
 }
 
 // ── Distance helpers ──────────────────────────────────────────────
@@ -160,13 +145,6 @@ export function RouteList() {
   const [filterRegion, setFilterRegion] = useState<"all" | "KL" | "Sel">("all")
   const [filterShift, setFilterShift] = useState<"all" | "AM" | "PM">("all")
 
-  // Card columns — synced with Settings Display
-  const [cardCols, setCardCols] = useState<string>(() => localStorage.getItem('fcalendar_card_cols') || '2')
-  useEffect(() => {
-    const sync = () => setCardCols(localStorage.getItem('fcalendar_card_cols') || '2')
-    window.addEventListener('fcalendar_card_cols_changed', sync)
-    return () => window.removeEventListener('fcalendar_card_cols_changed', sync)
-  }, [])
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [detailFullscreen, setDetailFullscreen] = useState(false)
   const [notesModalOpen, setNotesModalOpen] = useState(false)
