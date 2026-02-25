@@ -491,46 +491,11 @@ export function Rooster() {
 
       {/* ── Timeline grid ────────────────────────────────────────────────────── */}
       <div className="flex-1 min-h-0 overflow-auto">
-        <div className="min-w-[640px]">
-
-          {/* Header row: resource label + day columns */}
-          <div className="flex sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b border-border/60 shadow-sm">
-            {/* Resource header */}
-            <div className="w-48 shrink-0 px-3 py-2.5 flex items-center gap-1.5 border-r border-border/50 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              <Users className="size-3.5" />
-              Staff
-            </div>
-            {/* Day headers */}
-            {colDates.map(date => {
-              const isToday = isSameDay(date, today)
-              return (
-                <div
-                  key={toDateKey(date)}
-                  className={`flex-1 text-center py-2.5 px-1 text-xs font-semibold transition-colors ${
-                    isToday
-                      ? "text-primary"
-                      : "text-muted-foreground"
-                  }`}
-                >
-                  <div className={`text-[11px] uppercase tracking-wide ${isToday ? "text-primary" : ""}`}>
-                    {DAYS_SHORT[date.getDay()]}
-                  </div>
-                  <div className={`mt-0.5 inline-flex items-center justify-center w-7 h-7 rounded-full text-sm font-bold ${
-                    isToday ? "bg-primary text-primary-foreground" : ""
-                  }`}>
-                    {date.getDate()}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Resource rows */}
-          {resources.length === 0 ? (
-            <div className="flex flex-col items-center justify-center gap-3 py-20 text-muted-foreground">
-              <Users className="size-10 opacity-30" />
-              <div className="text-sm">No staff added yet</div>
-              {isEditMode && (
+        {resources.length === 0 ? (
+          <div className="flex flex-col items-center justify-center gap-3 py-20 text-muted-foreground">
+            <Users className="size-10 opacity-30" />
+            <div className="text-sm">No staff added yet</div>
+            {isEditMode && (
               <button
                 onClick={openAddResource}
                 className="flex items-center gap-1.5 h-8 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors"
@@ -538,49 +503,81 @@ export function Rooster() {
                 <Plus className="size-3.5" />
                 Add Staff
               </button>
-              )}
+            )}
+          </div>
+        ) : (
+          <div
+            className="min-w-[480px]"
+            style={{ display: "grid", gridTemplateColumns: `minmax(min-content, auto) repeat(${colDates.length}, minmax(80px, 1fr))` }}
+          >
+            {/* ── Header cells (sticky) ───────────────────────────────────── */}
+            {/* Staff column header */}
+            <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b border-border/60 shadow-sm px-4 py-3 flex items-center gap-2 border-r border-border/50 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
+              <Users className="size-3.5 shrink-0" />
+              Staff
             </div>
-          ) : (
-            resources.map((resource, ri) => {
-              const rowShifts = shifts.filter(s => s.resourceId === resource.id)
+            {/* Day column headers */}
+            {colDates.map(date => {
+              const isToday = isSameDay(date, today)
               return (
                 <div
-                  key={resource.id}
-                  className={`flex border-b border-border/40 hover:bg-muted/20 transition-colors ${ri % 2 === 0 ? "" : "bg-muted/5"}`}
-                  style={{ minHeight: "68px" }}
+                  key={toDateKey(date)}
+                  className={`sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b border-border/60 shadow-sm text-center py-3 px-2 text-xs font-semibold transition-colors ${
+                    isToday ? "text-primary" : "text-muted-foreground"
+                  }`}
                 >
-                  {/* Resource label */}
-                  <div className="w-48 shrink-0 px-3 py-2 border-r border-border/50 flex flex-col justify-center gap-0.5">
-                    <div className="flex items-center gap-1.5">
+                  <div className={`text-[11px] uppercase tracking-wide ${isToday ? "text-primary" : ""}`}>
+                    {DAYS_SHORT[date.getDay()]}
+                  </div>
+                  <div className={`mt-1 inline-flex items-center justify-center w-7 h-7 rounded-full text-sm font-bold ${
+                    isToday ? "bg-primary text-primary-foreground" : ""
+                  }`}>
+                    {date.getDate()}
+                  </div>
+                </div>
+              )
+            })}
+
+            {/* ── Resource rows ────────────────────────────────────────────── */}
+            {resources.map((resource, ri) => {
+              const rowShifts = shifts.filter(s => s.resourceId === resource.id)
+              const rowBg = ri % 2 !== 0 ? "bg-muted/5" : ""
+              return (
+                <div key={resource.id} style={{ display: "contents" }}>
+                  {/* Resource label cell */}
+                  <div
+                    className={`${rowBg} border-b border-border/40 border-r border-border/50 px-4 py-3 flex flex-col justify-center gap-1`}
+                    style={{ minHeight: "80px" }}
+                  >
+                    <div className="flex items-center gap-2 whitespace-nowrap">
                       <span
-                        className="w-2 h-2 rounded-full shrink-0"
+                        className="w-2.5 h-2.5 rounded-full shrink-0"
                         style={{ backgroundColor: resource.color }}
                       />
-                      <span className="text-xs font-semibold truncate text-foreground">
+                      <span className="text-xs font-semibold text-foreground">
                         {resource.name}
                       </span>
                     </div>
-                    <div className="text-[10px] text-muted-foreground ml-3.5 truncate">
+                    <div className="text-[10px] text-muted-foreground ml-[18px]">
                       {resource.role}
                     </div>
-                    {/* Edit / delete resource — edit mode only */}
                     {isEditMode && (
-                    <div className="flex items-center gap-1 mt-1.5">
-                      <button
-                        onClick={e => { e.stopPropagation(); openEditResource(resource) }}
-                        className="h-6 w-6 flex items-center justify-center rounded-md bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors border border-border/40"
-                        title="Edit staff"
-                      >
-                        <Pencil className="size-3" />
-                      </button>
-                      <button
-                        onClick={e => { e.stopPropagation(); deleteResource(resource.id) }}
-                        className="h-6 w-6 flex items-center justify-center rounded-md bg-muted/60 hover:bg-destructive/15 text-muted-foreground hover:text-destructive transition-colors border border-border/40"
-                        title="Delete staff"
-                      >
-                        <Trash2 className="size-3" />
-                      </button>
-                    </div>
+                      <div className="flex items-center gap-1 mt-1 ml-[18px]">
+                        <button
+                          onClick={e => { e.stopPropagation(); openEditResource(resource) }}
+                          className="h-6 w-6 flex items-center justify-center rounded-md bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors border border-border/40"
+                          title="Edit staff"
+                        >
+                          <Pencil className="size-3" />
+                        </button>
+                        <button
+                          onClick={e => { e.stopPropagation(); deleteResource(resource.id) }}
+                          className="h-6 w-6 flex items-center justify-center rounded-md bg-muted/60 hover:bg-destructive/15 text-muted-foreground hover:text-destructive transition-colors border border-border/40"
+                          title="Delete staff"
+                        >
+                          <Trash2 className="size-3" />
+                        </button>
+                      </div>
                     )}
                   </div>
 
@@ -592,7 +589,10 @@ export function Rooster() {
                     return (
                       <div
                         key={dateKey}
-                        className={`flex-1 relative px-1 py-1.5 flex flex-col gap-1 ${isEditMode ? "cursor-pointer" : ""} ${isToday ? "bg-primary/4" : ""}`}
+                        className={`${rowBg} border-b border-border/40 relative px-2 py-2 flex flex-col gap-1.5 hover:bg-muted/20 transition-colors ${
+                          isEditMode ? "cursor-pointer" : ""
+                        } ${isToday ? "bg-primary/[0.04]" : ""}`}
+                        style={{ minHeight: "80px" }}
                         onClick={() => { if (isEditMode) openAddShift(resource.id, dateKey) }}
                       >
                         {dayShifts.map(shift => (
@@ -606,7 +606,7 @@ export function Rooster() {
                         ))}
                         {dayShifts.length === 0 && isEditMode && (
                           <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                            <Plus className="size-3.5 text-muted-foreground/50" />
+                            <Plus className="size-3.5 text-muted-foreground/40" />
                           </div>
                         )}
                       </div>
@@ -614,9 +614,9 @@ export function Rooster() {
                   })}
                 </div>
               )
-            })
-          )}
-        </div>
+            })}
+          </div>
+        )}
       </div>
 
       {/* ── Shift Dialog ───────────────────────────────────────────────────────── */}
@@ -835,16 +835,17 @@ function ShiftBlock({
 
   return (
     <div
-      className={`relative rounded-md px-2 py-1 text-white text-[10px] font-medium select-none overflow-hidden shadow-sm transition-all ${isEditMode ? "cursor-pointer hover:brightness-110" : "cursor-default"}`}
+      className={`relative rounded-lg px-2.5 py-1.5 text-white select-none overflow-hidden shadow-sm transition-all ${isEditMode ? "cursor-pointer hover:brightness-110 active:scale-[0.98]" : "cursor-default"}`}
       style={{ backgroundColor: shift.color }}
       onClick={e => { e.stopPropagation(); if (isEditMode) onEdit() }}
       title={`${shift.title}: ${startLabel} – ${endLabel} (${duration}h)`}
     >
-      <div className="font-semibold leading-tight truncate pr-4">{shift.title}</div>
+      <div className="text-[11px] font-bold leading-tight truncate pr-5">{shift.title}</div>
+      <div className="text-[10px] leading-tight opacity-85 mt-0.5 truncate">{startLabel} – {endLabel}</div>
       {/* delete button — edit mode only */}
       {isEditMode && (
       <button
-        className="absolute top-0.5 right-0.5 w-4 h-4 rounded flex items-center justify-center bg-black/25 hover:bg-black/50 transition-colors"
+        className="absolute top-1 right-1 w-4 h-4 rounded flex items-center justify-center bg-black/25 hover:bg-black/50 transition-colors"
         onClick={e => { e.stopPropagation(); onDelete() }}
         title="Delete shift"
       >
