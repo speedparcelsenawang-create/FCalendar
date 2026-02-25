@@ -144,7 +144,7 @@ export function DeliveryTableDialog() {
   const totalPoints = flat.length
 
   return (
-    <div className="flex flex-col border rounded-xl overflow-hidden shadow-sm bg-background">
+    <div className="flex flex-col flex-1 min-h-0 border rounded-xl overflow-hidden shadow-sm bg-background">
 
       {/* ── Toolbar ─────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 border-b bg-muted/40 shrink-0">
@@ -228,9 +228,9 @@ export function DeliveryTableDialog() {
         </div>
       )}
 
-      {/* ── Table — fixed 6-row height, scrolls inside ── */}
+      {/* ── Table — fills remaining height, scrolls inside ── */}
       {(!loading || flat.length > 0) && !error && (
-        <div className="overflow-auto" style={{ maxHeight: "calc(7 * 2.75rem + 1px)" }}>
+        <div className="flex-1 overflow-auto min-h-0">
           <table className="border-collapse text-sm whitespace-nowrap min-w-max w-full">
             <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm text-xs uppercase tracking-wider text-muted-foreground font-semibold border-b border-border">
               <tr>

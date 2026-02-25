@@ -16,7 +16,7 @@ import { MapPin, Filter, Plus, X, Check, Info, Route as RouteIcon } from "lucide
 
 /* ─── Leaflet icon factory ────────────────────────────────────────────────── */
 function makeIcon(color: string, isCustom = false, selected = false): L.DivIcon {
-  const size = selected ? 34 : 26
+  const size = selected ? 22 : 16
   const svg = isCustom
     ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 36" width="${size}" height="${Math.round(size*1.5)}">
         <path d="M12 0C5.373 0 0 5.373 0 12c0 9.188 12 24 12 24S24 21.188 24 12C24 5.373 18.627 0 12 0z" fill="${color}" stroke="white" stroke-width="2"/>
@@ -130,15 +130,15 @@ function AddMarkerDialog({
       <DialogContent className="max-w-sm w-full">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Plus className="size-4 text-primary" /> Tambah Marker
+            <Plus className="size-4 text-primary" /> Add Marker
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-4 pt-1">
           <div className="space-y-1.5">
-            <Label htmlFor="marker-title">Nama Marker</Label>
+            <Label htmlFor="marker-title">Marker Name</Label>
             <Input
               id="marker-title"
-              placeholder="Contoh: Cawangan Utama..."
+              placeholder="e.g. Main Branch..."
               value={title}
               onChange={e => setTitle(e.target.value)}
               onKeyDown={e => { if (e.key === "Enter" && title.trim()) onConfirm(title.trim()) }}
@@ -146,9 +146,9 @@ function AddMarkerDialog({
             />
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" size="sm" onClick={onCancel}>Batal</Button>
+            <Button variant="outline" size="sm" onClick={onCancel}>Cancel</Button>
             <Button size="sm" onClick={() => { if (title.trim()) onConfirm(title.trim()) }}>
-              <Plus className="size-3.5 mr-1" /> Tambah
+              <Plus className="size-3.5 mr-1" /> Add
             </Button>
           </div>
         </div>
@@ -179,12 +179,12 @@ function FilterDialog({
       <DialogContent className="max-w-sm w-full">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Filter className="size-4" /> Tapis Marker
+            <Filter className="size-4" /> Filter Markers
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-5 pt-1">
           <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Jenis Penghantaran</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Delivery Type</p>
             <div className="flex flex-wrap gap-1.5">
               {DELIVERY_TYPES.map(type => (
                 <button
@@ -218,7 +218,7 @@ function FilterDialog({
                 <span className={`flex size-4 items-center justify-center rounded border-2 shrink-0 ${selectedRouteIds.size === 0 ? "border-primary bg-primary" : "border-muted-foreground/40"}`}>
                   {selectedRouteIds.size === 0 && <Check className="size-2.5 text-white" />}
                 </span>
-                Semua Route
+                All Routes
               </button>
               {routes.map(route => {
                 const sel = selectedRouteIds.has(route.id)
@@ -242,7 +242,7 @@ function FilterDialog({
           </div>
           <div className="flex justify-between items-center pt-1">
             <Button variant="outline" size="sm" onClick={() => { setDeliveryFilter("All"); setSelectedRouteIds(new Set()) }}>Reset</Button>
-            <Button size="sm" onClick={onClose}>Guna Filter</Button>
+            <Button size="sm" onClick={onClose}>Apply Filter</Button>
           </div>
         </div>
       </DialogContent>
@@ -345,10 +345,10 @@ export function MapMarkerPage() {
                 <MapPin className="size-5 text-blue-500" />
                 Map Marker
                 <span className="text-sm font-normal text-muted-foreground ml-1">
-                  · {filteredMarkers.filter(m => m.hasCoords || !m.isFromRoute).length} di peta
+                  · {filteredMarkers.filter(m => m.hasCoords || !m.isFromRoute).length} on map
                   {filteredMarkers.filter(m => !m.hasCoords && m.isFromRoute).length > 0 && (
                     <span className="ml-1 text-amber-500 text-xs">
-                      · {filteredMarkers.filter(m => !m.hasCoords && m.isFromRoute).length} tiada koordinat
+                      · {filteredMarkers.filter(m => !m.hasCoords && m.isFromRoute).length} no coordinates
                     </span>
                   )}
                 </span>
@@ -361,7 +361,7 @@ export function MapMarkerPage() {
                   onClick={() => setFilterOpen(true)}
                 >
                   <Filter className="size-3.5" />
-                  Tapis
+                  Filter
                   {(deliveryFilter !== "All" || selectedRouteIds.size > 0) && (
                     <span className="ml-0.5 bg-primary text-primary-foreground rounded-full text-[10px] px-1.5 py-0.5 font-bold">
                       {(deliveryFilter !== "All" ? 1 : 0) + selectedRouteIds.size}
@@ -374,7 +374,7 @@ export function MapMarkerPage() {
                   onClick={() => setAddOpen(true)}
                 >
                   <Plus className="size-3.5" />
-                  Tambah Marker
+                  Add Marker
                 </Button>
               </div>
             </div>
@@ -425,7 +425,7 @@ export function MapMarkerPage() {
                               onClick={() => removeMarker(m.id)}
                               className="mt-2 text-xs text-red-500 hover:text-red-700 font-medium flex items-center gap-1"
                             >
-                              <X className="size-3" /> Padam
+                              <X className="size-3" /> Remove
                             </button>
                           )}
                         </div>
@@ -454,8 +454,8 @@ export function MapMarkerPage() {
               {filteredMarkers.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10 gap-2 text-center">
                   <MapPin className="size-8 text-muted-foreground/25" />
-                  <p className="text-sm text-muted-foreground">Tiada lokasi ditemui.</p>
-                  <p className="text-xs text-muted-foreground/60">Tambah route di Route List dahulu.</p>
+                  <p className="text-sm text-muted-foreground">No locations found.</p>
+                  <p className="text-xs text-muted-foreground/60">Add routes in Route List first.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -493,10 +493,10 @@ export function MapMarkerPage() {
                             </p>
                           )}
                           {noCoords && (
-                            <p className="text-[10px] text-amber-500">Tiada koordinat</p>
+                            <p className="text-[10px] text-amber-500">No coordinates</p>
                           )}
                           {!marker.isFromRoute && (
-                            <p className="text-[10px] text-red-400">Pin Custom</p>
+                            <p className="text-[10px] text-red-400">Custom Pin</p>
                           )}
                         </div>
                         {!marker.isFromRoute && (
@@ -521,16 +521,16 @@ export function MapMarkerPage() {
           <CardHeader className="pb-3 px-6 pt-6">
             <CardTitle className="text-base flex items-center gap-2">
               <RouteIcon className="size-4 text-blue-500" />
-              Statistik Marker
+              Marker Stats
             </CardTitle>
           </CardHeader>
           <CardContent className="px-6 pb-6 space-y-4">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
-                { label: "Jumlah Marker", value: filteredMarkers.length, color: "text-blue-500", bg: "bg-blue-500/10" },
-                { label: "Dari Route", value: routeMarkers.length, color: "text-green-500", bg: "bg-green-500/10" },
-                { label: "Pin Custom", value: customMarkers.length, color: "text-red-500", bg: "bg-red-500/10" },
-                { label: "Tiada Koordinat", value: pointsNoCoords, color: pointsNoCoords > 0 ? "text-amber-500" : "text-muted-foreground", bg: pointsNoCoords > 0 ? "bg-amber-500/10" : "bg-muted/30" },
+                { label: "Total Markers", value: filteredMarkers.length, color: "text-blue-500", bg: "bg-blue-500/10" },
+                { label: "From Route", value: routeMarkers.length, color: "text-green-500", bg: "bg-green-500/10" },
+                { label: "Custom Pins", value: customMarkers.length, color: "text-red-500", bg: "bg-red-500/10" },
+                { label: "No Coordinates", value: pointsNoCoords, color: pointsNoCoords > 0 ? "text-amber-500" : "text-muted-foreground", bg: pointsNoCoords > 0 ? "bg-amber-500/10" : "bg-muted/30" },
               ].map(stat => (
                 <div key={stat.label} className={`rounded-xl p-3 ${stat.bg}`}>
                   <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
@@ -539,7 +539,7 @@ export function MapMarkerPage() {
               ))}
             </div>
             <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Jenis Penghantaran</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Delivery Type</p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {["Daily", "Weekday", "Alt 1", "Alt 2"].map(type => (
                   <button
@@ -571,14 +571,14 @@ export function MapMarkerPage() {
                 <Info className="size-4 text-blue-500" />
               </div>
               <div>
-                <p className="text-sm font-semibold mb-2">Cara Guna Map Marker</p>
+                <p className="text-sm font-semibold mb-2">How to Use Map Marker</p>
                 <ul className="space-y-1.5 text-sm text-muted-foreground">
-                  <li>• Marker diambil secara automatik dari <strong>Route List</strong> — setiap lokasi yang sudah diisi <strong>Latitude</strong> dan <strong>Longitude</strong> akan muncul sebagai marker.</li>
-                  <li>• Lokasi yang <strong>tiada koordinat</strong> tidak akan ditunjukkan pada peta. Isi koordinat dalam Route List dahulu.</li>
-                  <li>• Tekan <strong>Tambah Marker</strong> untuk letak pin custom tambahan pada peta.</li>
-                  <li>• Tekan nama marker dalam senarai untuk lihat kedudukan pada peta.</li>
-                  <li>• Tekan butang <strong>Tapis</strong> untuk tapis mengikut jenis penghantaran atau route.</li>
-                  <li>• Klik jenis penghantaran dalam statistik untuk tapis marker dengan cepat.</li>
+                  <li>• Markers are pulled automatically from <strong>Route List</strong> — any location with <strong>Latitude</strong> and <strong>Longitude</strong> filled in will appear as a marker.</li>
+                  <li>• Locations <strong>without coordinates</strong> will not be shown on the map. Fill in coordinates in Route List first.</li>
+                  <li>• Click <strong>Add Marker</strong> to place a custom pin anywhere on the map.</li>
+                  <li>• Click a marker name in the list to fly to its position on the map.</li>
+                  <li>• Use the <strong>Filter</strong> button to filter by delivery type or route.</li>
+                  <li>• Click a delivery type in the stats section to quickly filter markers.</li>
                 </ul>
               </div>
             </div>
