@@ -339,8 +339,8 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
               </div>
             ) : (
               <div className="rounded-xl border border-border overflow-hidden">
-                {point.descriptions && point.descriptions.length > 0 ? (
-                  point.descriptions.map((d, i) => (
+                {drafts && drafts.length > 0 ? (
+                  drafts.map((d, i) => (
                     <div
                       key={i}
                       className="flex items-center gap-0 border-b border-border last:border-0"

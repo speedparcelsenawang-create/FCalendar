@@ -760,18 +760,61 @@ function rowToEvent(e: ApiRow): Event {
   }
 }
 
-async function apiFetchEvents(): Promise<Event[]> {
+// ─── LOCAL STORAGE FALLBACK ──────────────────────────────────────────────────
+// Used automatically when the Vercel API is unreachable (e.g. local dev with `vite dev`).
+
+const LS_KEY = "fcalendar_events"
+let _lsIdSeq = -(Date.now()) // negative IDs so they never clash with DB ids
+
+type StoredEvent = { id: number; title: string; date: string; type: EventType; color: string }
+
+function lsLoad(): Event[] {
+  try {
+    const raw = localStorage.getItem(LS_KEY)
+    if (!raw) return []
+    return (JSON.parse(raw) as StoredEvent[]).map(e => ({ ...e, date: new Date(e.date) }))
+  } catch { return [] }
+}
+
+function lsSaveAll(events: Event[]) {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(
+      events.map(e => ({ ...e, date: e.date.toISOString() }))
+    ))
+  } catch { /* quota exceeded — silently ignore */ }
+}
+
+function lsAdd(data: { title: string; date: Date; type: EventType }): Event {
+  const ev: Event = { id: _lsIdSeq--, title: data.title, date: data.date, type: data.type, color: TYPE_COLORS[data.type] ?? "bg-blue-500" }
+  lsSaveAll([...lsLoad(), ev])
+  return ev
+}
+
+function lsUpdate(data: { id: number; title: string; date: Date; type: EventType }): Event {
+  const ev: Event = { id: data.id, title: data.title, date: data.date, type: data.type, color: TYPE_COLORS[data.type] ?? "bg-blue-500" }
+  lsSaveAll(lsLoad().map(e => e.id === data.id ? ev : e))
+  return ev
+}
+
+function lsDelete(id: number) {
+  lsSaveAll(lsLoad().filter(e => e.id !== id))
+}
+
+// ─── API + FALLBACK WRAPPERS ─────────────────────────────────────────────────
+
+async function apiFetchEvents(): Promise<{ events: Event[]; offline: boolean }> {
   try {
     const res = await fetch("/api/calendar")
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const json = await res.json()
-    if (!json.success) return []
-    return (json.data as ApiRow[]).map(rowToEvent)
+    if (!json.success) throw new Error("API error")
+    return { events: (json.data as ApiRow[]).map(rowToEvent), offline: false }
   } catch {
-    return []
+    return { events: lsLoad(), offline: true }
   }
 }
 
-async function apiSaveEvent(data: { id?: number; title: string; date: Date; type: EventType }): Promise<Event | null> {
+async function apiSaveEvent(data: { id?: number; title: string; date: Date; type: EventType }): Promise<{ event: Event; offline: boolean } | null> {
   try {
     const body: Record<string, unknown> = {
       title: data.title,
@@ -784,21 +827,27 @@ async function apiSaveEvent(data: { id?: number; title: string; date: Date; type
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const json = await res.json()
-    if (!json.success) return null
-    return rowToEvent(json.data as ApiRow)
+    if (!json.success) throw new Error("API error")
+    return { event: rowToEvent(json.data as ApiRow), offline: false }
   } catch {
-    return null
+    // fallback: save to localStorage
+    const ev = data.id !== undefined ? lsUpdate(data as { id: number; title: string; date: Date; type: EventType }) : lsAdd(data)
+    return { event: ev, offline: true }
   }
 }
 
-async function apiDeleteEvent(id: number): Promise<boolean> {
+async function apiDeleteEvent(id: number): Promise<{ ok: boolean; offline: boolean }> {
   try {
     const res = await fetch(`/api/calendar?id=${id}`, { method: "DELETE" })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
     const json = await res.json()
-    return json.success === true
+    if (!json.success) throw new Error("API error")
+    return { ok: true, offline: false }
   } catch {
-    return false
+    lsDelete(id)
+    return { ok: true, offline: true }
   }
 }
 
@@ -832,21 +881,23 @@ export function Calendar({ view = "month" }: { view?: "month" | "week" | "day" |
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [offline, setOffline] = useState(false)
 
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingEvent, setEditingEvent] = useState<Event | null>(null)
   const [addDate, setAddDate] = useState<Date | null>(null)
 
-  // Load events – seed example data if DB is empty
+  // Load events – seed example data if empty (API or localStorage)
   useEffect(() => {
-    apiFetchEvents().then(async data => {
+    apiFetchEvents().then(async ({ events: data, offline: isOffline }) => {
+      setOffline(isOffline)
       if (data.length === 0) {
         // Seed example events so the calendar isn't blank on first launch
         const seeds = getSeedEvents()
         const created: Event[] = []
         for (const s of seeds) {
-          const saved = await apiSaveEvent({ title: s.title, date: s.date, type: s.type })
-          if (saved) created.push(saved)
+          const result = await apiSaveEvent({ title: s.title, date: s.date, type: s.type })
+          if (result) created.push(result.event)
         }
         setEvents(created)
       } else {
@@ -868,14 +919,14 @@ export function Calendar({ view = "month" }: { view?: "month" | "week" | "day" |
     setDialogOpen(true)
   }
 
-  // Auto-save to API immediately on every change
+  // Save to API (with localStorage fallback when offline)
   async function handleSave(data: { id?: number; title: string; date: Date; type: EventType }) {
     setSaving(true)
     const dateLabel = data.date.toLocaleDateString("en-MY", { day: "2-digit", month: "short", year: "numeric" })
     const typeLabel = TYPE_LABELS[data.type] ?? data.type
     try {
-      const saved = await apiSaveEvent(data)
-      if (!saved) {
+      const result = await apiSaveEvent(data)
+      if (!result) {
         toast.error("Failed to save event", {
           description: `"${data.title}" could not be saved. Try again.`,
           icon: <AlertCircle className="size-4" />,
@@ -883,16 +934,18 @@ export function Calendar({ view = "month" }: { view?: "month" | "week" | "day" |
         })
         return
       }
+      const { event: saved, offline: isOffline } = result
+      setOffline(isOffline)
       if (data.id !== undefined) {
         setEvents(prev => prev.map(e => e.id === data.id ? saved : e))
-        toast.success("Event updated", {
+        toast.success("Event updated" + (isOffline ? " (offline)" : ""), {
           description: `"${data.title}" · ${typeLabel} · ${dateLabel}`,
           icon: <CalendarCheck className="size-4 text-primary" />,
           duration: 3000,
         })
       } else {
         setEvents(prev => [...prev, saved])
-        toast.success("Event added", {
+        toast.success("Event added" + (isOffline ? " (offline)" : ""), {
           description: `"${data.title}" · ${typeLabel} · ${dateLabel}`,
           icon: <CalendarPlus className="size-4 text-primary" />,
           duration: 3000,
@@ -913,10 +966,11 @@ export function Calendar({ view = "month" }: { view?: "month" | "week" | "day" |
     const target = events.find(e => e.id === id)
     setSaving(true)
     try {
-      const ok = await apiDeleteEvent(id)
+      const { ok, offline: isOffline } = await apiDeleteEvent(id)
+      setOffline(isOffline)
       if (ok) {
         setEvents(prev => prev.filter(e => e.id !== id))
-        toast.success("Event removed", {
+        toast.success("Event removed" + (isOffline ? " (offline)" : ""), {
           description: target ? `"${target.title}" has been deleted.` : "Event has been deleted.",
           icon: <CalendarX className="size-4 text-primary" />,
           duration: 3000,
@@ -951,6 +1005,14 @@ export function Calendar({ view = "month" }: { view?: "month" | "week" | "day" |
 
   return (
     <div className="relative flex flex-col flex-1 min-h-0">
+      {/* Offline badge */}
+      {offline && (
+        <div className="flex items-center gap-1.5 px-4 py-1.5 bg-yellow-500/10 border-b border-yellow-500/20 text-yellow-700 dark:text-yellow-400 text-xs font-medium shrink-0">
+          <WifiOff className="size-3" />
+          Offline mode — events saved locally on this device
+        </div>
+      )}
+
       {view === "week" && <WeekView {...viewProps} />}
       {view === "day"  && <DayView  {...viewProps} />}
       {view === "list" && <ListView {...viewProps} />}
@@ -976,10 +1038,6 @@ export function Calendar({ view = "month" }: { view?: "month" | "week" | "day" |
     </div>
   )
 }
-
-
-
-
 
 
 
