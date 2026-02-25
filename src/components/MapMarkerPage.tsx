@@ -663,17 +663,17 @@ export function MapMarkerPage() {
           <button
             onClick={() => setColorOpen(true)}
             title="Set marker colour per route"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-border bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center justify-center gap-1.5 min-w-[36px] min-h-[36px] px-2.5 rounded-lg text-xs font-medium border border-border bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
           >
-            <Palette className="size-3.5" />
+            <Palette className="size-4 shrink-0" />
             <span className="hidden sm:inline">Route Colours</span>
           </button>
           <button
             onClick={() => setMapSettingsOpen(true)}
             title="Map default view settings"
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border border-border bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center justify-center gap-1.5 min-w-[36px] min-h-[36px] px-2.5 rounded-lg text-xs font-medium border border-border bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
           >
-            <Settings2 className="size-3.5" />
+            <Settings2 className="size-4 shrink-0" />
             <span className="hidden sm:inline">Map Settings</span>
           </button>
         </div>
@@ -747,14 +747,15 @@ export function MapMarkerPage() {
             </div>
             <button
               onClick={() => setFilterOpen(true)}
-              className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+              className={`shrink-0 flex items-center gap-1.5 min-w-[36px] min-h-[36px] px-2.5 rounded-lg text-xs font-medium border transition-all ${
                 activeFiltersCount > 0
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
-              <SlidersHorizontal className="size-3.5" />
-              Filter{activeFiltersCount > 0 ? ` (${activeFiltersCount})` : ""}
+              <SlidersHorizontal className="size-4 shrink-0" />
+              <span className="hidden sm:inline">Filter{activeFiltersCount > 0 ? ` (${activeFiltersCount})` : ""}</span>
+              {activeFiltersCount > 0 && <span className="sm:hidden">{activeFiltersCount}</span>}
             </button>
           </div>
 

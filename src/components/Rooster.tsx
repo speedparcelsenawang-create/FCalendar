@@ -550,7 +550,7 @@ export function Rooster() {
 
                   {/* Frozen name cell */}
                   <div
-                    className={`sticky left-0 z-10 ${rowBg} border-b border-r border-border/70 px-3 py-3 flex flex-col justify-center gap-1 shadow-[2px_0_6px_-2px_rgba(0,0,0,0.10)]`}
+                    className={`sticky left-0 z-10 bg-background border-b border-r border-border/70 px-3 py-3 flex flex-col justify-center gap-1 shadow-[2px_0_6px_-2px_rgba(0,0,0,0.10)]`}
                     style={{ minHeight: "84px" }}
                   >
                     <div className="flex items-center gap-2">
