@@ -841,7 +841,6 @@ function ShiftBlock({
       title={`${shift.title}: ${startLabel} – ${endLabel} (${duration}h)`}
     >
       <div className="font-semibold leading-tight truncate pr-4">{shift.title}</div>
-      <div className="opacity-80 text-[9px] leading-tight truncate">{startLabel}–{endLabel}</div>
       {/* delete button — edit mode only */}
       {isEditMode && (
       <button
