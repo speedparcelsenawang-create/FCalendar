@@ -79,7 +79,7 @@ function HomePage({ onNavigate }: { onNavigate: (page: string) => void }) {
   return (
     <div className="flex flex-1 flex-col gap-6 p-4 md:p-8 max-w-3xl mx-auto w-full overflow-y-auto" style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom))' }}>
       {/* Welcome */}
-      <div className="pt-1">
+      <div className="pt-1 text-center">
         <h1 className="text-[clamp(0.9375rem,3vw,1.125rem)] font-bold text-gray-900 dark:text-white">Welcome to FCalendar</h1>
         <p className="text-fluid-sm page-subheader text-muted-foreground mt-1">Daily colour guide for stock operations.</p>
       </div>

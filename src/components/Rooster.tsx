@@ -5,7 +5,6 @@ import {
   Plus,
   Pencil,
   Trash2,
-  X,
   Users,
   Clock,
   CalendarDays,
@@ -507,26 +506,30 @@ export function Rooster() {
           </div>
         ) : (
           <div
-            className="min-w-[480px]"
-            style={{ display: "grid", gridTemplateColumns: `minmax(min-content, auto) repeat(${colDates.length}, minmax(80px, 1fr))` }}
+            style={{
+              display: "grid",
+              gridTemplateColumns: `160px repeat(${colDates.length}, minmax(140px, 1fr))`,
+            }}
           >
-            {/* ── Header cells (sticky) ───────────────────────────────────── */}
-            {/* Staff column header */}
-            <div className="sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b border-border/60 shadow-sm px-4 py-3 flex items-center gap-2 border-r border-border/50 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
+            {/* ── Frozen header: Staff column ─────────────────────────────── */}
+            <div
+              className="sticky top-0 left-0 z-30 bg-background border-b border-r border-border/70 px-4 py-3 flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap shadow-[2px_0_6px_-2px_rgba(0,0,0,0.12)]"
+            >
               <Users className="size-3.5 shrink-0" />
               Staff
             </div>
-            {/* Day column headers */}
+
+            {/* ── Day column headers ───────────────────────────────────────── */}
             {colDates.map(date => {
               const isToday = isSameDay(date, today)
               return (
                 <div
                   key={toDateKey(date)}
-                  className={`sticky top-0 z-20 bg-background/95 backdrop-blur-sm border-b border-border/60 shadow-sm text-center py-3 px-2 text-xs font-semibold transition-colors ${
+                  className={`sticky top-0 z-20 bg-background border-b border-border/70 text-center py-3 px-2 transition-colors ${
                     isToday ? "text-primary" : "text-muted-foreground"
                   }`}
                 >
-                  <div className={`text-[11px] uppercase tracking-wide ${isToday ? "text-primary" : ""}`}>
+                  <div className={`text-[11px] font-semibold uppercase tracking-wide ${isToday ? "text-primary" : ""}`}>
                     {DAYS_SHORT[date.getDay()]}
                   </div>
                   <div className={`mt-1 inline-flex items-center justify-center w-7 h-7 rounded-full text-sm font-bold ${
@@ -541,41 +544,42 @@ export function Rooster() {
             {/* ── Resource rows ────────────────────────────────────────────── */}
             {resources.map((resource, ri) => {
               const rowShifts = shifts.filter(s => s.resourceId === resource.id)
-              const rowBg = ri % 2 !== 0 ? "bg-muted/5" : ""
+              const rowBg = ri % 2 !== 0 ? "bg-muted/[0.04]" : "bg-background"
               return (
                 <div key={resource.id} style={{ display: "contents" }}>
-                  {/* Resource label cell */}
+
+                  {/* Frozen name cell */}
                   <div
-                    className={`${rowBg} border-b border-border/40 border-r border-border/50 px-4 py-3 flex flex-col justify-center gap-1`}
-                    style={{ minHeight: "80px" }}
+                    className={`sticky left-0 z-10 ${rowBg} border-b border-r border-border/70 px-3 py-3 flex flex-col justify-center gap-1 shadow-[2px_0_6px_-2px_rgba(0,0,0,0.10)]`}
+                    style={{ minHeight: "84px" }}
                   >
-                    <div className="flex items-center gap-2 whitespace-nowrap">
+                    <div className="flex items-center gap-2">
                       <span
                         className="w-2.5 h-2.5 rounded-full shrink-0"
                         style={{ backgroundColor: resource.color }}
                       />
-                      <span className="text-xs font-semibold text-foreground">
+                      <span className="text-xs font-semibold text-foreground leading-tight">
                         {resource.name}
                       </span>
                     </div>
-                    <div className="text-[10px] text-muted-foreground ml-[18px]">
+                    <div className="text-[10px] text-muted-foreground ml-[18px] leading-tight">
                       {resource.role}
                     </div>
                     {isEditMode && (
                       <div className="flex items-center gap-1 mt-1 ml-[18px]">
                         <button
                           onClick={e => { e.stopPropagation(); openEditResource(resource) }}
-                          className="h-6 w-6 flex items-center justify-center rounded-md bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors border border-border/40"
+                          className="h-5 w-5 flex items-center justify-center rounded bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors border border-border/40"
                           title="Edit staff"
                         >
-                          <Pencil className="size-3" />
+                          <Pencil className="size-2.5" />
                         </button>
                         <button
                           onClick={e => { e.stopPropagation(); deleteResource(resource.id) }}
-                          className="h-6 w-6 flex items-center justify-center rounded-md bg-muted/60 hover:bg-destructive/15 text-muted-foreground hover:text-destructive transition-colors border border-border/40"
+                          className="h-5 w-5 flex items-center justify-center rounded bg-muted/60 hover:bg-destructive/15 text-muted-foreground hover:text-destructive transition-colors border border-border/40"
                           title="Delete staff"
                         >
-                          <Trash2 className="size-3" />
+                          <Trash2 className="size-2.5" />
                         </button>
                       </div>
                     )}
@@ -589,10 +593,10 @@ export function Rooster() {
                     return (
                       <div
                         key={dateKey}
-                        className={`${rowBg} border-b border-border/40 relative px-2 py-2 flex flex-col gap-1.5 hover:bg-muted/20 transition-colors ${
-                          isEditMode ? "cursor-pointer" : ""
-                        } ${isToday ? "bg-primary/[0.04]" : ""}`}
-                        style={{ minHeight: "80px" }}
+                        className={`${rowBg} border-b border-r border-border/40 relative px-2 py-2 flex flex-col gap-1.5 transition-colors ${
+                          isEditMode ? "cursor-pointer hover:bg-muted/20" : ""
+                        } ${isToday ? "bg-primary/[0.03]" : ""}`}
+                        style={{ minHeight: "84px" }}
                         onClick={() => { if (isEditMode) openAddShift(resource.id, dateKey) }}
                       >
                         {dayShifts.map(shift => (
@@ -601,12 +605,11 @@ export function Rooster() {
                             shift={shift}
                             isEditMode={isEditMode}
                             onEdit={() => { if (isEditMode) openEditShift(shift) }}
-                            onDelete={() => deleteShift(shift.id)}
                           />
                         ))}
                         {dayShifts.length === 0 && isEditMode && (
                           <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                            <Plus className="size-3.5 text-muted-foreground/40" />
+                            <Plus className="size-3.5 text-muted-foreground/30" />
                           </div>
                         )}
                       </div>
@@ -822,12 +825,10 @@ function ShiftBlock({
   shift,
   isEditMode,
   onEdit,
-  onDelete,
 }: {
   shift: Shift
   isEditMode: boolean
   onEdit: () => void
-  onDelete: () => void
 }) {
   const startLabel = formatHour(shift.startHour)
   const endLabel = formatHour(shift.endHour)
@@ -835,23 +836,14 @@ function ShiftBlock({
 
   return (
     <div
-      className={`relative rounded-lg px-2.5 py-1.5 text-white select-none overflow-hidden shadow-sm transition-all ${isEditMode ? "cursor-pointer hover:brightness-110 active:scale-[0.98]" : "cursor-default"}`}
-      style={{ backgroundColor: shift.color }}
+      className={`pl-3 py-0.5 select-none transition-all ${isEditMode ? "cursor-pointer hover:opacity-70 active:scale-[0.98]" : "cursor-default"}`}
+      style={{ borderLeft: `3px solid ${shift.color}` }}
       onClick={e => { e.stopPropagation(); if (isEditMode) onEdit() }}
       title={`${shift.title}: ${startLabel} – ${endLabel} (${duration}h)`}
     >
-      <div className="text-[11px] font-bold leading-tight truncate pr-5">{shift.title}</div>
-      <div className="text-[10px] leading-tight opacity-85 mt-0.5 truncate">{startLabel} – {endLabel}</div>
-      {/* delete button — edit mode only */}
-      {isEditMode && (
-      <button
-        className="absolute top-1 right-1 w-4 h-4 rounded flex items-center justify-center bg-black/25 hover:bg-black/50 transition-colors"
-        onClick={e => { e.stopPropagation(); onDelete() }}
-        title="Delete shift"
-      >
-        <X className="size-2.5" />
-      </button>
-      )}
+      <div className="text-[11px] font-semibold leading-tight truncate text-foreground">{shift.title}</div>
+      <div className="text-[10px] leading-tight text-muted-foreground mt-0.5 truncate">{startLabel} – {endLabel}</div>
+
     </div>
   )
 }

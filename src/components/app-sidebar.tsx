@@ -40,13 +40,13 @@ const data = {
   },
   navMain: [
     {
-      title: "Calendar",
+      title: "Full Calendar",
       url: "#",
       icon: Calendar,
       isActive: false,
       items: [
         {
-          title: "Month View",
+          title: "Calendar",
           url: "#",
           page: "calendar-month",
         },
