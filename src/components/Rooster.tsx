@@ -417,44 +417,44 @@ export function Rooster() {
   }
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 gap-0">
+    <div className="flex flex-col flex-1 min-h-0">
 
       {/* ── Top bar ─────────────────────────────────────────────────────────── */}
-      <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-border/60 shrink-0 bg-background/80 backdrop-blur-sm">
+      <div className="flex flex-wrap items-center gap-3 px-6 py-4 border-b border-border/60 shrink-0 bg-background/80 backdrop-blur-sm">
         {/* Nav */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-2">
           <button
             onClick={() => navigate(-1)}
-            className="h-8 w-8 flex items-center justify-center rounded-lg border border-border/60 bg-muted/40 hover:bg-muted/70 transition-colors"
+            className="h-9 w-9 flex items-center justify-center rounded-lg border border-border/60 bg-muted/40 hover:bg-muted/70 transition-colors"
           >
             <ChevronLeft className="size-4" />
           </button>
           <button
             onClick={goToday}
-            className="h-8 px-3 text-xs font-semibold rounded-lg border border-border/60 bg-muted/40 hover:bg-muted/70 transition-colors"
+            className="h-9 px-4 text-xs font-semibold rounded-lg border border-border/60 bg-muted/40 hover:bg-muted/70 transition-colors"
           >
             Today
           </button>
           <button
             onClick={() => navigate(1)}
-            className="h-8 w-8 flex items-center justify-center rounded-lg border border-border/60 bg-muted/40 hover:bg-muted/70 transition-colors"
+            className="h-9 w-9 flex items-center justify-center rounded-lg border border-border/60 bg-muted/40 hover:bg-muted/70 transition-colors"
           >
             <ChevronRight className="size-4" />
           </button>
         </div>
 
         {/* Label */}
-        <h2 className="text-sm font-bold flex-1 text-center sm:text-left">
+        <h2 className="text-base font-bold flex-1 text-center sm:text-left">
           {headerLabel}
         </h2>
 
         {/* View toggles */}
-        <div className="flex items-center gap-1 rounded-lg border border-border/60 overflow-hidden bg-muted/30 p-0.5">
+        <div className="flex items-center gap-1 rounded-lg border border-border/60 overflow-hidden bg-muted/30 p-1">
           {(["week", "day"] as ViewMode[]).map(v => (
             <button
               key={v}
               onClick={() => setViewMode(v)}
-              className={`h-7 px-3 text-xs font-semibold rounded-md capitalize transition-all ${
+              className={`h-8 px-4 text-xs font-semibold rounded-md capitalize transition-all ${
                 viewMode === v
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
@@ -469,9 +469,9 @@ export function Rooster() {
         {isEditMode && (
         <button
           onClick={() => openAddShift()}
-          className="flex items-center gap-1.5 h-8 px-3 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors shadow-sm"
+          className="flex items-center gap-2 h-9 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 transition-colors shadow-sm"
         >
-          <Plus className="size-3.5" />
+          <Plus className="size-4" />
           Add Shift
         </button>
         )}
@@ -480,16 +480,16 @@ export function Rooster() {
         {isEditMode && (
         <button
           onClick={openAddResource}
-          className="flex items-center gap-1.5 h-8 px-3 rounded-lg border border-border bg-muted/40 hover:bg-muted/70 text-xs font-semibold transition-colors"
+          className="flex items-center gap-2 h-9 px-4 rounded-lg border border-border bg-muted/40 hover:bg-muted/70 text-xs font-semibold transition-colors"
         >
-          <Users className="size-3.5" />
+          <Users className="size-4" />
           Add Staff
         </button>
         )}
       </div>
 
       {/* ── Timeline grid ────────────────────────────────────────────────────── */}
-      <div className="flex-1 min-h-0 overflow-auto">
+      <div className="flex-1 min-h-0 overflow-auto bg-background">
         {resources.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-3 py-20 text-muted-foreground">
             <Users className="size-10 opacity-30" />
@@ -513,9 +513,9 @@ export function Rooster() {
           >
             {/* ── Frozen header: Staff column ─────────────────────────────── */}
             <div
-              className="sticky top-0 left-0 z-30 bg-background border-b border-r border-border/70 px-4 py-3 flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap shadow-[2px_0_6px_-2px_rgba(0,0,0,0.12)]"
+              className="sticky top-0 left-0 z-30 bg-background border-b border-r border-border/70 px-5 py-4 flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap shadow-[2px_0_6px_-2px_rgba(0,0,0,0.12)]"
             >
-              <Users className="size-3.5 shrink-0" />
+              <Users className="size-4 shrink-0" />
               Staff
             </div>
 
@@ -525,7 +525,7 @@ export function Rooster() {
               return (
                 <div
                   key={toDateKey(date)}
-                  className={`sticky top-0 z-20 bg-background border-b border-border/70 text-center py-3 px-2 transition-colors ${
+                  className={`sticky top-0 z-20 bg-background border-b border-border/70 text-center py-4 px-3 transition-colors ${
                     isToday ? "text-primary" : "text-muted-foreground"
                   }`}
                 >
@@ -550,36 +550,36 @@ export function Rooster() {
 
                   {/* Frozen name cell */}
                   <div
-                    className={`sticky left-0 z-10 bg-background border-b border-r border-border/70 px-3 py-3 flex flex-col justify-center gap-1 shadow-[2px_0_6px_-2px_rgba(0,0,0,0.10)]`}
-                    style={{ minHeight: "84px" }}
+                    className={`sticky left-0 z-10 bg-background border-b border-r border-border/70 px-4 py-4 flex flex-col justify-center gap-1.5 shadow-[2px_0_6px_-2px_rgba(0,0,0,0.10)]`}
+                    style={{ minHeight: "96px" }}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2.5">
                       <span
-                        className="w-2.5 h-2.5 rounded-full shrink-0"
+                        className="w-3 h-3 rounded-full shrink-0"
                         style={{ backgroundColor: resource.color }}
                       />
-                      <span className="text-xs font-semibold text-foreground leading-tight">
+                      <span className="text-sm font-semibold text-foreground leading-tight">
                         {resource.name}
                       </span>
                     </div>
-                    <div className="text-[10px] text-muted-foreground ml-[18px] leading-tight">
+                    <div className="text-xs text-muted-foreground ml-[20px] leading-tight">
                       {resource.role}
                     </div>
                     {isEditMode && (
-                      <div className="flex items-center gap-1 mt-1 ml-[18px]">
+                      <div className="flex items-center gap-1.5 mt-2 ml-[20px]">
                         <button
                           onClick={e => { e.stopPropagation(); openEditResource(resource) }}
-                          className="h-5 w-5 flex items-center justify-center rounded bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors border border-border/40"
+                          className="h-6 w-6 flex items-center justify-center rounded bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors border border-border/40"
                           title="Edit staff"
                         >
-                          <Pencil className="size-2.5" />
+                          <Pencil className="size-3" />
                         </button>
                         <button
                           onClick={e => { e.stopPropagation(); deleteResource(resource.id) }}
-                          className="h-5 w-5 flex items-center justify-center rounded bg-muted/60 hover:bg-destructive/15 text-muted-foreground hover:text-destructive transition-colors border border-border/40"
+                          className="h-6 w-6 flex items-center justify-center rounded bg-muted/60 hover:bg-destructive/15 text-muted-foreground hover:text-destructive transition-colors border border-border/40"
                           title="Delete staff"
                         >
-                          <Trash2 className="size-2.5" />
+                          <Trash2 className="size-3" />
                         </button>
                       </div>
                     )}
@@ -593,10 +593,10 @@ export function Rooster() {
                     return (
                       <div
                         key={dateKey}
-                        className={`${rowBg} border-b border-r border-border/40 relative px-2 py-2 flex flex-col gap-1.5 transition-colors ${
+                        className={`${rowBg} border-b border-r border-border/40 relative px-3 py-3 flex flex-col gap-2 transition-colors ${
                           isEditMode ? "cursor-pointer hover:bg-muted/20" : ""
                         } ${isToday ? "bg-primary/[0.03]" : ""}`}
-                        style={{ minHeight: "84px" }}
+                        style={{ minHeight: "96px" }}
                         onClick={() => { if (isEditMode) openAddShift(resource.id, dateKey) }}
                       >
                         {dayShifts.map(shift => (
@@ -631,9 +631,9 @@ export function Rooster() {
               {shiftDialog.mode === "add" ? "Add Shift" : "Edit Shift"}
             </DialogTitle>
           </DialogHeader>
-          <div className="flex flex-col gap-4 py-1">
+          <div className="flex flex-col gap-5 py-2">
             {/* Title */}
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Shift Name</label>
               <Input
                 placeholder="e.g. Morning, Afternoon, Night"
@@ -642,7 +642,7 @@ export function Rooster() {
               />
             </div>
             {/* Resource */}
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Staff</label>
               <select
                 value={shiftForm.resourceId}
@@ -655,7 +655,7 @@ export function Rooster() {
               </select>
             </div>
             {/* Date */}
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Date</label>
               <Input
                 type="date"
@@ -664,8 +664,8 @@ export function Rooster() {
               />
             </div>
             {/* Start / End */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1.5">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-2">
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Start</label>
                 <select
                   value={shiftForm.startHour}
@@ -677,7 +677,7 @@ export function Rooster() {
                   ))}
                 </select>
               </div>
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-2">
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">End</label>
                 <select
                   value={shiftForm.endHour}
@@ -750,8 +750,8 @@ export function Rooster() {
               {resourceDialog.mode === "add" ? "Add Staff" : "Edit Staff"}
             </DialogTitle>
           </DialogHeader>
-          <div className="flex flex-col gap-4 py-1">
-            <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-5 py-2">
+            <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name</label>
               <Input
                 placeholder="e.g. Ahmad Faris"
@@ -759,7 +759,7 @@ export function Rooster() {
                 onChange={e => setResForm(p => ({ ...p, name: e.target.value }))}
               />
             </div>
-            <div className="flex flex-col gap-1.5">
+            <div className="flex flex-col gap-2">
               <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Role</label>
               <Input
                 placeholder="e.g. Driver, Operator"
@@ -836,14 +836,13 @@ function ShiftBlock({
 
   return (
     <div
-      className={`pl-3 py-0.5 select-none transition-all ${isEditMode ? "cursor-pointer hover:opacity-70 active:scale-[0.98]" : "cursor-default"}`}
-      style={{ borderLeft: `3px solid ${shift.color}` }}
+      className={`pl-3 py-1.5 rounded-md select-none transition-all ${isEditMode ? "cursor-pointer hover:opacity-70 active:scale-[0.98]" : "cursor-default"}`}
+      style={{ borderLeft: `3px solid ${shift.color}`, backgroundColor: `${shift.color}08` }}
       onClick={e => { e.stopPropagation(); if (isEditMode) onEdit() }}
       title={`${shift.title}: ${startLabel} – ${endLabel} (${duration}h)`}
     >
-      <div className="text-[11px] font-semibold leading-tight truncate text-foreground">{shift.title}</div>
-      <div className="text-[10px] leading-tight text-muted-foreground mt-0.5 truncate">{startLabel} – {endLabel}</div>
-
+      <div className="text-xs font-semibold leading-tight truncate text-foreground">{shift.title}</div>
+      <div className="text-[11px] leading-tight text-muted-foreground mt-1 truncate">{startLabel} – {endLabel}</div>
     </div>
   )
 }

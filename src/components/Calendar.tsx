@@ -130,12 +130,13 @@ function EventFormDialog({ open, onClose, initialDate, event, onSave, onDelete }
 
   function handleSave() {
     if (!title.trim() || !dateVal) return
-    onSave({
+    const eventData = {
       ...(isEdit ? { id: event!.id } : {}),
       title: title.trim(),
       date: parseDateInput(dateVal),
       type,
-    })
+    }
+    onSave(eventData)
     onClose()
   }
 
@@ -831,10 +832,15 @@ async function apiSaveEvent(data: { id?: number; title: string; date: Date; type
     const json = await res.json()
     if (!json.success) throw new Error("API error")
     return { event: rowToEvent(json.data as ApiRow), offline: false }
-  } catch {
+  } catch (apiError) {
     // fallback: save to localStorage
-    const ev = data.id !== undefined ? lsUpdate(data as { id: number; title: string; date: Date; type: EventType }) : lsAdd(data)
-    return { event: ev, offline: true }
+    try {
+      const ev = data.id !== undefined ? lsUpdate(data as { id: number; title: string; date: Date; type: EventType }) : lsAdd(data)
+      return { event: ev, offline: true }
+    } catch (lsError) {
+      console.error("Failed to save to API and localStorage:", apiError, lsError)
+      return null
+    }
   }
 }
 

@@ -597,9 +597,26 @@ export function RowInfoModal({ open, onOpenChange, point, isEditMode, onSave }: 
                 <Button
                   size="sm"
                   onClick={() => {
-                    setAvatarImages(dialogImages)
-                    setAvatarImageUrl(dialogSelected || dialogImages[0] || "")
+                    const newImages = dialogImages
+                    const newSelectedUrl = dialogSelected || dialogImages[0] || ""
+                    setAvatarImages(newImages)
+                    setAvatarImageUrl(newSelectedUrl)
                     setShowAvatarDialog(false)
+                    // Save immediately after updating avatar images
+                    const updatedPoint = {
+                      ...point,
+                      descriptions: drafts.filter(d => d.key.trim() !== ""),
+                      qrCodeImageUrl,
+                      qrCodeDestinationUrl,
+                      avatarImageUrl: newSelectedUrl,
+                      avatarImages: newImages
+                    }
+                    onSave?.(updatedPoint)
+                    toast.success("Avatar updated", {
+                      description: `${point.name || point.code} images saved.`,
+                      icon: <CheckCircle2 className="size-4 text-primary" />,
+                      duration: 3000,
+                    })
                   }}
                 >
                   <Check className="w-3.5 h-3.5 mr-1" />Save

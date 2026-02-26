@@ -826,34 +826,34 @@ export function RouteList() {
   return (
     <div className="relative font-light flex-1 overflow-y-auto">
       {/* Route List */}
-      <div className="p-4 md:p-6" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+      <div className="p-5 md:p-8" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
         {/* Page header */}
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-fluid-xl page-header font-bold text-gray-900 dark:text-white">Route List</h1>
-            <p className="text-fluid-sm page-subheader text-muted-foreground mt-1">
+            <p className="text-fluid-sm page-subheader text-muted-foreground mt-2">
               {filteredRoutes.length} route{filteredRoutes.length !== 1 ? 's' : ''}
               {(filterRegion !== 'all' || filterShift !== 'all') && <span className="ml-1 text-primary font-medium">· filtered</span>}
             </p>
           </div>
         </div>
         {/* Search + Filter */}
-        <div className="mb-5 flex items-center gap-2">
+        <div className="mb-6 flex items-center gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/50 pointer-events-none" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/50 pointer-events-none" />
             <input
               type="text"
               placeholder="Search routes…"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full h-11 pl-10 pr-9 bg-card rounded-xl text-sm placeholder:text-muted-foreground/40 outline-none ring-1 ring-border/60 focus:ring-2 focus:ring-primary/40 shadow-sm transition-shadow"
+              className="w-full h-12 pl-11 pr-10 bg-card rounded-xl text-sm placeholder:text-muted-foreground/40 outline-none ring-1 ring-border/60 focus:ring-2 focus:ring-primary/40 shadow-sm transition-shadow"
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground transition-colors"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/60 hover:text-foreground transition-colors"
               >
-                <X className="size-3.5" />
+                <X className="size-4" />
               </button>
             )}
           </div>
@@ -862,25 +862,25 @@ export function RouteList() {
           <Popover>
             <PopoverTrigger asChild>
               <button
-                className={`relative h-11 w-11 flex items-center justify-center rounded-xl ring-1 shadow-sm transition-colors ${
+                className={`relative h-12 w-12 flex items-center justify-center rounded-xl ring-1 shadow-sm transition-colors ${
                   filterRegion !== "all" || filterShift !== "all"
                     ? "bg-primary text-primary-foreground ring-primary"
                     : "bg-card text-muted-foreground ring-border/60 hover:bg-muted"
                 }`}
               >
-                <SlidersHorizontal className="size-4" />
+                <SlidersHorizontal className="size-5" />
                 {(filterRegion !== "all" || filterShift !== "all") && (
-                  <span className="absolute -top-1 -right-1 size-2 rounded-full bg-orange-400 ring-1 ring-background" />
+                  <span className="absolute -top-1 -right-1 size-2.5 rounded-full bg-orange-400 ring-2 ring-background" />
                 )}
               </button>
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-64 p-4 space-y-4">
+            <PopoverContent align="end" className="w-72 p-5 space-y-5">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-semibold">Filter</span>
                 {(filterRegion !== "all" || filterShift !== "all") && (
                   <button
                     onClick={() => { setFilterRegion("all"); setFilterShift("all") }}
-                    className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                    className="text-xs text-muted-foreground hover:text-destructive transition-colors font-medium"
                   >
                     Reset
                   </button>
@@ -888,18 +888,18 @@ export function RouteList() {
               </div>
 
               {/* Region */}
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Region</p>
-                <div className="flex gap-1.5">
+              <div className="space-y-2.5">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Region</p>
+                <div className="flex gap-2">
                   {(["all", "KL", "Sel"] as const).map(r => (
                     <button
                       key={r}
                       onClick={() => setFilterRegion(r)}
-                      className={`flex-1 h-8 rounded-lg text-xs font-medium transition-all ${
+                      className={`flex-1 h-9 rounded-lg text-xs font-semibold transition-all ${
                         filterRegion === r
-                          ? r === "KL" ? "bg-blue-500 text-white"
-                            : r === "Sel" ? "bg-red-500 text-white"
-                            : "bg-foreground text-background"
+                          ? r === "KL" ? "bg-blue-500 text-white shadow-sm"
+                            : r === "Sel" ? "bg-red-500 text-white shadow-sm"
+                            : "bg-foreground text-background shadow-sm"
                           : "bg-muted text-muted-foreground hover:bg-muted-foreground/20"
                       }`}
                     >
@@ -910,18 +910,18 @@ export function RouteList() {
               </div>
 
               {/* Shift */}
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Shift</p>
-                <div className="flex gap-1.5">
+              <div className="space-y-2.5">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Shift</p>
+                <div className="flex gap-2">
                   {(["all", "AM", "PM"] as const).map(s => (
                     <button
                       key={s}
                       onClick={() => setFilterShift(s)}
-                      className={`flex-1 h-8 rounded-lg text-xs font-medium transition-all ${
+                      className={`flex-1 h-9 rounded-lg text-xs font-semibold transition-all ${
                         filterShift === s
-                          ? s === "AM" ? "bg-orange-500 text-white"
-                            : s === "PM" ? "bg-indigo-500 text-white"
-                            : "bg-foreground text-background"
+                          ? s === "AM" ? "bg-orange-500 text-white shadow-sm"
+                            : s === "PM" ? "bg-indigo-500 text-white shadow-sm"
+                            : "bg-foreground text-background shadow-sm"
                           : "bg-muted text-muted-foreground hover:bg-muted-foreground/20"
                       }`}
                     >
@@ -942,39 +942,39 @@ export function RouteList() {
           return (
           <div key={route.id}>
             {/* Row */}
-            <div className={`flex items-center gap-3 px-3 py-2.5 ${routeIndex !== 0 ? "border-t border-border/40" : ""}`}>
+            <div className={`flex items-center gap-4 px-4 py-3.5 ${routeIndex !== 0 ? "border-t border-border/40" : ""}`}>
               {isKL
-                ? <img src="/kl-flag.png" className="shrink-0 object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10" style={{ width: 48, height: 30 }} alt="KL" />
+                ? <img src="/kl-flag.png" className="shrink-0 object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10" style={{ width: 52, height: 32 }} alt="KL" />
                 : isSel
-                ? <img src="/selangor-flag.png" className="shrink-0 object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10" style={{ width: 48, height: 30 }} alt="Selangor" />
-                : <div className="shrink-0 w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
-                    <Truck className="size-3.5 text-primary" />
+                ? <img src="/selangor-flag.png" className="shrink-0 object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10" style={{ width: 52, height: 32 }} alt="Selangor" />
+                : <div className="shrink-0 w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center ring-1 ring-primary/20">
+                    <Truck className="size-5 text-primary" />
                   </div>
               }
-              <div className="flex-1 min-w-0 flex flex-col gap-0.5">
-                <div className="flex items-center gap-1.5">
-                  <p className="text-xs font-semibold text-foreground line-clamp-1 min-w-0">{route.name}</p>
+              <div className="flex-1 min-w-0 flex flex-col gap-1">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-semibold text-foreground line-clamp-1 min-w-0">{route.name}</p>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-mono text-muted-foreground">{route.code}</span>
-                  <span className={`shrink-0 px-1 py-px text-[9px] font-bold rounded text-white tracking-wide ${
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono text-muted-foreground">{route.code}</span>
+                  <span className={`shrink-0 px-1.5 py-0.5 text-[10px] font-bold rounded text-white tracking-wide ${
                     route.shift === 'AM' ? 'bg-blue-500' : route.shift === 'PM' ? 'bg-orange-600' : 'bg-muted text-muted-foreground'
                   }`}>{route.shift || '—'}</span>
                 </div>
               </div>
-              <div className="shrink-0 flex items-center gap-0.5">
+              <div className="shrink-0 flex items-center gap-1">
                 <button
-                  className="p-2 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                  className="p-2.5 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
                   title="List"
                   onClick={() => { setCurrentRouteId(route.id); setDetailDialogOpen(true) }}
                 ><List className="size-5" /></button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                    <button className="p-2.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
                       <MoreVertical className="size-5" />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuContent align="end" className="w-48">
                     <DropdownMenuItem onClick={() => { setNotesRouteId(route.id); setNotesRouteName(route.name); setNotesInitialTab("info"); setNotesModalOpen(true) }}>
                       <Info className="size-3.5 mr-2" />Info
                     </DropdownMenuItem>
@@ -1005,25 +1005,25 @@ export function RouteList() {
                     }
                   >
                     {/* Header */}
-                    <div className="px-4 py-3 border-b border-border shrink-0 bg-background flex items-center gap-3">
+                    <div className="px-5 py-4 border-b border-border shrink-0 bg-background flex items-center gap-4">
                       {(route.name + " " + route.code).toLowerCase().includes("kl")
-                        ? <img src="/kl-flag.png" className="object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10 shrink-0" style={{ width: 44, height: 28 }} alt="KL" />
+                        ? <img src="/kl-flag.png" className="object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10 shrink-0" style={{ width: 48, height: 30 }} alt="KL" />
                         : (route.name + " " + route.code).toLowerCase().includes("sel")
-                        ? <img src="/selangor-flag.png" className="object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10 shrink-0" style={{ width: 44, height: 28 }} alt="Selangor" />
+                        ? <img src="/selangor-flag.png" className="object-cover rounded shadow-sm ring-1 ring-black/10 dark:ring-white/10 shrink-0" style={{ width: 48, height: 30 }} alt="Selangor" />
                         : (
-                          <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 ring-1 ring-primary/20">
-                            <Truck className="size-[17px] text-primary" />
+                          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0 ring-1 ring-primary/20">
+                            <Truck className="size-5 text-primary" />
                           </div>
                         )}
                       <div className="flex-1 min-w-0">
-                        <h1 className="text-sm font-bold leading-tight truncate">{route.name}</h1>
+                        <h1 className="text-base font-bold leading-tight truncate">{route.name}</h1>
                       </div>
-                      <Button variant="outline" size="sm" onClick={() => openSettings(route.id)} className="shrink-0 flex items-center gap-1.5 h-8 rounded-xl text-xs">
-                        <Settings className="size-3.5" />Settings
+                      <Button variant="outline" size="sm" onClick={() => openSettings(route.id)} className="shrink-0 flex items-center gap-2 h-9 rounded-xl text-xs px-4">
+                        <Settings className="size-4" />Settings
                       </Button>
                       <button
                         onClick={() => setDetailFullscreen(f => !f)}
-                        className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        className="shrink-0 p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                         title={detailFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
                       >
                         {detailFullscreen ? <Minimize2 className="size-4" /> : <Maximize2 className="size-4" />}
@@ -1035,7 +1035,7 @@ export function RouteList() {
                             <thead className="bg-muted/70 sticky top-0 z-10 backdrop-blur-sm">
                               <tr className="border-b border-border">
                                 {isEditMode && (
-                                  <th className="px-3 h-9 text-center w-10">
+                                  <th className="px-4 h-10 text-center w-12">
                                     <input
                                       type="checkbox"
                                       checked={selectedRows.length === deliveryPoints.length && deliveryPoints.length > 0}
@@ -1045,10 +1045,10 @@ export function RouteList() {
                                   </th>
                                 )}
                                 {columns.filter(c => c.visible && c.key !== 'action' && !((c.key === 'lat' || c.key === 'lng') && !isEditMode)).map(col => (
-                                  <th key={col.key} className="px-3 h-9 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{col.label}</th>
+                                  <th key={col.key} className="px-4 h-10 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{col.label}</th>
                                 ))}
                                 {columns.find(c => c.key === 'action' && c.visible) && (
-                                  <th className="px-3 h-9 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Action</th>
+                                  <th className="px-4 h-10 text-center text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Action</th>
                                 )}
                           </tr>
                         </thead>
@@ -1076,7 +1076,7 @@ export function RouteList() {
                                   : 'border-border/30 opacity-40 hover:opacity-60'
                               }`}>
                                 {isEditMode && (
-                                  <td className="px-3 h-11 text-center">
+                                  <td className="px-4 h-12 text-center">
                                     <input
                                       type="checkbox"
                                       checked={selectedRows.includes(point.code)}
@@ -1087,10 +1087,10 @@ export function RouteList() {
                                 )}
                                 {columns.filter(c => c.visible).map(col => {
                                   if (col.key === 'no') return (
-                                    <td key="no" className="px-3 h-9 text-center text-[10px] text-muted-foreground tabular-nums font-semibold">{index + 1}</td>
+                                    <td key="no" className="px-4 h-10 text-center text-[10px] text-muted-foreground tabular-nums font-semibold">{index + 1}</td>
                                   )
                                   if (col.key === 'code') return (
-                                    <td key="code" className="px-3 h-9 text-center">
+                                    <td key="code" className="px-4 h-10 text-center">
                                       {isEditMode ? (
                                       <Popover
                                         open={isEditMode && !!popoverOpen[`${point.code}-code`]}
@@ -1867,19 +1867,21 @@ export function RouteList() {
 
       {/* ── Settings Modal ──────────────────────────────────────────── */}
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
-          <DialogHeader>
-            <DialogTitle>Table Settings</DialogTitle>
-            <DialogDescription>Customize how the table looks and behaves</DialogDescription>
-          </DialogHeader>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col gap-0 p-0">
+          <div className="px-6 pt-6 pb-0 shrink-0">
+            <DialogHeader>
+              <DialogTitle>Table Settings</DialogTitle>
+              <DialogDescription>Customize how the table looks and behaves</DialogDescription>
+            </DialogHeader>
+          </div>
 
           {/* Tab Menu */}
-          <div className="flex border-b border-border">
+          <div className="flex border-b border-border shrink-0 px-6">
             {(['column', 'row', 'sorting'] as const).map((m) => (
               <button
                 key={m}
                 onClick={() => setSettingsMenu(m)}
-                className={`px-5 py-2 text-sm font-medium capitalize border-b-2 transition-colors ${
+                className={`px-5 py-3 text-sm font-semibold capitalize border-b-2 transition-colors ${
                   settingsMenu === m
                     ? 'border-primary text-primary'
                     : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -1890,17 +1892,17 @@ export function RouteList() {
             ))}
           </div>
 
-          <div className="flex-1 overflow-auto">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden min-h-0">
 
             {/* ── COLUMN CUSTOMIZE ── */}
             {settingsMenu === 'column' && (
-              <div className="p-4 space-y-3">
+              <div className="p-6 space-y-4">
                 <p className="text-sm text-muted-foreground">Toggle visibility and reorder columns.</p>
-                <div className="space-y-2">
+                <div className="space-y-2.5">
                   {draftColumns.map((col, idx) => {
                     if ((col.key === 'lat' || col.key === 'lng') && !isEditMode) return null
                     return (
-                    <div key={col.key} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/20">
+                    <div key={col.key} className="flex items-center gap-3 p-3.5 rounded-lg border border-border bg-muted/20">
                       <input
                         type="checkbox"
                         checked={col.visible}
@@ -1909,27 +1911,27 @@ export function RouteList() {
                             prev.map((c, i) => i === idx ? { ...c, visible: !c.visible } : c)
                           )
                         }
-                        className="w-4 h-4 cursor-pointer"
+                        className="w-4 h-4 cursor-pointer accent-primary"
                       />
                       <span className="flex-1 text-sm font-medium">{col.label}</span>
-                      <div className="flex gap-1">
+                      <div className="flex gap-1.5">
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="size-7"
+                          className="size-8"
                           disabled={idx === 0}
                           onClick={() => moveDraftCol(idx, -1)}
                         >
-                          <ArrowUp className="size-3.5" />
+                          <ArrowUp className="size-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="size-7"
+                          className="size-8"
                           disabled={idx === draftColumns.length - 1}
                           onClick={() => moveDraftCol(idx, 1)}
                         >
-                          <ArrowDown className="size-3.5" />
+                          <ArrowDown className="size-4" />
                         </Button>
                       </div>
                     </div>
@@ -1941,29 +1943,29 @@ export function RouteList() {
 
             {/* ── ROW CUSTOMIZE ── */}
             {settingsMenu === 'row' && (
-              <div className="p-4 space-y-3">
+              <div className="p-6 space-y-4">
                 <p className="text-sm text-muted-foreground">Input a position number to reorder rows. No duplicates allowed.</p>
                 {rowOrderError && (
                   <p className="text-sm text-destructive font-medium">{rowOrderError}</p>
                 )}
-                <div className={`space-y-2 relative transition-opacity duration-300 ${rowSaving ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+                <div className={`space-y-2.5 relative transition-opacity duration-300 ${rowSaving ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
                   {rowSaving && (
                     <div className="absolute inset-0 flex items-center justify-center z-10">
-                      <div className="bg-background/80 backdrop-blur-sm rounded-xl px-4 py-2 flex items-center gap-2 shadow-md border border-border">
-                        <Loader2 className="size-4 animate-spin text-primary" />
-                        <span className="text-sm font-medium text-foreground">Sorting rows…</span>
+                      <div className="bg-background/90 backdrop-blur-sm rounded-xl px-5 py-3 flex items-center gap-2.5 shadow-lg border border-border">
+                        <Loader2 className="size-5 animate-spin text-primary" />
+                        <span className="text-sm font-semibold text-foreground">Sorting rows…</span>
                       </div>
                     </div>
                   )}
                   {draftRowOrder.map((row) => (
-                    <div key={row.code} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/20">
-                      <div className="relative w-14 shrink-0">
+                    <div key={row.code} className="flex items-center gap-3 p-3.5 rounded-lg border border-border bg-muted/20">
+                      <div className="relative w-16 shrink-0">
                         <Input
                           value={row.position}
                           onChange={(e) => handleRowPositionChange(row.code, e.target.value)}
                           onFocus={(e) => e.target.select()}
                           placeholder="#"
-                          className={`w-14 text-center text-sm ${
+                          className={`w-16 text-center text-sm font-semibold ${
                             draftRowOrder.filter(r => r.position === row.position).length > 1
                               ? 'border-destructive focus-visible:ring-destructive/30'
                               : ''
@@ -1972,9 +1974,9 @@ export function RouteList() {
                           maxLength={3}
                         />
                       </div>
-                      <span className="w-16 text-sm font-mono font-medium text-center">{row.code}</span>
+                      <span className="w-20 text-sm font-mono font-semibold text-center">{row.code}</span>
                       <span className="flex-1 text-sm text-center">{row.name}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded font-medium
+                      <span className={`text-xs px-2.5 py-1 rounded-md font-semibold
                         ${row.delivery === 'Daily' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : ''}
                         ${row.delivery === 'Weekday' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : ''}
                         ${row.delivery === 'Alt 1' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' : ''}
@@ -1988,14 +1990,14 @@ export function RouteList() {
 
             {/* ── SORTING ── */}
             {settingsMenu === 'sorting' && (
-              <div className="p-4 space-y-3">
+              <div className="p-6 space-y-4">
                 {/* Sub-tabs */}
-                <div className="flex gap-1 p-1 bg-muted rounded-lg">
+                <div className="flex gap-1.5 p-1.5 bg-muted rounded-xl">
                   {(['example', 'my'] as const).map((tab) => (
                     <button
                       key={tab}
                       onClick={() => setSortingTab(tab)}
-                      className={`flex-1 py-1.5 px-3 text-sm rounded-md font-medium transition-colors ${
+                      className={`flex-1 py-2 px-4 text-sm rounded-lg font-semibold transition-colors ${
                         sortingTab === tab
                           ? 'bg-background shadow-sm text-foreground'
                           : 'text-muted-foreground hover:text-foreground'
@@ -2008,8 +2010,8 @@ export function RouteList() {
 
                 {/* Example Sort List */}
                 {sortingTab === 'example' && (
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground mb-2">Predefined sort orders — visible to all users.</p>
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground mb-3">Predefined sort orders — visible to all users.</p>
                     {[
                       { key: 'name'     as ColumnKey, dir: 'asc'  as const, label: 'Name A → Z' },
                       { key: 'name'     as ColumnKey, dir: 'desc' as const, label: 'Name Z → A' },
@@ -2019,10 +2021,10 @@ export function RouteList() {
                       <button
                         key={`${key}-${dir}`}
                         onClick={() => setDraftSort({ type: 'column', key, dir })}
-                        className={`w-full py-2 px-3 text-sm rounded border transition-colors text-left ${
+                        className={`w-full py-2.5 px-4 text-sm rounded-lg border transition-colors text-left font-medium ${
                           draftSort?.type === 'column' && draftSort.key === key && draftSort.dir === dir
-                            ? 'border-primary bg-primary/10 text-primary font-medium'
-                            : 'border-border hover:bg-muted'
+                            ? 'border-primary bg-primary/10 text-primary shadow-sm'
+                            : 'border-border hover:bg-muted hover:border-border/80'
                         }`}
                       >
                         {label}
@@ -2033,22 +2035,22 @@ export function RouteList() {
 
                 {/* My Sort List */}
                 {sortingTab === 'my' && (
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground mb-2">Your saved row orders from Row Customize — stored privately in this browser.</p>
+                  <div className="space-y-2">
+                    <p className="text-xs text-muted-foreground mb-3">Your saved row orders from Row Customize — stored privately in this browser.</p>
                     {savedRowOrders.length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground text-sm">
+                      <div className="text-center py-12 text-muted-foreground text-sm">
                         <p>No saved sort orders yet.</p>
-                        <p className="text-xs mt-1">Go to <strong>Row Customize</strong> tab and save a custom order.</p>
+                        <p className="text-xs mt-2">Go to <strong>Row Customize</strong> tab and save a custom order.</p>
                       </div>
                     ) : (
                       savedRowOrders.map((s) => (
-                        <div key={s.id} className="flex items-center gap-2">
+                        <div key={s.id} className="flex items-center gap-2.5">
                           <button
                             onClick={() => setDraftSort({ type: 'saved', id: s.id })}
-                            className={`flex-1 py-2 px-3 text-sm rounded border transition-colors text-left ${
+                            className={`flex-1 py-2.5 px-4 text-sm rounded-lg border transition-colors text-left font-medium ${
                               draftSort?.type === 'saved' && draftSort.id === s.id
-                                ? 'border-primary bg-primary/10 text-primary font-medium'
-                                : 'border-border hover:bg-muted'
+                                ? 'border-primary bg-primary/10 text-primary shadow-sm'
+                                : 'border-border hover:bg-muted hover:border-border/80'
                             }`}
                           >
                             {s.label}
@@ -2062,10 +2064,10 @@ export function RouteList() {
                               })
                               if (draftSort?.type === 'saved' && draftSort.id === s.id) setDraftSort(null)
                             }}
-                            className="p-1.5 rounded hover:bg-destructive/10 hover:text-destructive transition-colors text-muted-foreground shrink-0"
+                            className="p-2 rounded-lg hover:bg-destructive/10 hover:text-destructive transition-colors text-muted-foreground shrink-0"
                             title="Delete this sort"
                           >
-                            <Trash2 className="size-3.5" />
+                            <Trash2 className="size-4" />
                           </button>
                         </div>
                       ))
@@ -2076,9 +2078,9 @@ export function RouteList() {
                 {draftSort && (
                   <button
                     onClick={() => setDraftSort(null)}
-                    className="text-sm text-muted-foreground hover:text-destructive flex items-center gap-1 pt-1"
+                    className="text-sm text-muted-foreground hover:text-destructive flex items-center gap-1.5 pt-2"
                   >
-                    <X className="size-3.5" /> Clear sorting
+                    <X className="size-4" /> Clear sorting
                   </button>
                 )}
               </div>
@@ -2086,67 +2088,74 @@ export function RouteList() {
           </div>
 
           {/* ── Footer Buttons ── */}
-          <div className="border-t border-border pt-4 px-4 pb-2">
+          <div className="border-t border-border pt-4 px-6 pb-6 shrink-0 bg-background">
             {settingsMenu === 'column' && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 {columnsHasSaved && (
-                  <button
-                    className="text-sm font-semibold text-red-500 dark:text-red-400 hover:text-red-600 transition-colors"
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive hover:text-destructive border-destructive/40 hover:bg-destructive/10"
                     onClick={() => { setDraftColumns([...DEFAULT_COLUMNS]); setSavedColumns(null) }}
                   >
-                    Reset
-                  </button>
+                    Reset to Default
+                  </Button>
                 )}
                 <div className="flex-1" />
                 {columnsDirty && (
-                  <button
-                    className="text-sm font-semibold text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 transition-colors"
+                  <Button
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700 text-white"
                     onClick={() => {
                       setColumns([...draftColumns])
                       setSavedColumns([...draftColumns])
                     }}
                   >
-                    Apply
-                  </button>
+                    Apply Changes
+                  </Button>
                 )}
               </div>
             )}
 
             {settingsMenu === 'row' && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <div className="flex-1" />
                 {(rowPositionsDirty || rowOrderDirty) && !rowOrderError && (
-                  <button
+                  <Button
                     disabled={rowSaving}
-                    className="text-sm font-semibold text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700 text-white gap-2"
                     onClick={saveRowOrder}
                   >
                     {rowSaving ? (
-                      <><Loader2 className="size-3.5 animate-spin" />Saving…</>
+                      <><Loader2 className="size-4 animate-spin" />Saving…</>
                     ) : rowSaved ? (
-                      <><Check className="size-3.5" />Saved!</>
+                      <><Check className="size-4" />Saved!</>
                     ) : (
-                      'Save'
+                      'Save Order'
                     )}
-                  </button>
+                  </Button>
                 )}
               </div>
             )}
 
             {settingsMenu === 'sorting' && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 {savedSort !== undefined && (
-                  <button
-                    className="text-sm font-semibold text-red-500 dark:text-red-400 hover:text-red-600 transition-colors"
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-destructive hover:text-destructive border-destructive/40 hover:bg-destructive/10"
                     onClick={() => { setDraftSort(null); setActiveSortConfig(null); setSavedSort(undefined) }}
                   >
-                    Reset
-                  </button>
+                    Reset to Default
+                  </Button>
                 )}
                 <div className="flex-1" />
                 {JSON.stringify(draftSort) !== JSON.stringify(activeSortConfig) && (
-                  <button
-                    className="text-sm font-semibold text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 transition-colors"
+                  <Button
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700 text-white"
                     onClick={() => {
                       if (activeSortConfig?.type === 'saved' && draftSort?.type === 'column') {
                         setSortConflictPending(draftSort)
@@ -2157,8 +2166,8 @@ export function RouteList() {
                       }
                     }}
                   >
-                    Apply
-                  </button>
+                    Apply Sorting
+                  </Button>
                 )}
               </div>
             )}
