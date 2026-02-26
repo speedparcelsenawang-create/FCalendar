@@ -24,6 +24,11 @@ npm run dev
 
 See [PWA_DEPLOYMENT_GUIDE.md](./PWA_DEPLOYMENT_GUIDE.md) for complete setup and deployment instructions.
 
+**⚠️ Calendar Database Setup Required:**
+- Calendar events require PostgreSQL database (Neon)
+- See [VERCEL_SETUP.md](./VERCEL_SETUP.md) for DATABASE_URL configuration
+- Without database, events fallback to localStorage (device-only, not synced)
+
 ## 🛠️ Tech Stack
 
 React 19 + TypeScript + Vite + Tailwind CSS + Radix UI + React Leaflet

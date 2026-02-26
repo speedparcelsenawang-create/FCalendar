@@ -9,6 +9,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'OPTIONS') return res.status(204).end();
 
   try {
+    // Check if DATABASE_URL is configured
+    if (!process.env.DATABASE_URL) {
+      return res.status(500).json({ 
+        success: false, 
+        error: 'DATABASE_URL not configured in Vercel environment variables',
+        hint: 'Add DATABASE_URL in Vercel Dashboard → Settings → Environment Variables'
+      });
+    }
+
     // Create table if not exists
     await sql`
       CREATE TABLE IF NOT EXISTS calendar_events (
@@ -79,7 +88,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ success: false, error: `Method ${req.method} tidak dibenarkan` });
 
   } catch (error) {
+    console.error('❌ Calendar API Error:', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
-    return res.status(500).json({ success: false, error: message });
+    const stack = error instanceof Error ? error.stack : undefined;
+    return res.status(500).json({ 
+      success: false, 
+      error: message,
+      debug: process.env.NODE_ENV === 'development' ? stack : undefined
+    });
   }
 }

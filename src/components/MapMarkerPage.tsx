@@ -49,6 +49,42 @@ function MapController({ center, zoom }: { center: [number, number] | null; zoom
   return null
 }
 
+/* ─── Auto fit bounds controller ──────────────────────────────────────────── */
+function AutoFitBounds({ markers, selectedRouteIds, deliveryFilter }: { markers: Marker[]; selectedRouteIds: Set<string>; deliveryFilter: string }) {
+  const map = useMap()
+  const prevFilterKey = useRef<string>("")
+
+  useEffect(() => {
+    // Only auto-fit when filters are active (not "All Routes" and "All" delivery)
+    const hasFilter = selectedRouteIds.size > 0 || deliveryFilter !== "All"
+    if (!hasFilter) return
+
+    const filterKey = `${Array.from(selectedRouteIds).sort().join(",")}-${deliveryFilter}`
+    if (filterKey === prevFilterKey.current) return
+    prevFilterKey.current = filterKey
+
+    const validMarkers = markers.filter(m => m.hasCoords)
+    if (validMarkers.length === 0) return
+
+    if (validMarkers.length === 1) {
+      // Single marker - just zoom to it
+      const m = validMarkers[0]
+      map.flyTo([m.lat, m.lng], 15, { duration: 0.8 })
+      return
+    }
+
+    // Multiple markers - fit bounds to show all
+    const bounds = L.latLngBounds(validMarkers.map(m => [m.lat, m.lng]))
+    map.fitBounds(bounds, {
+      padding: [50, 50],
+      maxZoom: 16,
+      duration: 0.8,
+    })
+  }, [markers, selectedRouteIds, deliveryFilter, map])
+
+  return null
+}
+
 /* ─── Types ───────────────────────────────────────────────────────────────── */
 interface DeliveryPoint {
   code: string
@@ -393,6 +429,7 @@ export function MapMarkerPage() {
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
                 <MapController center={flyTarget} />
+                <AutoFitBounds markers={filteredMarkers} selectedRouteIds={selectedRouteIds} deliveryFilter={deliveryFilter} />
                 {filteredMarkers.filter(m => m.hasCoords || !m.isFromRoute).map(m => {
                   const color = m.delivery ? (DELIVERY_COLORS[m.delivery] ?? "#6b7280") : "#ef4444"
                   const isSelected = selectedMarker?.id === m.id
@@ -577,8 +614,8 @@ export function MapMarkerPage() {
                   <li>• Locations <strong>without coordinates</strong> will not be shown on the map. Fill in coordinates in Route List first.</li>
                   <li>• Click <strong>Add Marker</strong> to place a custom pin anywhere on the map.</li>
                   <li>• Click a marker name in the list to fly to its position on the map.</li>
-                  <li>• Use the <strong>Filter</strong> button to filter by delivery type or route.</li>
-                  <li>• Click a delivery type in the stats section to quickly filter markers.</li>
+                  <li>• Use the <strong>Filter</strong> button to filter by delivery type or route — <strong>map automatically zooms</strong> to show all filtered markers.</li>
+                  <li>• Click a delivery type in the stats section to quickly filter and auto-zoom to those markers.</li>
                 </ul>
               </div>
             </div>

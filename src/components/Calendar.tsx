@@ -806,11 +806,15 @@ function lsDelete(id: number) {
 async function apiFetchEvents(): Promise<{ events: Event[]; offline: boolean }> {
   try {
     const res = await fetch("/api/calendar")
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
+      throw new Error(json.error || `HTTP ${res.status}`)
+    }
     const json = await res.json()
-    if (!json.success) throw new Error("API error")
+    if (!json.success) throw new Error(json.error || "API error")
     return { events: (json.data as ApiRow[]).map(rowToEvent), offline: false }
-  } catch {
+  } catch (error) {
+    console.log("📴 API offline, using localStorage:", error instanceof Error ? error.message : error)
     return { events: lsLoad(), offline: true }
   }
 }
@@ -828,17 +832,22 @@ async function apiSaveEvent(data: { id?: number; title: string; date: Date; type
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     })
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({ error: `HTTP ${res.status}` }))
+      throw new Error(json.error || `HTTP ${res.status}`)
+    }
     const json = await res.json()
-    if (!json.success) throw new Error("API error")
+    if (!json.success) throw new Error(json.error || "API error")
     return { event: rowToEvent(json.data as ApiRow), offline: false }
   } catch (apiError) {
     // fallback: save to localStorage
+    console.log("⚠️ API save failed, falling back to localStorage:", apiError instanceof Error ? apiError.message : apiError)
     try {
       const ev = data.id !== undefined ? lsUpdate(data as { id: number; title: string; date: Date; type: EventType }) : lsAdd(data)
+      console.log("✅ Saved to localStorage:", ev)
       return { event: ev, offline: true }
     } catch (lsError) {
-      console.error("Failed to save to API and localStorage:", apiError, lsError)
+      console.error("❌ Failed to save to API and localStorage:", apiError, lsError)
       return null
     }
   }
@@ -851,7 +860,8 @@ async function apiDeleteEvent(id: number): Promise<{ ok: boolean; offline: boole
     const json = await res.json()
     if (!json.success) throw new Error("API error")
     return { ok: true, offline: false }
-  } catch {
+  } catch (error) {
+    console.log("⚠️ API delete failed, falling back to localStorage:", error instanceof Error ? error.message : error)
     lsDelete(id)
     return { ok: true, offline: true }
   }
